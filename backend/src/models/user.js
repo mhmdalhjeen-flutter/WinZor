@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
         minlength: 6,
     },
 
+    // --- الرصيد والجوائز ---
     points: {
         type: Number,
         default: 0,
@@ -36,7 +37,7 @@ const userSchema = new mongoose.Schema({
         default: 0,
     },
 
-    xp: { // نقاط الخبرة للارتقاء في المستويات
+    xp: { // نقاط الخبرة
         type: Number,
         default: 0,
     },
@@ -46,12 +47,30 @@ const userSchema = new mongoose.Schema({
         default: 1,
     },
 
-    codesUsed: {
+    codesUsed: { // عدد الأكواد المدخلة (يحدد الرتبة)
         type: Number,
         default: 0,
     },
 
-    wishlist: [{ // قائمة العروض المفضلة
+    rank: { // الرتبة: bronze, silver, gold, platinum
+        type: String,
+        enum: ["bronze", "silver", "gold", "platinum"],
+        default: "bronze",
+    },
+
+    // --- حالة الحساب ---
+    status: {
+        type: String,
+        enum: ["active", "suspended", "banned"],
+        default: "active",
+    },
+
+    suspensionUntil: { // تاريخ انتهاء الحظر المؤقت
+        type: Date,
+        default: null
+    },
+
+    wishlist: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Offer"
     }],
@@ -63,6 +82,17 @@ const userSchema = new mongoose.Schema({
     },
 }, {
     timestamps: true,
+});
+
+// Middleware لتحديث الرتبة تلقائياً بناءً على عدد الأكواد قبل الحفظ
+userSchema.pre("save", function(next) {
+    if (this.isModified("codesUsed")) {
+        if (this.codesUsed >= 100) this.rank = "platinum";
+        else if (this.codesUsed >= 50) this.rank = "gold";
+        else if (this.codesUsed >= 10) this.rank = "silver";
+        else this.rank = "bronze";
+    }
+    next();
 });
 
 module.exports = mongoose.model("User", userSchema);

@@ -22,6 +22,17 @@ const drawBatchSchema = new mongoose.Schema({
         required: true
     },
     
+    // --- شروط المسابقة الجديدة ---
+    minParticipants: { // الحد الأدنى للمشاركين لبدء الفعالية
+        type: Number,
+        default: 0
+    },
+    requiredRank: { // الرتبة المطلوبة للدخول (برونزي، فضي، ذهبي، إلخ)
+        type: String,
+        enum: ["bronze", "silver", "gold", "platinum", "all"],
+        default: "all"
+    },
+    
     // --- نظام التصويت الميداني ---
     locationOptions: [{ // الأماكن المقترحة للسحب ليصوت عليها الناس
         name: String,
@@ -36,7 +47,7 @@ const drawBatchSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ["open", "voting", "closed", "completed"],
+        enum: ["open", "voting", "closed", "completed", "cancelled"],
         default: "open"
     },
 

@@ -1,0 +1,67 @@
+const mongoose = require("mongoose");
+
+const productSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+
+    description: {
+        type: String,
+    },
+
+    category: { // تصنيف المنتج (مثلاً: ملابس، إلكترونيات، مواد غذائية)
+        type: String,
+    },
+
+    price: { // سعر البيع للزبون (قطاعي)
+        type: Number,
+        required: true,
+    },
+
+    wholesalePrice: { // سعر البيع بالجملة (يظهر لأصحاب المتاجر فقط)
+        type: Number,
+    },
+
+    isWholesale: { // هل المنتج متاح للبيع بالجملة؟
+        type: Boolean,
+        default: false,
+    },
+
+    minOrderQuantity: { // أقل كمية للطلب بالجملة
+        type: Number,
+        default: 1,
+    },
+
+    image: {
+        type: String,
+    },
+
+    stock: {
+        type: Number,
+        default: 0,
+    },
+
+    isFeatured: { // تمييز المنتج في واجهة المحل
+        type: Boolean,
+        default: false,
+    },
+
+    store: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Store",
+        required: true,
+    },
+
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    
+
+}, {
+    timestamps: true,
+});
+
+module.exports = mongoose.model("Product", productSchema);

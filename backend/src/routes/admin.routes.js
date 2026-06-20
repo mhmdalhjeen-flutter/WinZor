@@ -4,9 +4,25 @@ const adminController = require("../controllers/admin.controller");
 const boxAdminController = require("../controllers/box-admin.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
+
+const  {createStoreActivationCode}  = require("../controllers/activation.controller");
 // حماية المسارات
 router.use(authMiddleware);
-router.use(roleMiddleware(["admin"]));
+
+
+console.log({
+    authMiddleware,
+    roleMiddleware,
+    createStoreActivationCode
+});
+// 🟢 إنشاء كود تفعيل للمتجر (ADMIN فقط)
+router.post(
+    "/create-code",
+    authMiddleware,
+    roleMiddleware(["admin"]),
+    createStoreActivationCode
+);
+
 
 // --- إعدادات الفيديو والإدهاش (جديد) ---
 router.post("/settings/home-video", adminController.updateSystemSettings);

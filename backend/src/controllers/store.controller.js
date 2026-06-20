@@ -161,3 +161,30 @@ exports.getAllStores = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+exports.activateStore = async (req, res) => {
+    const { code } = req.body;
+
+    const activation = await ActivationCode.findOne({
+        code,
+        type: "store_activation",
+        isUsed: false
+    });
+
+    if (!activation) {
+        return res.status(400).json({ message: "الكود غير صحيح" });
+    }
+
+    const store = await Store.findOne({ owner: req.user.id });
+
+    if (!store) {
+        return res.status(404).json({ message: "المتجر غير موجود" });
+    }
+
+    store.isActive = true;
+    await store.save();
+
+    activation.isUsed = true;
+    await activation.save();
+
+    res.json({ message: "تم تفعيل المتجر بنجاح" });
+};

@@ -1,4 +1,4 @@
-const Offer = require("../models/Offer");
+const Offer = require("../models/offer");
 
 /**
  * وظيفة مراقبة العروض:

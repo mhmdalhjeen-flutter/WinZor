@@ -1,5 +1,5 @@
-const Offer = require("../models/Offer");
-const Store = require("../models/Store");
+const Offer = require("../models/offer");
+const Store = require("../models/store");
 const logActivity = require("../utils/logger");
 
 // ================= إنشاء عرض جديد =================

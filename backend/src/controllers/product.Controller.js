@@ -1,5 +1,5 @@
-const Product = require("../models/Product");
-const Store = require("../models/Store");
+const Product = require("../models/product");
+const Store = require("../models/store");
 
 // ================= إنشاء منتج جديد =================
 exports.createProduct = async (req, res) => {
@@ -9,13 +9,32 @@ exports.createProduct = async (req, res) => {
             return res.status(403).json({ message: "غير مسموح لك بإنشاء منتجات" });
         }
 
-        const store = await Store.findOne({ owner: req.user.id });
+       const store = await Store.findOne({
+    owner: req.user.id,
+    isActive: true
+});
         if (!store) {
             return res.status(404).json({ message: "يجب إنشاء متجر/مستودع أولاً قبل إضافة منتجات" });
         }
+        const {
+            name,
+            description,
+            price,
+            image,
+            isWholesale
+        } = req.body;
+        if (!name || !price) {
+    return res.status(400).json({
+        message: "اسم المنتج والسعر مطلوبان"
+    });
+}
 
         const product = await Product.create({
-            ...req.body,
+            name,
+            description,
+            price,
+            image,
+            isWholesale,
             store: store._id
         });
 
@@ -45,8 +64,12 @@ exports.getStoreProducts = async (req, res) => {
 exports.getWholesaleProducts = async (req, res) => {
     try {
         // التحقق من أن المستخدم صاحب متجر
-        if (req.user.role !== "store" && req.user.role !== "admin") {
-            return res.status(403).json({ message: "هذه الصفحة مخصصة لأصحاب المحلات فقط" });
+        if (
+    !["store", "supplier", "admin"].includes(req.user.role)
+        ) {
+            return res.status(403).json({
+                message: "هذه الصفحة مخصصة لأصحاب المحلات والموردين"
+            });
         }
 
         const products = await Product.find({ 
@@ -69,10 +92,19 @@ exports.searchProducts = async (req, res) => {
     try {
         const { q } = req.query;
 
+        if (!q || q.trim().length < 2) {
+            return res.status(400).json({
+                message: "يجب إدخال حرفين على الأقل للبحث"
+            });
+        }
+
         const products = await Product.find({
-            name: { $regex: q, $options: "i" },
+            name: {
+                $regex: q.trim(),
+                $options: "i"
+            },
             isActive: true,
-            isWholesale: false // الزبائن يبحثون في المنتجات العادية فقط
+            isWholesale: false
         });
 
         res.json({
@@ -95,10 +127,20 @@ exports.deleteProduct = async (req, res) => {
         }
 
         // التحقق من الملكية
-        const store = await Store.findOne({ owner: req.user.id });
-        if (req.user.role !== "admin" && product.store.toString() !== store._id.toString()) {
-            return res.status(403).json({ message: "غير مسموح لك بحذف هذا المنتج" });
-        }
+       const store = await Store.findOne({
+    owner: req.user.id,
+    isActive: true
+});
+
+if (req.user.role !== "admin") {
+    if (!store) {
+        return res.status(403).json({ message: "لا يوجد متجر مرتبط بحسابك" });
+    }
+
+    if (product.store.toString() !== store._id.toString()) {
+        return res.status(403).json({ message: "غير مسموح لك بحذف هذا المنتج" });
+    }
+}
 
         product.isActive = false;
         await product.save();

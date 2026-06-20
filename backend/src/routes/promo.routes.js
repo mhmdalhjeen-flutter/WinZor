@@ -7,7 +7,7 @@ const {
     redeemCode,
     redeemActivationCode,
     getCodeStats
-} = require("../controllers/promoCode.Controller");
+} = require("../controllers/promo-code.Controller");
 
 // ➕ إنشاء كود (لأصحاب المتاجر أو الأدمن)
 router.post("/create", authMiddleware, createPromoCode);

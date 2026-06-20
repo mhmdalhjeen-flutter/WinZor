@@ -1,7 +1,7 @@
-const Store = require("../models/Store");
-const Offer = require("../models/Offer");
-const Product = require("../models/Product");
-const PromoCode = require("../models/PromoCode");
+const Store = require("../models/store");
+const Offer = require("../models/offer");
+const Product = require("../models/product");
+const PromoCode = require("../models/promoCode");
 
 exports.getDashboard = async (req, res) => {
     try {

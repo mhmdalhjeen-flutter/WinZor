@@ -6,75 +6,78 @@ const userSchema = new mongoose.Schema({
         required: true,
         trim: true,
     },
-
-    phone: {
-        type: String,
-        trim: true,
-    },
-
     email: {
         type: String,
-        required: true,
         unique: true,
+        sparse: true,
         lowercase: true,
         trim: true,
     },
-
+    phone: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+    },
     password: {
         type: String,
         required: true,
         minlength: 6,
     },
-
-    // --- الرصيد والجوائز ---
+    avatar: {
+        type: String,
+        default: null 
+    },
     points: {
         type: Number,
         default: 0,
     },
-
-    entriesWallet: { // رصيد فرص السحب المدخرة
+    energy: { 
         type: Number,
         default: 0,
     },
-
-    xp: { // نقاط الخبرة
+    // --- مخزن البطاقات الملونة ---
+    inventory: {
+        cards: [{
+            cardType: { type: mongoose.Schema.Types.ObjectId, ref: "CardType" },
+            count: { type: Number, default: 0 }
+        }]
+    },
+    referralCode: { 
+        type: String,
+        unique: true,
+    },
+    referredBy: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+    entriesWallet: { 
         type: Number,
         default: 0,
     },
-
-    level: {
-        type: Number,
-        default: 1,
-    },
-
-    codesUsed: { // عدد الأكواد المدخلة (يحدد الرتبة)
+    codesUsed: { 
         type: Number,
         default: 0,
     },
-
-    rank: { // الرتبة: bronze, silver, gold, platinum
+    rank: { 
         type: String,
         enum: ["bronze", "silver", "gold", "platinum"],
         default: "bronze",
     },
-
-    // --- حالة الحساب ---
+    followedStores: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Store"
+    }],
+    lastChestOpened: {
+        type: Date,
+        default: null
+    },
     status: {
         type: String,
         enum: ["active", "suspended", "banned"],
         default: "active",
     },
-
-    suspensionUntil: { // تاريخ انتهاء الحظر المؤقت
-        type: Date,
-        default: null
-    },
-
-    wishlist: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Offer"
-    }],
-
     role: {
         type: String,
         enum: ["customer", "store", "supplier", "admin"],
@@ -84,15 +87,22 @@ const userSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-// Middleware لتحديث الرتبة تلقائياً بناءً على عدد الأكواد قبل الحفظ
-userSchema.pre("save", function(next) {
+userSchema.pre("validate", function () {
+    if (!this.email && !this.phone) {
+        throw new Error("يجب توفير البريد الإلكتروني أو رقم الهاتف على الأقل");
+    }
+
+    if (!this.referralCode) {
+        this.referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+});
+
+userSchema.pre("save", function () {
     if (this.isModified("codesUsed")) {
         if (this.codesUsed >= 100) this.rank = "platinum";
         else if (this.codesUsed >= 50) this.rank = "gold";
         else if (this.codesUsed >= 10) this.rank = "silver";
         else this.rank = "bronze";
     }
-    next();
 });
-
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.models.user || mongoose.model("User", userSchema);

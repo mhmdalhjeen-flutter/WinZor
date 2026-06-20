@@ -1,20 +1,18 @@
-const Store = require("../models/Store");
-const Offer = require("../models/Offer");
-const Product = require("../models/Product");
+const Store = require("../models/store");
+const Offer = require("../models/offer");
+const Product = require("../models/product");
+const user = require("../models/user");
 const logActivity = require("../utils/logger");
 
 // ================= إنشاء متجر جديد =================
 exports.createStore = async (req, res) => {
     try {
-        const { name, description, phone, address, region, subRegion, category, image, activationCode } = req.body;
+        const { name, description, phone, address, region, subRegion, category, image } = req.body;
 
-        // التحقق من أن المستخدم لديه صلاحية "صاحب متجر" أو استخدم كود تفعيل سابقاً
-        // ملاحظة: في نظامنا الحالي، المستخدم يحصل على رتبة store عبر كود التفعيل أولاً
         if (req.user.role !== "store") {
             return res.status(403).json({ message: "هذا الحساب غير مخول لإنشاء متجر. يرجى تفعيل الحساب أولاً." });
         }
 
-        // التأكد من أن المستخدم لا يملك متجراً بالفعل (حسب رغبتك في تحديد متجر واحد لكل حساب)
         const existingStore = await Store.findOne({ owner: req.user.id });
         if (existingStore) {
             return res.status(400).json({ message: "لديك متجر مسجل بالفعل." });
@@ -28,18 +26,18 @@ exports.createStore = async (req, res) => {
             region,
             subRegion,
             category,
-            logo: image, // حالياً نستخدم الحقل القديم للوجو
+            logo: image,
             owner: req.user.id,
-            isActive: false // المتاجر الجديدة بانتظار تفعيل الأدمن
+            isActive: false 
         });
 
-        // تسجيل النشاط
         await logActivity({
             action: "إنشاء متجر",
-            details: `المستخدم ${req.user.email} قام بإنشاء طلب لمتجر جديد باسم: ${name}`,
+            details: `المستخدم قام بإنشاء طلب لمتجر جديد باسم: ${name}`,
             user: req.user.id,
             store: store._id,
-            severity: "warning"
+            severity: "warning",
+            ipAddress: req.ip
         });
 
         res.status(201).json({
@@ -52,16 +50,79 @@ exports.createStore = async (req, res) => {
     }
 };
 
+// ================= نظام الانضمام للمتجر (Store Following) =================
+exports.followStore = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const userId = req.user.id;
+
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: "المتجر غير موجود" });
+
+        const user = await User.findById(userId);
+        
+        // التحقق إذا كان منضماً بالفعل
+        const isFollowing = user.followedStores.includes(storeId);
+        
+        if (isFollowing) {
+            // إلغاء الانضمام
+            user.followedStores = user.followedStores.filter(id => id.toString() !== storeId);
+            store.customersCount = Math.max(0, store.customersCount - 1);
+            await user.save();
+            await store.save();
+            return res.status(200).json({ message: "تم إلغاء الانضمام للمتجر", isFollowing: false });
+        } else {
+            // انضمام جديد
+            user.followedStores.push(storeId);
+            store.customersCount += 1;
+            await user.save();
+            await store.save();
+            
+            await logActivity({
+                action: "انضمام لمتجر",
+                details: `الزبون ${user.name} انضم لقائمة زبائن متجر ${store.name}`,
+                user: userId,
+                store: storeId
+            });
+
+            return res.status(200).json({ message: "تم الانضمام لزبائن المتجر بنجاح", isFollowing: true });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ================= جلب زبائن المتجر (للتاجر والأدمن) =================
+exports.getStoreCustomers = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        
+        // التأكد أن الطلب من صاحب المتجر أو الأدمن
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: "المتجر غير موجود" });
+        
+        if (req.user.role !== 'admin' && store.owner.toString() !== req.user.id) {
+            return res.status(403).json({ message: "غير مسموح لك برؤية قائمة الزبائن" });
+        }
+
+        const customers = await User.find({ followedStores: storeId }).select("name phone rank codesUsed");
+        
+        res.json({
+            count: customers.length,
+            customers
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // ================= جلب بيانات متجر بالتفصيل =================
 exports.getStoreById = async (req, res) => {
     try {
         const store = await Store.findById(req.params.id);
+        if (!store) return res.status(404).json({ message: "المتجر غير موجود" });
 
-        if (!store) {
-            return res.status(404).json({ message: "المتجر غير موجود" });
-        }
-
-        // زيادة عداد الزيارات
         store.totalVisits += 1;
         store.todayVisits += 1;
         await store.save();
@@ -69,10 +130,18 @@ exports.getStoreById = async (req, res) => {
         const offers = await Offer.find({ store: store._id, isActive: true });
         const products = await Product.find({ store: store._id, isActive: true });
 
+        // التحقق إذا كان المستخدم الحالي متابعاً للمتجر
+        let isFollowing = false;
+        if (req.user) {
+            const user = await User.findById(req.user.id);
+            isFollowing = user.followedStores.includes(store._id);
+        }
+
         res.json({
             store,
             offers,
-            products
+            products,
+            isFollowing
         });
 
     } catch (error) {
@@ -80,22 +149,14 @@ exports.getStoreById = async (req, res) => {
     }
 };
 
-// ================= جلب قائمة المتاجر (مع الفلترة) =================
 exports.getAllStores = async (req, res) => {
     try {
         const { region, category } = req.query;
         let query = { isActive: true };
-
         if (region) query.region = region;
         if (category) query.category = category;
-
-        const stores = await Store.find(query).select("name logo region subRegion category description");
-
-        res.json({
-            count: stores.length,
-            stores
-        });
-
+        const stores = await Store.find(query).select("name logo region subRegion category description customersCount");
+        res.json({ count: stores.length, stores });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

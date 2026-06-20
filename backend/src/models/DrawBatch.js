@@ -3,88 +3,83 @@ const mongoose = require("mongoose");
 const drawBatchSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: [true, "يجب تحديد اسم للفعالية"],
         trim: true
     },
     description: {
         type: String
     },
-    drawType: { // نوع السحب (ميداني، أونلاين، خاص بمحل، إلخ)
+    eventType: { 
         type: String,
-        default: "ميداني"
+        enum: ["field", "online", "fast_contest"],
+        default: "online"
     },
-    prizes: [{ // قائمة الجوائز المحددة لهذه الدفعة
+    targetAudience: { 
+        type: String,
+        default: "الجميع"
+    },
+    prizes: [{
         item: String,
         count: Number
     }],
-    drawDate: { 
+    eventDate: { 
         type: Date,
-        required: true
+        required: [true, "يجب تحديد موعد للفعالية"]
     },
     
-    // --- شروط المسابقة الجديدة ---
-    minParticipants: { // الحد الأدنى للمشاركين لبدء الفعالية
+    minParticipants: { 
         type: Number,
         default: 0
     },
-    requiredRank: { // الرتبة المطلوبة للدخول (برونزي، فضي، ذهبي، إلخ)
+    requiredRank: { 
         type: String,
         enum: ["bronze", "silver", "gold", "platinum", "all"],
         default: "all"
     },
     
-    // --- نظام التصويت الميداني ---
-    locationOptions: [{ // الأماكن المقترحة للسحب ليصوت عليها الناس
-        name: String,
-        votes: { type: Number, default: 0 }
-    }],
-    finalLocation: { // المكان النهائي الذي حدده الأدمن
-        type: String
-    },
-    adminNotes: { // ملاحظات الأدمن وسبب اختيار الموقع (للمراجعة المستقبلية)
-        type: String
-    },
-
     status: {
         type: String,
-        enum: ["open", "voting", "closed", "completed", "cancelled"],
+        enum: [
+            "open",                 // التسجيل مفتوح
+            "quorum_reached",       // تم الوصول للعدد المطلوب وبانتظار موافقة الأدمن
+            "active",               // وافق الأدمن والفعالية جارية/مستمرة
+            "closed",               // تم إغلاق التسجيل نهائياً
+            "completed",            // انتهت الفعالية وتم إعلان الفائزين
+            "cancelled"             // تم إلغاء الفعالية
+        ],
         default: "open"
     },
 
+    adminApproval: { // موافقة الأدمن اليدوية للبدء
+        isApproved: { type: Boolean, default: false },
+        approvedAt: Date
+    },
+
+    displayOnHome: { 
+        type: Boolean,
+        default: true
+    },
+    displayDuration: { 
+        type: Number,
+        default: 24
+    },
+
     participants: [{
-        user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        },
-        entriesCount: {
-            type: Number,
-            default: 1
-        },
-        votedLocation: String, // الموقع الذي صوّت له هذا المستخدم
-        joinedAt: {
-            type: Date,
-            default: Date.now
-        }
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        joinedAt: { type: Date, default: Date.now }
     }],
 
-    totalEntries: {
-        type: Number,
-        default: 0
-    },
-    totalVoters: { // إجمالي من شارك في التصويت
-        type: Number,
-        default: 0
-    },
-
     winners: [{
-        user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        },
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         prize: String,
-        drawLocation: String // مكان السحب الذي فاز فيه
+        wonAt: { type: Date, default: Date.now }
     }]
 
 }, { timestamps: true });
+
+// خاصية افتراضية لحساب العدد الحالي
+drawBatchSchema.virtual("currentCount").get(function() {
+    return this.participants.length;
+});
 
 module.exports = mongoose.model("DrawBatch", drawBatchSchema);

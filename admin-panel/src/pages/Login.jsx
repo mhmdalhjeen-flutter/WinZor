@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import axios from '../api/axios';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, Loader2 } from 'lucide-react';
+import '../style/login.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -16,84 +16,103 @@ const Login = () => {
         setError('');
 
         try {
-            const response = await axios.post('/auth/login', { email, password });
-            
-            // التأكد من أن المستخدم هو أدمن
-            if (response.data.user.role !== 'admin') {
-                setError('عذراً، هذه اللوحة مخصصة للمسؤولين فقط.');
-                setLoading(false);
-                return;
-            }
+            // المسار الصحيح هو /api/auth/login وليس /api/admin/login
+            const response = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // الباك آند يتوقع identifier بدلاً من email
+                body: JSON.stringify({ 
+                    identifier: email, 
+                    password: password 
+                }),
+            });
 
-            localStorage.setItem('adminToken', response.data.token);
-            localStorage.setItem('adminUser', JSON.stringify(response.data.user));
-            
-            navigate('/dashboard');
+            const data = await response.json();
+
+            if (response.ok) {
+                // التأكد من أن المستخدم "أدمن" قبل السماح له بالدخول للوحة التحكم
+                if (data.user && data.user.role === 'admin') {
+                    localStorage.setItem('adminToken', data.token);
+                    localStorage.setItem('adminUser', JSON.stringify(data.user));
+                    
+                    navigate('/dashboard');
+                } else {
+                    setError('عذراً، لا تملك صلاحيات الوصول للوحة التحكم');
+                }
+            } else {
+                setError(data.message || 'بيانات الدخول غير صحيحة');
+            }
         } catch (err) {
-            setError(err.response?.data?.message || 'خطأ في تسجيل الدخول. تأكد من البيانات.');
+            setError('تعذر الاتصال بالخادم. تأكد من تشغيل الـ Backend');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4" dir="rtl">
-            <div className="max-w-md w-full space-y-8 bg-gray-800 p-10 rounded-2xl shadow-2xl border border-gray-700">
-                <div>
-                    <div className="mx-auto h-16 w-16 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20">
-                        <Lock className="text-white h-8 w-8" />
+        <div className="login-page">
+            <div className="login-card">
+                <div className="login-logo">
+                    <div className="flex justify-center mb-4">
+                        <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
+                            <ShieldCheck size={32} color="white" />
+                        </div>
                     </div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-                        لوحة تحكم الأدمن
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-400">
-                        سجل الدخول للوصول إلى مركز القيادة
-                    </p>
+                    <h2>عروض<span> تك</span></h2>
+                    <p className="text-muted text-sm mt-2">لوحة التحكم الإدارية المركزية</p>
                 </div>
 
-                {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3 animate-pulse">
-                        <AlertCircle size={20} />
-                        <p className="text-sm">{error}</p>
-                    </div>
-                )}
+                <form className="login-form" onSubmit={handleLogin}>
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl text-xs mb-4 text-center font-bold">
+                            {error}
+                        </div>
+                    )}
 
-                <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-                    <div className="rounded-md shadow-sm space-y-4">
-                        <div className="relative">
-                            <Mail className="absolute right-3 top-3 text-gray-500" size={20} />
-                            <input
-                                type="email"
-                                required
-                                className="appearance-none relative block w-full px-10 py-3 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                                placeholder="البريد الإلكتروني"
+                    <div className="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <div className="login-input-wrapper">
+                            <Mail size={18} />
+                            <input 
+                                type="email" 
+                                className="login-input" 
+                                placeholder="admin@offers.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                        <div className="relative">
-                            <Lock className="absolute right-3 top-3 text-gray-500" size={20} />
-                            <input
-                                type="password"
                                 required
-                                className="appearance-none relative block w-full px-10 py-3 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                                placeholder="كلمة المرور"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {loading ? 'جاري التحقق...' : 'دخول للمركز'}
-                        </button>
+                    <div className="form-group">
+                        <label>كلمة المرور</label>
+                        <div className="login-input-wrapper">
+                            <Lock size={18} />
+                            <input 
+                                type="password" 
+                                className="login-input" 
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </div>
                     </div>
+
+                    <button type="submit" className="btn-login" disabled={loading}>
+                        {loading ? (
+                            <Loader2 className="animate-spin mx-auto" size={20} />
+                        ) : (
+                            'دخول لوحة التحكم'
+                        )}
+                    </button>
                 </form>
+
+                <div className="mt-8 text-center">
+                    <p className="text-xs text-muted">جميع الحقوق محفوظة &copy; {new Date().getFullYear()}</p>
+                </div>
             </div>
         </div>
     );

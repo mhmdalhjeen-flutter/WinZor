@@ -4,7 +4,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth.middleware");
 const { createOffer } = require("../controllers/offer.controller");
 
-const Offer = require("../models/Offer");
+const Offer = require("../models/offer");
 
 
 // 📌 GET all offers

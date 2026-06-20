@@ -2,7 +2,7 @@
 
 const express = require("express");
 const router = express.Router();
-
+const roleMiddleware = require("../middleware/role.middleware");
 const authMiddleware = require("../middleware/auth.middleware");
 
 const {
@@ -14,7 +14,12 @@ const {
 } = require("../controllers/product.Controller");
 
 // ➕ إضافة منتج (صاحب متجر أو تاجر)
-router.post("/", authMiddleware, createProduct);
+router.post(
+    "/",
+    authMiddleware,
+    roleMiddleware(["store", "supplier", "admin"]),
+    createProduct
+);
 
 // 🏪 عرض منتجات متجر معين (للزبائن)
 router.get("/store/:storeId", getStoreProducts);

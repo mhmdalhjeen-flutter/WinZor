@@ -1,92 +1,77 @@
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const logActivity = require("../utils/logger");
+const bcrypt = require("bcryptjs");
+const User = require("../models/user");
 
-// ================= REGISTER =================
-exports.register = async (req, res) => {
+const register = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
-
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: "User already exists" });
-        }
-
+        const { name, email, phone, password, role } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await User.create({ name, email, phone, password: hashedPassword, role:"customer" });
+        res.status(201).json({ message: "تم إنشاء الحساب بنجاح",
+             user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+    } });
+    }catch (error) {
+    console.error(error.stack);
 
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || "customer"
-        });
-
-        // تسجيل النشاط
-        await logActivity({
-            action: "تسجيل جديد",
-            details: `مستخدم جديد باسم ${name} قام بإنشاء حساب رتبة ${user.role}`,
-            user: user._id
-        });
-
-        res.status(201).json({
-            message: "User created successfully",
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(500).json({
+        message: error.message
+    });
+}
 };
 
-// ================= LOGIN =================
-exports.login = async (req, res) => {
+
+const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { identifier, password } = req.body;
 
-        const user = await User.findOne({ email });
+        // 1. البحث عن المستخدم
+        const user = await User.findOne({
+            $or: [
+                { email: identifier },
+                { phone: identifier }
+            ]
+        });
+
         if (!user) {
-            await logActivity({
-                action: "فشل دخول",
-                details: `محاولة دخول فاشلة ببريد إلكتروني غير موجود: ${email}`,
-                severity: "warning"
-            });
-            return res.status(400).json({ message: "Invalid credentials" });
+            return res.status(400).json({ message: "بيانات الدخول غير صحيحة" });
         }
 
+        // 2. التحقق من كلمة المرور
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (!isMatch) {
-            await logActivity({
-                action: "فشل دخول",
-                details: `كلمة مرور خاطئة للمستخدم: ${email}`,
-                user: user._id,
-                severity: "warning"
-            });
-            return res.status(400).json({ message: "Invalid credentials" });
+            return res.status(400).json({ message: "بيانات الدخول غير صحيحة" });
         }
 
+        // 3. إنشاء token
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            {
+                id: user._id,
+                role: user.role
+            },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
 
-        // تسجيل النشاط
-        await logActivity({
-            action: "تسجيل دخول",
-            details: `المستخدم ${user.name} قام بتسجيل الدخول للنظام`,
-            user: user._id
-        });
+        // 4. تجهيز user آمن (بدون password)
+        const safeUser = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role
+        };
 
+        // 5. الإرسال للواجهة
         res.json({
-            message: "Login successful",
+            message: "تم تسجيل الدخول بنجاح",
             token,
-            user
+            user: safeUser
         });
 
     } catch (error) {
@@ -94,39 +79,18 @@ exports.login = async (req, res) => {
     }
 };
 
-// ================= RESET ADMIN PASSWORD (EMERGENCY) =================
-exports.resetAdminPassword = async (req, res) => {
+const resetAdminPassword = async (req, res) => {
     try {
-        const { masterKey, email, newPassword } = req.body;
-
-        if (!masterKey || masterKey !== process.env.ADMIN_RECOVERY_KEY) {
-            await logActivity({
-                action: "اختراق محتمل",
-                details: `محاولة فاشلة لاستخدام مفتاح الطوارئ للبريد: ${email}`,
-                severity: "danger"
-            });
-            return res.status(401).json({ message: "Unauthorized: Invalid Master Key" });
-        }
-
-        const user = await User.findOne({ email, role: 'admin' });
-        if (!user) {
-            return res.status(404).json({ message: "Admin user not found" });
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        user.password = hashedPassword;
-        await user.save();
-
-        await logActivity({
-            action: "استعادة كلمة المرور",
-            details: `تمت استعادة كلمة مرور الأدمن بنجاح باستخدام مفتاح الطوارئ`,
-            user: user._id,
-            severity: "warning"
-        });
-
-        res.status(200).json({ message: "Admin password reset successfully" });
-
+        const { masterKey, newPassword } = req.body;
+        if (masterKey !== process.env.MASTER_KEY) return res.status(401).json({ message: "خطأ في المفتاح" });
+        const admin = await User.findOne({ role: "admin" });
+        if (!admin) return res.status(404).json({ message: "الأدمن غير موجود" });
+        admin.password = await bcrypt.hash(newPassword, 10);
+        await admin.save();
+        res.json({ message: "تم تحديث كلمة المرور" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
+module.exports = { register, login, resetAdminPassword };

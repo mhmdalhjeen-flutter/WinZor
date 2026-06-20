@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router();
+const authController = require("../controllers/auth.controller");
 
-const { register, login, resetAdminPassword } = require("../controllers/auth.controller");
+// مسارات المصادقة
+router.post("/register", authController.register);
+router.post("/login", authController.login);
 
-router.post("/register", register);
-router.post("/login", login);
-
-// رابط الطوارئ لاستعادة كلمة مرور الأدمن
-// ملاحظة: هذا الرابط محمي بمفتاح الماستر الموجود في ملف .env
-router.post("/reset-admin-secure-gate", resetAdminPassword);
+// مسار استعادة كلمة مرور الأدمن (محمي بمفتاح الماستر)
+router.post("/reset-admin-secure-gate", authController.resetAdminPassword);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const DrawBatch = require("../models/DrawBatch");
+const DrawBatch = require("../models/drawBatch");
 const User = require("../models/user");
 const logActivity = require("../utils/logger");
 

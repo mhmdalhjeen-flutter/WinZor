@@ -74,7 +74,6 @@ const startServer = async () => {
     try {
         await connectDB();
 
-        console.log("MongoDB Connected");
 
         await seedAdmin();
 

@@ -5,6 +5,7 @@ const ActivationCode = require("../models/ActivationCode");
 
 // ================= REGISTER =================
 const register = async (req, res) => {
+    
     try {
         const {
             name,
@@ -15,16 +16,19 @@ const register = async (req, res) => {
             activationCode
         } = req.body;
 
-        console.log("TYPE:", accountType);
-        console.log("CODE:", activationCode);
+       
+        const cleanEmail = email?.trim() || undefined;
+        const cleanPhone = phone?.trim() || undefined;
 
+       
         // 🟢 1. تحقق من وجود المستخدم مسبقاً
-        const existingUser = await User.findOne({
-    $or: [
-        email ? { email } : null,
-        phone ? { phone } : null
-    ].filter(Boolean)
-});
+         const existingUser = await User.findOne({
+            $or: [
+                cleanEmail ? { email: cleanEmail } : null,
+                cleanPhone ? { phone: cleanPhone } : null
+            ].filter(Boolean)
+            });
+       
 
         if (existingUser) {
             return res.status(400).json({
@@ -58,60 +62,25 @@ const register = async (req, res) => {
 
             role = accountType;
         }
-
+        
+        
         // 🟢 3. إنشاء المستخدم
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({
+         const user = await User.create({
             name,
-            email,
-            phone,
+            email: cleanEmail,
+            phone: cleanPhone,
             password: hashedPassword,
             role
-        });
+            });
+       
 
         // 🟢 4. تفعيل الكود بعد نجاح إنشاء المستخدم فقط
         if (activation) {
             activation.isUsed = true;
             activation.usedBy = user._id;
             await activation.save();
-        }
-
-        return res.status(201).json({
-            message: "تم إنشاء الحساب بنجاح",
-            user
-        });
-
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: error.message });
-    }
-};
-
-// ================= LOGIN =================
-const login = async (req, res) => {
-    try {
-        const { identifier, password } = req.body;
-
-        const user = await User.findOne({
-            $or: [
-                { email: identifier },
-                { phone: identifier }
-            ]
-        });
-
-        if (!user) {
-            return res.status(400).json({
-                message: "بيانات الدخول غير صحيحة"
-            });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-
-        if (!isMatch) {
-            return res.status(400).json({
-                message: "بيانات الدخول غير صحيحة"
-            });
         }
 
         const token = jwt.sign(
@@ -121,27 +90,63 @@ const login = async (req, res) => {
             },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
-        );
+            );
 
-        const safeUser = {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role
-        };
-
-        res.json({
-            message: "تم تسجيل الدخول بنجاح",
+            return res.status(201).json({
+            message: "تم إنشاء الحساب بنجاح",
             token,
-            user: safeUser
-        });
-
+            user
+            });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error(error);
+        return res.status(500).json({ message: error.message });
     }
 };
 
+// ================= LOGIN =================
+const login = async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+
+    const cleanIdentifier = identifier?.trim();
+
+    const user = await User.findOne({
+      $or: [
+        { email: cleanIdentifier },
+        { phone: cleanIdentifier }
+      ]
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "بيانات الدخول غير صحيحة"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "بيانات الدخول غير صحيحة"
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "تم تسجيل الدخول بنجاح",
+      token,
+      user
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 // ================= RESET ADMIN PASSWORD =================
 const resetAdminPassword = async (req, res) => {
     try {

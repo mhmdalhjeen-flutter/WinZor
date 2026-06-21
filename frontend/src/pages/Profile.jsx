@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+
 import { 
   User, Settings, ShieldCheck, Zap, Share2, Copy, Check, 
   LogOut, Camera, X, Award, Gift, Star
 } from 'lucide-react';
 import axios from '../api/axios';
+import { logout } from '../services/authService';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -65,7 +69,16 @@ const Profile = () => {
       default: return 'from-orange-400 to-orange-600';
     }
   };
+const handleLogout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
 
+  navigate('/login', { replace: true });
+};
+
+if (loading) {
+  return <div className="p-10 text-center font-black">جاري تحميل بروفايلك...</div>;
+}
   if (loading) return <div className="p-10 text-center font-black">جاري تحميل بروفايلك...</div>;
 
   return (
@@ -188,12 +201,13 @@ const Profile = () => {
         )}
       </AnimatePresence>
 
-      <button className="w-full py-4 bg-white text-red-500 font-black rounded-[25px] flex items-center justify-center gap-2 shadow-sm border border-red-50">
+      <button onClick={handleLogout} className="w-full py-4 bg-white text-red-500 font-black rounded-[25px] flex items-center justify-center gap-2 shadow-sm border border-red-50">
         <LogOut size={20} /> تسجيل الخروج
       </button>
 
     </div>
   );
 };
+
 
 export default Profile;

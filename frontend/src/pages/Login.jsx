@@ -13,13 +13,17 @@ const Login = () => {
 
   // لو مسجل دخول مسبقاً
   useEffect(() => {
+     try {
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "null");
 
     if (token && user?.role) {
       redirectByRole(user.role);
     }
-  }, []);
+  } catch (e) {
+    localStorage.clear();
+  }
+}, []);
 
   const redirectByRole = (role) => {
     switch (role) {
@@ -43,13 +47,14 @@ const Login = () => {
     setError("");
 
     try {
-      const { data } = await axios.post("/api/auth/login", {
-        identifier,
-        password,
-      });
+          const { data } = await axios.post("/auth/login", {
+      identifier: identifier.trim(),
+      password,
+    });
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      
 
       redirectByRole(data.user.role);
     } catch (err) {

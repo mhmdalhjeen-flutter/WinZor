@@ -2,42 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Base ===== */
 @layer base {
   :root {
     --primary: #b91c1c;
     --bg-soft: #f9fafb;
   }
-  
+
   body {
-    @apply bg-[#f9fafb] text-gray-900 font-cairo antialiased select-none;
+    @apply bg-[#f6f7fb] text-gray-900 font-cairo antialiased select-none;
     -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* تحسينات خاصة بالهاتف */
+/* ===== Components ===== */
 @layer components {
   .mobile-container {
     @apply max-w-md mx-auto min-h-screen bg-white shadow-xl relative pb-20;
   }
-  
+
   .glass-card {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
   }
 
   .btn-primary {
-    @apply bg-primary text-white font-bold py-3 px-6 rounded-2xl active:scale-95 transition-transform duration-100 flex items-center justify-center gap-2;
+    @apply bg-primary text-white font-bold py-3 px-6 rounded-2xl active:scale-95 transition;
   }
 }
 
-/* أنيميشن صندوق الكنز */
-@keyframes shake {
-  0% { transform: rotate(0deg); }
-  25% { transform: rotate(5deg); }
-  50% { transform: rotate(0eg); }
-  75% { transform: rotate(-5deg); }
-  100% { transform: rotate(0deg); }
+/* ===== Animations ===== */
+@keyframes shakeX {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(3px); }
 }
 
-.animate-gift {
-  animation: shake 0.5s infinite;
+.animate-shake {
+  animation: shakeX 0.3s ease-in-out;
 }

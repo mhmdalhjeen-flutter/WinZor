@@ -68,6 +68,19 @@ exports.toggleStoreStatus = async (req, res) => {
         res.status(200).json({ message: "تم تغيير الحالة", isActive: store.isActive });
     } catch (error) { res.status(500).json({ message: error.message }); }
 };
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { role } = req.query;
+
+    const filter = role ? { role } : {};
+
+    const users = await User.find(filter).select("-password");
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // 4. إدارة التصنيفات
 exports.getCategories = async (req, res) => {
@@ -153,4 +166,31 @@ exports.getSystemSettings = async (req, res) => {
         const settings = await SystemSetting.find();
         res.status(200).json(settings);
     } catch (error) { res.status(500).json({ message: error.message }); }
+};
+exports.updateEnergy = async (req, res) => {
+  const { amount } = req.body;
+
+  const user = await User.findById(req.params.id);
+  user.energy += amount;
+
+  await user.save();
+
+  res.json(user);
+};
+exports.banUser = async (req, res) => {
+  const user = await User.findById(req.params.id);
+  user.status = "banned";
+  await user.save();
+
+  res.json(user);
+};
+exports.deleteUser = async (req, res) => {
+  await User.findByIdAndDelete(req.params.id);
+
+  res.json({ message: "تم حذف المستخدم" });
+};
+exports.getUsersCount = async (req, res) => {
+  const total = await User.countDocuments({ role: "customer" });
+
+  res.json({ total });
 };

@@ -4,6 +4,8 @@ const adminController = require("../controllers/admin.controller");
 const boxAdminController = require("../controllers/box-admin.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
+const adminMiddleware = require("../middleware/admin.middleware");
+
 
 const  {createStoreActivationCode}  = require("../controllers/activation.controller");
 // حماية المسارات
@@ -62,5 +64,10 @@ router.patch("/draws/:drawId/approve", adminController.approveDraw);
 
 // --- سجل النشاطات ---
 router.get("/activity-logs", adminController.getActivityLogs);
+
+router.get("/users", authMiddleware, adminController.getAllUsers);
+router.delete("/users/:id", authMiddleware, adminMiddleware, adminController.deleteUser);
+router.patch("/users/:id/ban", authMiddleware, adminMiddleware, adminController.banUser);
+router.get("/users/count", authMiddleware, adminMiddleware, adminController.getUsersCount);
 
 module.exports = router;

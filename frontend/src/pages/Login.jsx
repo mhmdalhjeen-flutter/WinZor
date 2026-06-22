@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../api/axios";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
-import "../style/Login.css"
+import "../style/Login.css";
+import { useAuth } from "../context/AuthContext";
+
 const Login = () => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -10,36 +12,56 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ هنا الصح
 
-  // لو مسجل دخول مسبقاً
-  useEffect(() => {
-     try {
+useEffect(() => {
+  try {
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "null");
-
     if (token && user?.role) {
       redirectByRole(user.role);
     }
   } catch (e) {
-    localStorage.clear();
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
   }
+}, []);
+ const handleGoogleLogin = async (response) => {
+  try {
+    const { data } = await axios.post("/auth/google", {
+      credential: response.credential,
+    });
+
+    login(data.user, data.token);
+    redirectByRole(data.user.role);
+
+  } catch (err) {
+    setError("فشل تسجيل الدخول عبر Google");
+  }
+};
+
+useEffect(() => {
+  window.google?.accounts.id.initialize({
+  client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  callback: handleGoogleLogin,
+});
+
+  window.google?.accounts.id.renderButton(
+    document.getElementById("googleBtn"),
+    { theme: "outline", size: "large" }
+  );
 }, []);
 
   const redirectByRole = (role) => {
-    switch (role) {
-      case "admin":
-        navigate("/admin");
-        break;
-      case "store":
-        navigate("/store");
-        break;
-      case "supplier":
-        navigate("/supplier");
-        break;
-      default:
-        navigate("/");
-    }
+  const routes = {
+    admin: "/admin",
+    store: "/store-dashboard",
+    supplier: "/supplier-dashboard",
+    customer: "/"
   };
+
+  navigate(routes[role] || "/");
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -47,23 +69,23 @@ const Login = () => {
     setError("");
 
     try {
-          const { data } = await axios.post("/auth/login", {
-      identifier: identifier.trim(),
-      password,
-    });
+      const { data } = await axios.post("/auth/login", {
+        identifier: identifier.trim(),
+        password,
+      });
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      
+      // ✅ تخزين عبر AuthContext (احترافي)
+      login(data.user, data.token);
 
       redirectByRole(data.user.role);
+
     } catch (err) {
       setError(err.response?.data?.message || "خطأ في تسجيل الدخول");
     } finally {
       setLoading(false);
     }
   };
-
+ 
   return (
     <div className="login-container">
       <div className="login-box">
@@ -93,7 +115,7 @@ const Login = () => {
             <input
               type="password"
               placeholder="كلمة المرور"
-              value={password}
+              value={password ?? ""}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
@@ -103,6 +125,9 @@ const Login = () => {
             {loading ? <Loader2 className="spin" /> : "تسجيل الدخول"}
             {!loading && <ArrowRight />}
           </button>
+
+          <div id="googleBtn"></div>
+          
 
         </form>
 

@@ -21,11 +21,19 @@ const userSchema = new mongoose.Schema({
         trim: true,
         
     },
+   
+    googleId: String,
+    provider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local",
+},
+
     password: {
-        type: String,
-        required: true,
-        minlength: 6,
+    type: String,
+    default: null,
     },
+    
     avatar: {
         type: String,
         default: null 
@@ -85,6 +93,12 @@ const userSchema = new mongoose.Schema({
         enum: ["customer", "store", "supplier", "admin"],
         default: "customer",
     },
+   
+
+address: {
+  type: String,
+  default: ""
+},
 }, {
     timestamps: true,
 });

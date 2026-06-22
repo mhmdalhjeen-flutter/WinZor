@@ -17,6 +17,7 @@ import BoxManagement from './pages/BoxManagement';   // واجهة الصناد�
 import AdminLayout from './components/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
+
 function App() {
   return (
     <Router>

@@ -5,8 +5,6 @@ const authController = require("../controllers/auth.controller");
 // مسارات المصادقة
 router.post("/register", authController.register);
 router.post("/login", authController.login);
-
-// مسار استعادة كلمة مرور الأدمن (محمي بمفتاح الماستر)
-router.post("/reset-admin-secure-gate", authController.resetAdminPassword);
+router.post("/google", authController.googleAuth);
 
 module.exports = router;

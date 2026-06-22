@@ -2,6 +2,16 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const ActivationCode = require("../models/ActivationCode");
+const { OAuth2Client } = require("google-auth-library");
+const generateToken = (userId) => {
+  return jwt.sign(
+    { id: userId },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
+    
 
 // ================= REGISTER =================
 const register = async (req, res) => {
@@ -104,6 +114,7 @@ const register = async (req, res) => {
 };
 
 // ================= LOGIN =================
+
 const login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -118,17 +129,18 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({
-        message: "بيانات الدخول غير صحيحة"
-      });
+      return res.status(400).json({ message: "بيانات الدخول غير صحيحة" });
     }
+    if (!user.password) {
+    return res.status(400).json({
+      message: "هذا الحساب مرتبط بـ Google"
+    });
+  }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        message: "بيانات الدخول غير صحيحة"
-      });
+      return res.status(400).json({ message: "بيانات الدخول غير صحيحة" });
     }
 
     const token = jwt.sign(
@@ -137,14 +149,14 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    return res.json({
+    res.json({
       message: "تم تسجيل الدخول بنجاح",
       token,
       user
     });
 
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 // ================= RESET ADMIN PASSWORD =================
@@ -176,8 +188,64 @@ const resetAdminPassword = async (req, res) => {
     }
 };
 
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+
+const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: "No credential provided" });
+    }
+
+    // 1️⃣ تحقق من Google Token
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const email = payload.email;
+    const name = payload.name;
+    const picture = payload.picture;
+    const googleId = payload.sub;
+
+    // 2️⃣ هل المستخدم موجود؟
+    let user = await User.findOne({ email });
+
+    // 3️⃣ إذا غير موجود → إنشاء حساب
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        avatar: picture,
+        googleId,
+        provider: "google",
+        password: null, // لأنه Google login
+      });
+    }
+
+    // 4️⃣ إنشاء توكن خاص بك
+    const token = generateToken(user._id);
+
+    return res.json({
+      user,
+      token,
+    });
+
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    return res.status(500).json({ message: "Google authentication failed" });
+  }
+};
+
+
 module.exports = {
-    register,
-    login,
-    resetAdminPassword
+  register,
+  login,
+  resetAdminPassword,
+  googleAuth
+
 };

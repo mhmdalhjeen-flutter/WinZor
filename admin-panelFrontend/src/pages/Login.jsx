@@ -37,7 +37,9 @@ const Login = () => {
                 setError('عذراً، لا تملك صلاحيات الوصول للوحة التحكم');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'تعذر الاتصال بالخادم. تأكد من تشغيل الـ Backend');
+            const message = err.response?.data?.message
+              || (err.code === 'ERR_NETWORK' ? 'تعذّر الاتصال بالخادم. تحقق من الاتصال أو حاول لاحقاً.' : 'تعذر الاتصال بالخادم. تأكد من تشغيل الـ Backend');
+            setError(message);
         } finally {
             setLoading(false);
         }

@@ -4,9 +4,9 @@ import { ShieldAlert, ChevronLeft } from 'lucide-react';
 import { useVerificationGate } from '../context/VerificationGateContext';
 
 const VerifyBanner = () => {
-  const { verified, openVerificationPrompt } = useVerificationGate();
+  const { verified, openVerificationPrompt, policy } = useVerificationGate();
 
-  if (verified) return null;
+  if (!policy.enforced || verified) return null;
 
   return (
     <motion.button

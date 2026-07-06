@@ -1,8 +1,12 @@
 const User = require("../models/user");
-const { isUserVerified } = require("../utils/verification.util");
+const { isUserVerified, isAccountVerificationEnforced } = require("../utils/verification.util");
 
 module.exports = async (req, res, next) => {
   try {
+    if (!isAccountVerificationEnforced()) {
+      return next();
+    }
+
     let user = req._authUserDoc;
     if (!user) {
       user = await User.findById(req.user.id).select(

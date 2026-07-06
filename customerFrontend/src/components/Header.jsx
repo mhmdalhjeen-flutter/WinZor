@@ -140,7 +140,22 @@ const Header = () => {
             />
           )}
           {!isAuth && (
-            <button type="button" onClick={() => navigate('/login')} className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-black shrink-0">دخول</button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-[11px] font-black text-white/85 transition hover:bg-white/10"
+              >
+                إنشاء حساب
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-black"
+              >
+                دخول
+              </button>
+            </div>
           )}
         </div>
 

@@ -24,11 +24,8 @@ async function sendSms({ to, body }) {
   const destination = toE164Palestine(to);
 
   if (!isSmsConfigured()) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("خدمة SMS غير مهيّأة — اضبط Twilio في .env");
-    }
-    safeLog("info", "sms_dev_simulated", { to: maskIdentifier(destination) });
-    return { simulated: true };
+    safeLog("warn", "sms_skipped_not_configured", { to: maskIdentifier(destination) });
+    return { sent: false, skipped: true, reason: "SMS_NOT_CONFIGURED" };
   }
 
   const twilio = require("twilio")(

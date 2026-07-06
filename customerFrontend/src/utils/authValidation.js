@@ -46,5 +46,10 @@ export const validateRegisterForm = ({ name, email, phone, password, signupMode 
   return getLocalPhoneError(phone);
 };
 
-export const getAuthErrorMessage = (err, fallback) =>
-  err?.response?.data?.message || err?.message || fallback;
+export const getAuthErrorMessage = (err, fallback) => {
+  if (err?.response?.data?.message) return err.response.data.message;
+  if (err?.code === 'ERR_NETWORK' || !err?.response) {
+    return 'تعذّر الاتصال بالخادم. تحقق من الاتصال أو حاول لاحقاً.';
+  }
+  return err?.message || fallback;
+};

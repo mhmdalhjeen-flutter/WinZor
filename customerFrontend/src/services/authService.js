@@ -80,12 +80,21 @@ export const tiktokAuth = async ({ code, redirectUri }) => {
   return data;
 };
 
-/** المزودون المفعّلون عبر متغيرات VITE_* */
-export const getEnabledSocialProviders = () => ({
-  google: !!import.meta.env.VITE_GOOGLE_CLIENT_ID,
-  facebook: !!import.meta.env.VITE_FACEBOOK_APP_ID,
-  tiktok: !!import.meta.env.VITE_TIKTOK_CLIENT_KEY,
-});
+/** المزودون المفعّلون عبر متغيرات VITE_* — Google معطّل في الإنتاج ما لم يُفعَّل صراحةً */
+export const getEnabledSocialProviders = () => {
+  const googleId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+  const googleExplicitlyOff = import.meta.env.VITE_ENABLE_GOOGLE === 'false';
+  const googleExplicitlyOn = import.meta.env.VITE_ENABLE_GOOGLE === 'true';
+  const googleEnabled = !!googleId
+    && !googleExplicitlyOff
+    && (!import.meta.env.PROD || googleExplicitlyOn);
+
+  return {
+    google: googleEnabled,
+    facebook: !!import.meta.env.VITE_FACEBOOK_APP_ID,
+    tiktok: !!import.meta.env.VITE_TIKTOK_CLIENT_KEY,
+  };
+};
 
 export const hasAnySocialProvider = () =>
   Object.values(getEnabledSocialProviders()).some(Boolean);

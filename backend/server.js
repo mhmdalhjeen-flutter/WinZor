@@ -62,13 +62,20 @@ const DEFAULT_DEV_ORIGINS = [5173, 5174, 5175].flatMap((port) => [
     `http://localhost:${port}`,
     `http://127.0.0.1:${port}`,
 ]);
+const DEFAULT_PROD_ORIGINS = [
+    "https://winzor.netlify.app",
+    "https://supplierwz.netlify.app",
+];
 
 const envOrigins = (process.env.CORS_ORIGINS || "")
     .split(",")
     .map(o => o.trim())
     .filter(Boolean);
 
-const allowedOrigins = [...new Set([...envOrigins, ...DEFAULT_DEV_ORIGINS])];
+const allowedOrigins = [...new Set([
+    ...envOrigins,
+    ...(isProduction ? DEFAULT_PROD_ORIGINS : DEFAULT_DEV_ORIGINS),
+])];
 
 if (envOrigins.length === 0) {
     const message = "CORS_ORIGINS غير مضبوط";

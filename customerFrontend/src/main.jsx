@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { VerificationGateProvider } from './context/VerificationGateContext';
 import { ToastProvider } from './shared/Toast';
 import { queryClient } from './lib/queryClient';
+import ErrorBoundary from './shared/ErrorBoundary';
 import './index.css';
 import 'swiper/css';
 import 'swiper/css/free-mode';
@@ -14,14 +15,16 @@ import 'swiper/css/navigation';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <VerificationGateProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </VerificationGateProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <VerificationGateProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </VerificationGateProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

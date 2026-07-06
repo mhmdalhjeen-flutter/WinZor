@@ -111,6 +111,7 @@ async function isMaintenanceMode() {
 async function getPublicSettings() {
   const map = await loadMap();
   const wheel = await getWheelSettings();
+  const { getVerificationPolicy } = require("../utils/verification.util");
 
   return {
     maintenanceMode: await getMaintenanceInfo(),
@@ -127,6 +128,7 @@ async function getPublicSettings() {
       spinCost: wheel.spinCost,
       placements: wheel.placements,
     },
+    verification: getVerificationPolicy(),
   };
 }
 

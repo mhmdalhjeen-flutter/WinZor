@@ -64,11 +64,12 @@ async function sendVerificationEmail({ to, name, code, verifyLink }) {
 
   const transport = getTransporter();
   if (!transport) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("خدمة البريد غير مهيّأة — اضبط SMTP في .env");
-    }
-    safeLog("info", "email_dev_simulated", { to: maskIdentifier(to), type: "verification", hasVerifyLink: !!verifyLink });
-    return { simulated: true };
+    safeLog("warn", "email_skipped_not_configured", {
+      to: maskIdentifier(to),
+      type: "verification",
+      hasVerifyLink: !!verifyLink,
+    });
+    return { sent: false, skipped: true, reason: "SMTP_NOT_CONFIGURED" };
   }
 
   await transport.sendMail({
@@ -95,11 +96,11 @@ async function sendPasswordResetEmail({ to, name, code }) {
 
   const transport = getTransporter();
   if (!transport) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("خدمة البريد غير مهيّأة");
-    }
-    safeLog("info", "email_dev_simulated", { to: maskIdentifier(to), type: "password_reset" });
-    return { simulated: true };
+    safeLog("warn", "email_skipped_not_configured", {
+      to: maskIdentifier(to),
+      type: "password_reset",
+    });
+    return { sent: false, skipped: true, reason: "SMTP_NOT_CONFIGURED" };
   }
 
   await transport.sendMail({

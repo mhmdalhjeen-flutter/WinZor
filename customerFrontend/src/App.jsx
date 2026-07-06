@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from "./context/AuthContext";
 
 // Components
@@ -51,9 +51,16 @@ const LazyPage = ({ children }) => (
   <Suspense fallback={<LightLoadingHint />}>{children}</Suspense>
 );
 
+const AUTH_SHELL_ROUTES = ['/login', '/register', '/intro', '/forgot-password'];
+
 function AppShell() {
   const { isAuth } = useAuth();
+  const location = useLocation();
   const [isFirstVisit, setIsFirstVisit] = useState(false);
+  const isAuthShell = AUTH_SHELL_ROUTES.some(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
+  const showAppChrome = isAuth || !isAuthShell;
 
   useEffect(() => {
     const firstVisit = localStorage.getItem('firstVisit');
@@ -69,10 +76,10 @@ function AppShell() {
       {isAuth && <PointsFloatLayer />}
       <div className="flex flex-col min-h-screen bg-gray-50 text-right font-['Cairo']" dir="rtl">
         
-        {/* الهيدر */}
-        {isAuth && <Header />}
+        {/* الهيدر — يظهر للزوار على الصفحات العامة (استكشاف، متجر...) */}
+        {showAppChrome && <Header />}
 
-        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${isAuth ? 'px-4 pt-4 pb-28 md:pb-8' : ''}`}>
+        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome ? 'px-4 pt-4 pb-28 md:pb-8' : ''}`}>
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}

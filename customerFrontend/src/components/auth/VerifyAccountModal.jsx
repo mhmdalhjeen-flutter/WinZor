@@ -4,6 +4,7 @@ import { ShieldCheck, Mail, Phone, X, Loader2, RotateCw } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../shared/Toast';
+import { useVerificationGate } from '../../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import VerificationCelebration from './VerificationCelebration';
 
@@ -17,6 +18,7 @@ const parseWaitSeconds = (message) => {
 const VerifyAccountModal = ({ open, onClose, onVerified }) => {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
+  const { policy } = useVerificationGate();
   const [channel, setChannel] = useState(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -115,6 +117,10 @@ const VerifyAccountModal = ({ open, onClose, onVerified }) => {
 
   if (!open) return null;
 
+  const canVerifyEmail = policy.emailAvailable && user?.email;
+  const canVerifyPhone = policy.phoneAvailable && user?.phone;
+  const hasVerificationChannel = canVerifyEmail || canVerifyPhone;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -150,7 +156,16 @@ const VerifyAccountModal = ({ open, onClose, onVerified }) => {
 
               {!channel ? (
                 <div className="space-y-3">
-                  {!user?.email && !user?.phone ? (
+                  {!hasVerificationChannel ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-center">
+                      <p className="text-sm font-black text-amber-900">التوثيق غير متاح حالياً</p>
+                      <p className="mt-2 text-xs font-bold text-amber-700/80">
+                        {policy.enforced
+                          ? 'خدمة البريد أو SMS غير مهيّأة بعد — يمكنك استخدام المنصة بدون توثيق.'
+                          : 'يمكنك استخدام المنصة بدون توثيق حتى يتم تفعيل خدمة البريد أو SMS.'}
+                      </p>
+                    </div>
+                  ) : !user?.email && !user?.phone ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-center">
                       <p className="text-sm font-black text-amber-900">لا يوجد بريد أو هاتف مرتبط</p>
                       <p className="mt-2 text-xs font-bold text-amber-700/80">
@@ -159,7 +174,7 @@ const VerifyAccountModal = ({ open, onClose, onVerified }) => {
                     </div>
                   ) : (
                     <>
-                      {user?.email && (
+                      {canVerifyEmail && (
                     <button
                       type="button"
                       onClick={() => requestCode('email')}
@@ -173,7 +188,7 @@ const VerifyAccountModal = ({ open, onClose, onVerified }) => {
                       </div>
                     </button>
                   )}
-                  {user?.phone && (
+                  {canVerifyPhone && (
                     <button
                       type="button"
                       onClick={() => requestCode('phone')}

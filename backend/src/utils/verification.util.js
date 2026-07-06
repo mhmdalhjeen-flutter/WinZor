@@ -3,8 +3,31 @@ const crypto = require("crypto");
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
+function isEmailVerificationAvailable() {
+  return require("../services/email.service").isEmailConfigured();
+}
+
+function isPhoneVerificationAvailable() {
+  return require("../services/sms.service").isSmsConfigured();
+}
+
+/** When neither SMTP nor SMS is configured, verification gates are disabled. */
+function isAccountVerificationEnforced() {
+  return isEmailVerificationAvailable() || isPhoneVerificationAvailable();
+}
+
+function getVerificationPolicy() {
+  const enforced = isAccountVerificationEnforced();
+  return {
+    enforced,
+    emailAvailable: isEmailVerificationAvailable(),
+    phoneAvailable: isPhoneVerificationAvailable(),
+  };
+}
+
 function isUserVerified(user) {
   if (!user) return false;
+  if (!isAccountVerificationEnforced()) return true;
   if (user.isVerified) return true;
   return Boolean(
     (user.email && user.emailVerified) ||
@@ -62,6 +85,10 @@ async function awardVerificationBonus(user) {
 module.exports = {
   VERIFICATION_CODE_TTL_MS,
   RESEND_COOLDOWN_MS,
+  isEmailVerificationAvailable,
+  isPhoneVerificationAvailable,
+  isAccountVerificationEnforced,
+  getVerificationPolicy,
   isUserVerified,
   syncVerifiedFlag,
   awardVerificationBonus,

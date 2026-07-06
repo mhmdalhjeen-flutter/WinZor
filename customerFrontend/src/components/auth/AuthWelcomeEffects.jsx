@@ -9,16 +9,16 @@ const AuthWelcomeEffects = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { openVerificationPrompt } = useVerificationGate();
+  const { openVerificationPrompt, policy } = useVerificationGate();
 
   useEffect(() => {
-    if (!location.state?.suggestVerify || isVerifiedUser(user)) return;
+    if (!policy.enforced || !location.state?.suggestVerify || isVerifiedUser(user, policy)) return;
     const t = window.setTimeout(() => {
       openVerificationPrompt();
       navigate(location.pathname, { replace: true, state: {} });
     }, 600);
     return () => clearTimeout(t);
-  }, [location.state?.suggestVerify, location.pathname, navigate, openVerificationPrompt, user]);
+  }, [location.state?.suggestVerify, location.pathname, navigate, openVerificationPrompt, policy, user]);
 
   return null;
 };

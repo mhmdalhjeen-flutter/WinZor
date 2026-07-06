@@ -7,10 +7,9 @@ const { resolveRegionPath, resolveCategoryPath } = require("../utils/hierarchyRe
 const { OAuth2Client } = require("google-auth-library");
 const {
   isUserVerified,
+  getVerificationPolicy,
   syncVerifiedFlag,
   awardVerificationBonus,
-  hashVerificationSecret,
-  verifyVerificationSecret,
 } = require("../utils/verification.util");
 const {
   assertUserNotBlocked,
@@ -823,6 +822,7 @@ const getVerificationStatus = async (req, res) => {
       isVerified: isUserVerified(user),
       verificationBonusAwarded: user.verificationBonusAwarded,
       points: user.points,
+      ...getVerificationPolicy(),
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });

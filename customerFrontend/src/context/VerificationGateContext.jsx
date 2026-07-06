@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { isVerifiedUser } from '../hooks/useVerification';
+import { useVerificationPolicy } from '../hooks/useVerification';
 import { useAuth } from './AuthContext';
 import VerificationPromptModal from '../components/auth/VerificationPromptModal';
 import VerifyAccountModal from '../components/auth/VerifyAccountModal';
@@ -8,7 +9,8 @@ const VerificationGateContext = createContext(null);
 
 export const VerificationGateProvider = ({ children }) => {
   const { user } = useAuth();
-  const verified = isVerifiedUser(user);
+  const policy = useVerificationPolicy();
+  const verified = isVerifiedUser(user, policy);
   const pendingRef = useRef(null);
   const [promptOpen, setPromptOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -22,14 +24,14 @@ export const VerificationGateProvider = ({ children }) => {
 
   const runWithVerification = useCallback(
     (action, config = {}) => {
-      if (isVerifiedUser(user)) {
+      if (isVerifiedUser(user, policy)) {
         action?.();
         return true;
       }
       openVerificationPrompt(action, config);
       return false;
     },
-    [user, openVerificationPrompt]
+    [user, policy, openVerificationPrompt]
   );
 
   const handleVerifyNow = () => {
@@ -66,6 +68,7 @@ export const VerificationGateProvider = ({ children }) => {
     <VerificationGateContext.Provider
       value={{
         verified,
+        policy,
         runWithVerification,
         openVerificationPrompt,
         handleApiVerificationError,

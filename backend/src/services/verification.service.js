@@ -53,6 +53,12 @@ async function sendEmailVerification(user) {
     err.status = 400;
     throw err;
   }
+  if (!emailService.isEmailConfigured()) {
+    const err = new Error("التوثيق عبر البريد غير متاح حالياً — يمكنك استخدام المنصة بدون توثيق");
+    err.status = 503;
+    err.code = "EMAIL_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
 
   assertResendCooldown(user._id, "email");
 
@@ -65,12 +71,23 @@ async function sendEmailVerification(user) {
   await user.save();
 
   const verifyLink = buildEmailVerifyLink(String(user._id), linkToken);
-  await emailService.sendVerificationEmail({
+  const delivery = await emailService.sendVerificationEmail({
     to: user.email,
     name: user.name,
     code,
     verifyLink,
   });
+
+  if (delivery.skipped) {
+    user.verifyEmailCode = null;
+    user.verifyEmailLinkToken = null;
+    user.verifyEmailExpires = null;
+    await user.save();
+    const err = new Error("التوثيق عبر البريد غير متاح حالياً — يمكنك استخدام المنصة بدون توثيق");
+    err.status = 503;
+    err.code = "EMAIL_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
 
   markSent(user._id, "email");
 
@@ -88,6 +105,12 @@ async function sendPhoneVerification(user) {
     err.status = 400;
     throw err;
   }
+  if (!smsService.isSmsConfigured()) {
+    const err = new Error("التوثيق عبر SMS غير متاح حالياً — يمكنك استخدام المنصة بدون توثيق");
+    err.status = 503;
+    err.code = "SMS_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
 
   assertResendCooldown(user._id, "phone");
 
@@ -96,7 +119,17 @@ async function sendPhoneVerification(user) {
   user.verifyPhoneExpires = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
   await user.save();
 
-  await smsService.sendVerificationSms({ phone: user.phone, code });
+  const delivery = await smsService.sendVerificationSms({ phone: user.phone, code });
+  if (delivery.skipped) {
+    user.verifyPhoneCode = null;
+    user.verifyPhoneExpires = null;
+    await user.save();
+    const err = new Error("التوثيق عبر SMS غير متاح حالياً — يمكنك استخدام المنصة بدون توثيق");
+    err.status = 503;
+    err.code = "SMS_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
+
   markSent(user._id, "phone");
 
   return { message: "تم إرسال رمز التحقق عبر SMS إلى هاتفك" };
@@ -190,8 +223,20 @@ async function finalizeVerification(user) {
 }
 
 async function sendPhoneChangeOtp(user, phone, code) {
+  if (!smsService.isSmsConfigured()) {
+    const err = new Error("تغيير الهاتف عبر SMS غير متاح حالياً");
+    err.status = 503;
+    err.code = "SMS_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
   assertResendCooldown(user._id, "phone_change");
   const delivery = await smsService.sendVerificationSms({ phone, code });
+  if (delivery.skipped) {
+    const err = new Error("تغيير الهاتف عبر SMS غير متاح حالياً");
+    err.status = 503;
+    err.code = "SMS_DELIVERY_UNAVAILABLE";
+    throw err;
+  }
   markSent(user._id, "phone_change");
   return delivery;
 }
@@ -199,11 +244,37 @@ async function sendPhoneChangeOtp(user, phone, code) {
 async function sendPasswordResetOtp({ user, channel, code }) {
   if (channel === "email") {
     if (!user.email) throw new Error("لا يوجد بريد مرتبط");
-    return emailService.sendPasswordResetEmail({ to: user.email, name: user.name, code });
+    if (!emailService.isEmailConfigured()) {
+      const err = new Error("إعادة تعيين كلمة المرور عبر البريد غير متاحة حالياً");
+      err.status = 503;
+      err.code = "EMAIL_DELIVERY_UNAVAILABLE";
+      throw err;
+    }
+    const delivery = await emailService.sendPasswordResetEmail({ to: user.email, name: user.name, code });
+    if (delivery.skipped) {
+      const err = new Error("إعادة تعيين كلمة المرور عبر البريد غير متاحة حالياً");
+      err.status = 503;
+      err.code = "EMAIL_DELIVERY_UNAVAILABLE";
+      throw err;
+    }
+    return delivery;
   }
   if (channel === "phone") {
     if (!user.phone) throw new Error("لا يوجد هاتف مرتبط");
-    return smsService.sendPasswordResetSms({ phone: user.phone, code });
+    if (!smsService.isSmsConfigured()) {
+      const err = new Error("إعادة تعيين كلمة المرور عبر SMS غير متاحة حالياً");
+      err.status = 503;
+      err.code = "SMS_DELIVERY_UNAVAILABLE";
+      throw err;
+    }
+    const delivery = await smsService.sendPasswordResetSms({ phone: user.phone, code });
+    if (delivery.skipped) {
+      const err = new Error("إعادة تعيين كلمة المرور عبر SMS غير متاحة حالياً");
+      err.status = 503;
+      err.code = "SMS_DELIVERY_UNAVAILABLE";
+      throw err;
+    }
+    return delivery;
   }
   throw new Error("قناة غير مدعومة");
 }

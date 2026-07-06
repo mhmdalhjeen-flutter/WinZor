@@ -1,4 +1,5 @@
-/** API base — set VITE_API_URL in .env (see .env.example) */
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+/** API base — set VITE_API_URL in .env (backend root, e.g. https://winzor.onrender.com) */
+const raw = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+export const API_URL = raw ? (/\/api$/i.test(raw) ? raw : `${raw}/api`) : '';
 
 export default API_URL;

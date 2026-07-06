@@ -6,11 +6,9 @@ const readFileAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
-const getUploadImageUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const base = apiUrl.replace(/\/api\/?$/, '');
-  return `${base}/api/upload/image`;
-};
+import { API_URL } from '../lib/apiUrl';
+
+const getUploadImageUrl = () => `${API_URL}/upload/image`;
 
 /** يرفع ملف صورة إلى Cloudinary عبر الباكند ويعيد رابط URL. */
 export async function uploadImage(file) {

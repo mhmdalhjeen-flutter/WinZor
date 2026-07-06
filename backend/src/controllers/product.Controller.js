@@ -1,13 +1,29 @@
 const Product = require("../models/product");
 const Store = require("../models/store");
+const { processDataUrlImage } = require("../utils/imageProcess.util");
+const {
+    assertNoMongoOperators,
+    cleanString,
+    numberInRange,
+    requireObjectId,
+    safeRegex,
+} = require("../utils/inputSecurity.util");
+
+const PRODUCT_LIST_SELECT =
+    "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount store createdAt";
+
+function stripBase64Image(product) {
+    if (!product || typeof product !== "object") return product;
+    if (typeof product.image === "string" && product.image.startsWith("data:")) {
+        return { ...product, hasImage: true, image: null };
+    }
+    return { ...product, hasImage: !!product.image };
+}
 
 // ================= إنشاء منتج جديد =================
 exports.createProduct = async (req, res) => {
     try {
-        // التحقق من أن المستخدم صاحب متجر أو تاجر
-        if (req.user.role !== "store" && req.user.role !== "supplier") {
-            return res.status(403).json({ message: "غير مسموح لك بإنشاء منتجات" });
-        }
+        assertNoMongoOperators(req.body, "product");
 
        const store = await Store.findOne({
     owner: req.user.id,
@@ -21,126 +37,115 @@ exports.createProduct = async (req, res) => {
             description,
             price,
             image,
-            isWholesale
+            isWholesale,
+            freeDelivery,
         } = req.body;
-        if (!name || !price) {
-    return res.status(400).json({
-        message: "اسم المنتج والسعر مطلوبان"
-    });
-}
+        if (!name || price == null) {
+            return res.status(400).json({
+                message: "اسم المنتج والسعر مطلوبان",
+            });
+        }
+        if (!image?.trim()) {
+            return res.status(400).json({ message: "صورة المنتج مطلوبة" });
+        }
 
         const product = await Product.create({
-            name,
-            description,
-            price,
-            image,
-            isWholesale,
-            store: store._id
+            name: cleanString(name, { field: "name", max: 120, required: true }),
+            description: cleanString(description, { field: "description", max: 1000 }),
+            price: numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: true }),
+            image: await processDataUrlImage(image.trim()),
+            isWholesale: !!isWholesale,
+            freeDelivery: !!freeDelivery,
+            store: store._id,
         });
 
         res.json({ message: "تم إنشاء المنتج بنجاح", product });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(err.status || 500).json({ message: err.message });
     }
 };
 
 // ================= جلب منتجات متجر معين (للزبائن) =================
 exports.getStoreProducts = async (req, res) => {
     try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
         const products = await Product.find({ 
-            store: req.params.storeId,
+            store: storeId,
             isActive: true,
             isWholesale: false // عرض المنتجات العادية فقط للزبائن
-        });
-        res.json({ products });
+        })
+            .select(PRODUCT_LIST_SELECT)
+            .lean();
+        res.json({ products: products.map(stripBase64Image) });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(err.status || 500).json({ message: err.message });
     }
 };
 
 // ================= جلب منتجات الجملة (حصرياً لأصحاب المحلات) =================
 exports.getWholesaleProducts = async (req, res) => {
     try {
-        // التحقق من أن المستخدم صاحب متجر
-        if (
-    !["store", "supplier", "admin"].includes(req.user.role)
-        ) {
-            return res.status(403).json({
-                message: "هذه الصفحة مخصصة لأصحاب المحلات والموردين"
-            });
-        }
-
         const products = await Product.find({ 
             isWholesale: true,
             isActive: true 
-        }).populate("store", "name phone whatsapp region");
+        })
+            .select(PRODUCT_LIST_SELECT)
+            .populate("store", "name phone whatsapp region")
+            .lean();
 
         res.json({
             count: products.length,
-            products
+            products: products.map(stripBase64Image)
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 };
 
 // ================= البحث عن المنتجات =================
 exports.searchProducts = async (req, res) => {
     try {
-        const { q } = req.query;
+        const q = cleanString(req.query.q, { field: "q", max: 80 });
 
         if (!q || q.trim().length < 2) {
             return res.status(400).json({
                 message: "يجب إدخال حرفين على الأقل للبحث"
             });
         }
+        const rx = safeRegex(q, { field: "q", max: 80 });
 
         const products = await Product.find({
-            name: {
-                $regex: q.trim(),
-                $options: "i"
-            },
+            name: rx,
             isActive: true,
             isWholesale: false
-        });
+        })
+            .select(PRODUCT_LIST_SELECT)
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .lean();
 
         res.json({
             count: products.length,
-            products
+            products: products.map(stripBase64Image)
         });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 };
 
 // ================= حذف منتج (إخفاء) =================
 exports.deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const productId = requireObjectId(req.params.id, "id");
+        const product = await Product.findById(productId);
 
         if (!product) {
             return res.status(404).json({ message: "المنتج غير موجود" });
         }
-
-        // التحقق من الملكية
-       const store = await Store.findOne({
-    owner: req.user.id,
-    isActive: true
-});
-
-if (req.user.role !== "admin") {
-    if (!store) {
-        return res.status(403).json({ message: "لا يوجد متجر مرتبط بحسابك" });
-    }
-
-    if (product.store.toString() !== store._id.toString()) {
-        return res.status(403).json({ message: "غير مسموح لك بحذف هذا المنتج" });
-    }
-}
 
         product.isActive = false;
         await product.save();
@@ -148,6 +153,57 @@ if (req.user.role !== "admin") {
         res.json({ message: "تم حذف المنتج بنجاح" });
 
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.status || 500).json({ message: error.message });
     }
 };
+// ================= جلب منتجات المتجر الخاص بصاحب الحساب =================
+exports.getMyProducts = async (req, res) => {
+    try {
+        const store = await Store.findOne({ owner: req.user.id, isActive: true });
+        if (!store) return res.status(404).json({ message:  "لا يوجد متجر مرتبط بحسابك راجع الادارة" });
+                
+
+
+        const products = await Product.find({ store: store._id, isActive: true })
+            .select(PRODUCT_LIST_SELECT)
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json({ products: products.map(stripBase64Image) });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+};
+// product.Controller.js    تعديل المنتج
+exports.updateProduct = async (req, res) => {
+    try {
+        assertNoMongoOperators(req.body, "product");
+        const productId = requireObjectId(req.params.id, "id");
+        const product = await Product.findById(productId);
+        if (!product) return res.status(404).json({ message: "المنتج غير موجود" });
+
+        const allowed = ["name", "description", "price", "image", "isWholesale"];
+        for (const field of allowed) {
+            if (req.body[field] === undefined) continue;
+            if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
+                product.image = await processDataUrlImage(req.body.image.trim());
+            } else if (field === "price") {
+                product.price = numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: true });
+            } else if (field === "name") {
+                product.name = cleanString(req.body.name, { field: "name", max: 120, required: true });
+            } else if (field === "description") {
+                product.description = cleanString(req.body.description, { field: "description", max: 1000 });
+            } else if (field === "isWholesale") {
+                product.isWholesale = !!req.body.isWholesale;
+            } else {
+                product[field] = req.body[field];
+            }
+        }
+        await product.save();
+        res.json({ message: "تم التحديث", product });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+};
+
+

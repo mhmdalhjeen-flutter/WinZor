@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Base ===== */
+@layer base {
+  :root {
+    --primary: #b91c1c;
+    --bg-soft: #f9fafb;
+  }
+
+body {
+  @apply text-gray-900 font-cairo antialiased select-none;
+  background: radial-gradient(circle at top, #e9edf5, #f8fafc 60%, #f1f5f9 100%);
+}
+}
+
+/* ===== Components ===== */
+@layer components {
+  .mobile-container {
+    @apply max-w-md mx-auto min-h-screen bg-white shadow-xl relative pb-20;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-bold py-3 px-6 rounded-2xl active:scale-95 transition;
+  }
+}
+
+/* ===== Animations ===== */
+@keyframes shakeX {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shakeX 0.3s ease-in-out;
+}
+.shadow-glass {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.swiper {
+  padding-bottom: 10px;
+}
+
+/* ===== Horizontal swipe (موحّد — بدون شريط تمرير) ===== */
+.horizontal-swipe,
+.horizontal-swipe .swiper {
+  width: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.horizontal-swipe::-webkit-scrollbar,
+.horizontal-swipe .swiper::-webkit-scrollbar {
+  display: none;
+}
+
+.horizontal-swipe .swiper-wrapper {
+  align-items: stretch;
+}
+
+.horizontal-swipe .swiper-slide {
+  width: auto;
+  height: auto;
+}
+
+.horizontal-swipe--pan .swiper-slide {
+  flex-shrink: 0;
+}
+
+.horizontal-swipe.swiper-grab .swiper-wrapper {
+  cursor: grab;
+}
+
+.horizontal-swipe.swiper-grabbing .swiper-wrapper {
+  cursor: grabbing;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+}
+@keyframes floatBg {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(10px); }
+  100% { transform: translateY(0px); }
+}
+
+
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.touch-pan-x {
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

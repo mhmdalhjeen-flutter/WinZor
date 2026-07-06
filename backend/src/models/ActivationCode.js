@@ -1,25 +1,45 @@
 const mongoose = require("mongoose");
 
 const activationCodeSchema = new mongoose.Schema({
-    code: String,
-type: {
+  code: {
     type: String,
-    enum: ["store_activation"],
-    default: "store_activation"
-},// store_activation
-isUsed: {
+    required: true,
+    unique: true
+  },
+
+  // 👇 نوع الحساب الحقيقي
+  role: {
+    type: String,
+    enum: ["store", "supplier"],
+    required: true
+  },
+
+  // بصمة فريدة — تُستخدم لاحقاً لأكواد الكروت بعد تفعيل الحساب
+  prefix: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    default: null,
+    index: true,
+  },
+
+  isUsed: {
     type: Boolean,
     default: false
-},
+  },
 
-    usedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        default: null
-    },
+  usedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  },
 
-    expiresAt: Date
+  expiresAt: {
+    type: Date,
+    default: null
+  }
 }, {
-    timestamps: true
+  timestamps: true
 });
+
 module.exports = mongoose.model("ActivationCode", activationCodeSchema);

@@ -1,24 +1,36 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth.middleware");
+const verifiedMiddleware = require("../middleware/verified.middleware");
+const roleMiddleware = require("../middleware/role.middleware");
+const rateLimit = require("../middleware/rateLimit.middleware");
+const { requireBodyStoreOwnership } = require("../middleware/ownership.middleware");
 
 const {
     createPromoCode,
     redeemCode,
     redeemActivationCode,
     getCodeStats
-} = require("../controllers/promo-code.Controller");
+} = require("../controllers/promo-code.controller");
 
-// ➕ إنشاء كود (لأصحاب المتاجر أو الأدمن)
-router.post("/create", authMiddleware, createPromoCode);
+const redeemLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "محاولات استخدام أكواد كثيرة — يرجى الانتظار",
+  keyFn: (req) => `promo-redeem:${req.user?.id || req.ip}`,
+});
 
-// 🎟️ استخدام كود عادي (للحصول على نقاط/فرص وتوجيه للمحل)
-router.post("/redeem", authMiddleware, redeemCode);
+router.post(
+  "/create",
+  authMiddleware,
+  roleMiddleware.businessOrAdmin,
+  requireBodyStoreOwnership,
+  createPromoCode
+);
 
-// 🔑 استخدام كود تفعيل (لتحويل نوع الحساب لمتجر أو تاجر)
-router.post("/redeem-activation", authMiddleware, redeemActivationCode);
+router.post("/redeem", authMiddleware, verifiedMiddleware, redeemLimiter, redeemCode);
+router.post("/redeem-activation", authMiddleware, verifiedMiddleware, redeemLimiter, redeemActivationCode);
 
-// 📊 إحصائيات الأكواد
-router.get("/stats", authMiddleware, getCodeStats);
+router.get("/stats", authMiddleware, roleMiddleware.businessOrAdmin, getCodeStats);
 
 module.exports = router;

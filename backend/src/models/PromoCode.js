@@ -29,6 +29,13 @@ const promoCodeSchema = new mongoose.Schema({
         default: false
     },
 
+    /** دور الحساب عند isRegistrationCode — أولوية على بادئة الكود */
+    registrationRole: {
+        type: String,
+        enum: ["store", "supplier"],
+        default: null,
+    },
+
     batchName: { // اسم الدفعة المطبوعة (لأغراض إدارية)
         type: String
     },
@@ -60,5 +67,9 @@ const promoCodeSchema = new mongoose.Schema({
     }
 
 }, { timestamps: true });
+
+promoCodeSchema.index({ createdAt: -1 });
+promoCodeSchema.index({ store: 1, isRegistrationCode: 1, currentUses: 1 });
+promoCodeSchema.index({ "usedBy.user": 1 });
 
 module.exports = mongoose.model("PromoCode", promoCodeSchema);

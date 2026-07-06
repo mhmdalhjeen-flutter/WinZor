@@ -1,0 +1,249 @@
+/* استخدام اسم فريد جداً لتجنب التضارب مع index.css */
+.main-admin-navbar {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 9999 !important; /* ضمان الظهور فوق كل العناصر */
+
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  
+  /* منع الانتقالات المفاجئة */
+  transition: all 0.3s ease;
+}
+
+.admin-header-container {
+  height: 75px;
+  max-width: 1800px;
+  margin: auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+}
+
+/* ===== Brand ===== */
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  background: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.brand-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+}
+
+.brand-highlight {
+  color: #ef4444;
+}
+
+.brand-subtitle {
+  font-size: 10px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1;
+}
+
+/* ===== Navigation ===== */
+.admin-nav {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.nav-item:hover {
+  background: #f1f5f9;
+  color: #ef4444;
+}
+
+.nav-item.active {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* ===== Actions ===== */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 200px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px 8px 35px;
+  outline: none;
+  font-size: 13px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.action-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.chat-header-btn {
+  position: relative;
+  text-decoration: none;
+}
+
+.chat-header-btn.is-active {
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  line-height: 1;
+}
+
+.admin-nav-unread-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-card);
+}
+
+.admin-nav-unread-pill {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== Profile ===== */
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.profile-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.profile-role {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* ===== Status Bar ===== */
+.header-status-bar {
+  background: #f8fafc;
+  padding: 3px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .search-wrapper, .brand-subtitle { display: none; }
+  .nav-item span { display: none; }
+  .nav-item { padding: 10px; }
+}

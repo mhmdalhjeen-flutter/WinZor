@@ -1,48 +1,72 @@
 const Offer = require("../models/offer");
+const notificationService = require("../services/notification.service");
+const { safeLog } = require("./logSanitize.util");
+
+const MAX_OFFER_DAYS = 7;
 
 /**
- * وظيفة مراقبة العروض:
- * 1. إيقاف العروض التي تجاوزت تاريخ الحذف التلقائي.
- * 2. إرسال تنبيهات للعروض التي ستنتهي خلال 3 أيام.
+ * مراقبة العروض:
+ * 1. إيقاف العروض عند expiresAt أو بعد 7 أيام (autoDeleteAt).
+ * 2. تنبيه قبل expiresAt بـ 24 ساعة.
  */
 const monitorOffers = async () => {
     try {
         const now = new Date();
-        const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+        const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-        // 1. معالجة العروض المنتهية (الحذف التلقائي)
-        const expiredOffers = await Offer.updateMany(
-            {
-                autoDeleteAt: { $lte: now },
-                isActive: true
-            },
-            {
-                $set: { isActive: false }
+        const expiredOffers = await Offer.find({
+            isActive: true,
+            $or: [
+                { autoDeleteAt: { $lte: now } },
+                { expiresAt: { $lte: now } },
+            ],
+        })
+            .select("title store expiresAt expiryWarningSent isActive autoDeleteAt")
+            .populate("store", "name owner")
+            .lean();
+
+        for (const offer of expiredOffers) {
+            await Offer.findByIdAndUpdate(offer._id, { isActive: false });
+            if (offer.store?.owner) {
+                await notificationService.create({
+                    user: offer.store.owner,
+                    type: "offer_expired",
+                    title: "انتهى عرضك",
+                    body: `انتهت صلاحية العرض "${offer.title}" وتم إخفاؤه. يمكنك تجديده إن أردت.`,
+                    data: { offerId: offer._id },
+                });
             }
-        );
-
-        if (expiredOffers.modifiedCount > 0) {
-            console.log(`[Monitor]: تم إيقاف ${expiredOffers.modifiedCount} عرض منتهي الصلاحية.`);
+        }
+        if (expiredOffers.length > 0) {
+            safeLog("info", "offer_monitor_expired", { count: expiredOffers.length });
         }
 
-        // 2. البحث عن العروض التي ستنتهي قريباً ولم يتم تحذير أصحابها
         const pendingWarnings = await Offer.find({
-            autoDeleteAt: { $gt: now, $lte: threeDaysFromNow },
+            expiresAt: { $gt: now, $lte: oneDayFromNow },
             isActive: true,
-            deletionWarningSent: false
-        }).populate("store", "name phone owner");
+            expiryWarningSent: false,
+        })
+            .select("title store expiresAt expiryWarningSent")
+            .populate("store", "name owner")
+            .lean();
 
         for (const offer of pendingWarnings) {
-            // هنا يتم إرسال إشعار (واتساب أو إيميل) - حالياً سنكتفي بتسجيلها في النظام
-            console.log(`[Warning]: العرض "${offer.title}" للمتجر "${offer.store.name}" سينتهي خلال أقل من 3 أيام.`);
-            
-            // تحديث حالة العرض بأنه تم إرسال التحذير
-            offer.deletionWarningSent = true;
-            await offer.save();
+            if (offer.store?.owner) {
+                await notificationService.create({
+                    user: offer.store.owner,
+                    type: "offer_expiring",
+                    title: "عرضك ينتهي خلال 24 ساعة",
+                    body: `العرض "${offer.title}" ينتهي قريباً. جدّده الآن إذا أردت الإبقاء عليه.`,
+                    data: { offerId: offer._id },
+                });
+            }
+            await Offer.findByIdAndUpdate(offer._id, { expiryWarningSent: true });
         }
-
+        if (pendingWarnings.length > 0) {
+            safeLog("info", "offer_monitor_warning_sent", { count: pendingWarnings.length });
+        }
     } catch (error) {
-        console.error("[Monitor Error]: خطأ في مراقبة العروض:", error.message);
+        safeLog("error", "offer_monitor_failed", { message: error.message });
     }
 };
 

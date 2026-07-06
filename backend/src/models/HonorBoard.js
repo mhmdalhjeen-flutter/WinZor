@@ -15,8 +15,28 @@ const honorBoardSchema = new mongoose.Schema({
         required: true, // مثال: فاز بآيفون 15 بعد إدخال 50 كود!
     },
     awardImage: {
-        type: String, // صورة الجائزة التي فاز بها إن وجدت
+        type: String, // صورة الجائزة
         default: null
+    },
+    winnerImage: {
+        type: String, // صورة الفائز (اختياري — يُستخدم avatar المستخدم إن غاب)
+        default: null
+    },
+    prizeName: {
+        type: String, // اسم الجائزة
+        default: "",
+    },
+    receivedAt: {
+        type: Date, // تاريخ الاستلام
+        default: null,
+    },
+    competitionLink: {
+        type: String, // رابط المسابقة إن وجد
+        default: null,
+    },
+    isPrimary: {
+        type: Boolean, // فائز رئيسي vs فرعي
+        default: false,
     },
     displayUntil: {
         type: Date,

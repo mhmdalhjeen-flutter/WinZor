@@ -66,8 +66,13 @@ const drawBatchSchema = new mongoose.Schema({
 
     participants: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        // عدد الفرص التي أنفقها المستخدم على هذا السحب (كلما زاد زادت فرصة الفوز)
+        entriesCount: { type: Number, default: 1, min: 1 },
         joinedAt: { type: Date, default: Date.now }
     }],
+
+    // إجمالي الفرص المُنفقة على هذا السحب (مجموع entriesCount لكل المشاركين)
+    totalEntries: { type: Number, default: 0 },
 
     winners: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -75,7 +80,11 @@ const drawBatchSchema = new mongoose.Schema({
         wonAt: { type: Date, default: Date.now }
     }]
 
-}, { timestamps: true });
+}, {
+    timestamps: true,
+    toJSON:   { virtuals: true },
+    toObject: { virtuals: true }
+});
 
 // خاصية افتراضية لحساب العدد الحالي
 drawBatchSchema.virtual("currentCount").get(function() {

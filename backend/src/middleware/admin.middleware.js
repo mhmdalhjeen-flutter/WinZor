@@ -1,30 +1,58 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const {
+  USER_SENSITIVE_SELECT,
+  isUserBlocked,
+  blockedAuthMessage,
+} = require("../utils/userSanitize.util");
+const tokenService = require("../services/token.service");
+const auditService = require("../services/audit.service");
 
 module.exports = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-
+    const token = tokenService.extractBearerToken(req);
     if (!token) {
-      return res.status(401).json({ message: "No token" });
+      return res.status(401).json({ message: "No token", code: "TOKEN_MISSING" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id);
-
+    const decoded = tokenService.verifyJwt(token);
+    const user = await User.findById(decoded.id).select(USER_SENSITIVE_SELECT);
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({ message: "User not found", code: "TOKEN_INVALID" });
     }
 
     if (user.role !== "admin") {
+      auditService.logSecurityEvent(req, {
+        action: "محاولة وصول إداري غير مصرح",
+        details: `دور "${user.role}" حاول الوصول لمسار إداري`,
+        severity: "warning",
+        user,
+        metadata: { path: req.originalUrl || req.path, method: req.method },
+      }).catch(() => {});
       return res.status(403).json({ message: "Admins only" });
     }
 
-    req.user = user;
-    next();
+    if (isUserBlocked(user)) {
+      return res.status(403).json({
+        message: blockedAuthMessage(user.status),
+        code: "ACCOUNT_BLOCKED",
+      });
+    }
 
+    tokenService.validateAccessClaims(decoded, user, {
+      deviceId: tokenService.extractDeviceId(req),
+    });
+
+    req.user = {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      deviceId: decoded.did || null,
+    };
+    next();
   } catch (err) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(err.status || 401).json({
+      message: err.message || "Invalid or expired token",
+      code: err.code || "TOKEN_INVALID",
+    });
   }
 };

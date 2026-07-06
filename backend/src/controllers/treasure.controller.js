@@ -1,6 +1,6 @@
 const TreasureBox = require("../models/treasureBox");
 const CardType = require("../models/cardType");
-const user = require("../models/user");
+const User = require("../models/user");
 const logActivity = require("../utils/logger");
 
 exports.getAvailableBoxes = async (req, res) => {

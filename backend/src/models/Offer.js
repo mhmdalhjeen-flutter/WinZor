@@ -12,13 +12,28 @@ const offerSchema = new mongoose.Schema({
 
     offerType: {
         type: String,
-        enum: ["discount", "fixed_price", "bogo", "free_item"],
+        enum: ["discount", "fixed_price", "bogo", "fixed_discount", "free_item", "custom"],
         required: true,
     },
 
     value: {
         type: Number,
         default: null,
+    },
+
+    originalPrice: {
+        type: Number,
+        default: null,
+    },
+
+    finalPrice: {
+        type: Number,
+        default: null,
+    },
+
+    freeDelivery: {
+        type: Boolean,
+        default: false,
     },
 
     currency: {
@@ -58,7 +73,12 @@ const offerSchema = new mongoose.Schema({
         default: false
     },
 
-    deletionWarningSent: { // هل تم إرسال تحذير الحذف
+    deletionWarningSent: { // تحذير autoDeleteAt (قديم)
+        type: Boolean,
+        default: false
+    },
+
+    expiryWarningSent: { // تحذير قبل expiresAt بـ 24 ساعة
         type: Boolean,
         default: false
     },
@@ -72,6 +92,9 @@ const offerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+
+    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, default: 0, min: 0 },
 
     store: {
         type: mongoose.Schema.Types.ObjectId,
@@ -92,5 +115,10 @@ const offerSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
+
+offerSchema.index({ isActive: 1, priority: -1, createdAt: -1 });
+offerSchema.index({ store: 1, isActive: 1, priority: -1, createdAt: -1 });
+offerSchema.index({ isActive: 1, expiresAt: 1, expiryWarningSent: 1 });
+offerSchema.index({ isActive: 1, autoDeleteAt: 1 });
 
 module.exports = mongoose.model("Offer", offerSchema);

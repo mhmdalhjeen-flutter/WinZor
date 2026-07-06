@@ -1,36 +1,59 @@
-// 🟢 Product Routes - إدارة المنتجات وسوق الجملة
-
 const express = require("express");
-const router = express.Router();
+const router  = express.Router();
 const roleMiddleware = require("../middleware/role.middleware");
 const authMiddleware = require("../middleware/auth.middleware");
+const Product = require("../models/product");
+const { requireOwnedStoreResource } = require("../middleware/ownership.middleware");
+const { requireObjectId } = require("../utils/inputSecurity.util");
 
 const {
     createProduct,
     getStoreProducts,
     getWholesaleProducts,
     searchProducts,
-    deleteProduct
-} = require("../controllers/product.Controller");
+    deleteProduct,
+    updateProduct,
+    getMyProducts,
+} = require("../controllers/product.controller");
 
-// ➕ إضافة منتج (صاحب متجر أو تاجر)
-router.post(
-    "/",
-    authMiddleware,
-    roleMiddleware(["store", "supplier", "admin"]),
-    createProduct
-);
+router.post("/", authMiddleware, roleMiddleware.businessOrAdmin, createProduct);
 
-// 🏪 عرض منتجات متجر معين (للزبائن)
+router.get("/my", authMiddleware, roleMiddleware.businessOrAdmin, getMyProducts);
+
 router.get("/store/:storeId", getStoreProducts);
 
-// 📦 سوق الجملة (حصرياً لأصحاب المتاجر المعتمدين)
-router.get("/wholesale", authMiddleware, getWholesaleProducts);
+router.get("/wholesale", authMiddleware, roleMiddleware.businessOrAdmin, getWholesaleProducts);
 
-// 🔍 بحث في المنتجات (للزباين)
 router.get("/search", searchProducts);
 
-// 🗑 حذف منتج
-router.delete("/:id", authMiddleware, deleteProduct);
+router.get("/:id", async (req, res) => {
+    try {
+        const id = requireObjectId(req.params.id, "id");
+        const product = await Product.findById(id)
+            .populate("store", "name phone whatsapp region subRegion logo category owner");
+
+        if (!product) {
+            return res.status(404).json({ message: "المنتج غير موجود" });
+        }
+
+        if (!product.isActive) {
+            return res.status(404).json({ message: "هذا المنتج غير متاح حالياً" });
+        }
+
+        await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
+        product.views = (product.views || 0) + 1;
+
+        res.json({ product });
+    } catch (err) {
+        if (err.name === "CastError") {
+            return res.status(400).json({ message: "معرّف المنتج غير صحيح" });
+        }
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+router.delete("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Product, "id", "المنتج غير موجود"), deleteProduct);
+
+router.put("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Product, "id", "المنتج غير موجود"), updateProduct);
 
 module.exports = router;

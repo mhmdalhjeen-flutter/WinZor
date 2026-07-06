@@ -43,10 +43,19 @@ const productSchema = new mongoose.Schema({
         default: 0,
     },
 
+    freeDelivery: {
+        type: Boolean,
+        default: false,
+    },
+
     isFeatured: { // تمييز المنتج في واجهة المحل
         type: Boolean,
         default: false,
     },
+
+    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, default: 0, min: 0 },
+    views: { type: Number, default: 0, min: 0 },
 
     store: {
         type: mongoose.Schema.Types.ObjectId,
@@ -63,5 +72,8 @@ const productSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
+
+productSchema.index({ store: 1, isActive: 1, isWholesale: 1, createdAt: -1 });
+productSchema.index({ isWholesale: 1, isActive: 1 });
 
 module.exports = mongoose.model("Product", productSchema);

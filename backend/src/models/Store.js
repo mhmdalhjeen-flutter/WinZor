@@ -22,8 +22,10 @@ const storeSchema = new mongoose.Schema({
     region: {
         type: String,
         required: true,
-        enum: ["North", "Gaza", "Middle", "South", "Rafah"]
     },
+
+    regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", default: null },
+    subRegionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", default: null },
 
     subRegion: {
         type: String,
@@ -39,12 +41,20 @@ const storeSchema = new mongoose.Schema({
         required: true,
     },
 
+    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Category", default: null },
+
     logo: {
         type: String,
     },
 
     coverImage: {
         type: String,
+    },
+
+    /** هل شاهد صاحب المتجر نافذة ترحيب الصورة/الغلاف */
+    brandingWelcomeSeen: {
+        type: Boolean,
+        default: false,
     },
 
     isActive: {
@@ -97,6 +107,29 @@ const storeSchema = new mongoose.Schema({
         default: 0
     },
 
+    /** بصمة فريدة لأكواد الكروت — تُولَّد عند إنشاء المتجر */
+    codePrefix: {
+        type: String,
+        unique: true,
+        sparse: true,
+        uppercase: true,
+        trim: true,
+    },
+
+    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, default: 0, min: 0 },
+
+    cards: {
+    type: Number,
+    default: 0,          // عدد الكروت المتاحة
+    },
+
+    bypassCards: {
+        type: Boolean,
+        default: false,      // الأدمن يفعّلها ليتخطى شرط الكروت
+    },
+    address: { type: String, default: "" },
+
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -105,5 +138,11 @@ const storeSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
+
+storeSchema.index({ owner: 1 });
+storeSchema.index({ isActive: 1, createdAt: -1 });
+storeSchema.index({ isActive: 1, regionId: 1 });
+storeSchema.index({ isActive: 1, subRegionId: 1 });
+storeSchema.index({ isActive: 1, categoryId: 1 });
 
 module.exports = mongoose.model("Store", storeSchema);

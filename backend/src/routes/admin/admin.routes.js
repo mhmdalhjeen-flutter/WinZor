@@ -1,0 +1,301 @@
+const express = require("express");
+const router = express.Router();
+const adminController = require("../../controllers/admin/admin.controller");
+const dashboardController = require("../../controllers/admin/dashboard.controller");
+const analyticsController = require("../../controllers/admin/analytics.controller");
+const heatmapController = require("../../controllers/admin/heatmap.controller");
+const boxAdminController = require("../../controllers/box-admin.controller");
+const authMiddleware = require("../../middleware/auth.middleware");
+const roleMiddleware = require("../../middleware/role.middleware");
+const adminMiddleware = require("../../middleware/admin.middleware");
+const { createCodeBusiness, listActivationKeys, deleteActivationKey } = require("../../controllers/admin/activationCodeBusiness.controller");
+const {
+  generateAdminCodes,
+  listAdminCodes,
+  deleteAdminCode,
+} = require("../../controllers/admin/adminCode.controller");
+const Store   = require('../../models/store');
+const Product = require('../../models/product');
+const Offer   = require('../../models/offer');
+const Cart    = require('../../models/Cart');
+const User    = require('../../models/user');
+const { createStoreActivationCode } = require("../../controllers/activation.controller");
+const bazaarAdmin = require("../../controllers/admin/bazaar-admin.controller");
+const achievementAdmin = require("../../controllers/admin/achievement-admin.controller");
+const userCenter = require("../../controllers/user-center.controller");
+const usersAdmin = require("../../controllers/admin/users-admin.controller");
+const auditController = require("../../controllers/admin/audit.controller");
+const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
+const { requireObjectId } = require("../../utils/inputSecurity.util");
+
+const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive owner cards bypassCards createdAt";
+const ADMIN_PRODUCT_LIST_SELECT = "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive createdAt";
+const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority expiresAt createdAt";
+
+function stripBase64ListImage(row, field = "image") {
+    if (!row || typeof row !== "object") return row;
+    const plain = { ...row };
+    if (typeof plain[field] === "string" && plain[field].startsWith("data:")) {
+        plain[field] = null;
+        plain[`has${field.charAt(0).toUpperCase()}${field.slice(1)}`] = true;
+    }
+    return plain;
+}
+
+// ─── حماية مشتركة ────────────────────────────────────────────────────────────
+// كل مسارات الأدمن تتطلب تسجيل دخول + دور admin (إغلاق ثغرة تصعيد الصلاحيات)
+router.use(authMiddleware);
+router.use(roleMiddleware(["admin"]));
+
+router.use(async (req, res, next) => {
+    if (req.user?.id) {
+        req.userDoc = await User.findById(req.user.id).select("name email role").lean();
+    }
+    next();
+});
+
+router.use(adminAuditMiddleware);
+
+// ─── سجل التدقيق والأمان ─────────────────────────────────────────────────────
+router.get("/audit/activity", auditController.getActivityLogs);
+router.get("/audit/login", auditController.getLoginLogs);
+router.get("/audit/security", auditController.getSecurityLogs);
+router.get("/audit/filters", auditController.getAuditFilters);
+router.get("/audit/export", auditController.exportLogs);
+router.get("/audit/:id", auditController.getLogById);
+router.get("/activity-logs", auditController.getActivityLogs);
+router.get("/security-logs", auditController.getSecurityLogs);
+
+// ─── أكواد التفعيل ───────────────────────────────────────────────────────────
+router.post("/create-code",          roleMiddleware(["admin"]), createStoreActivationCode);
+router.post("/create-code-business", roleMiddleware(["admin"]), createCodeBusiness);
+router.get("/activation-keys",       listActivationKeys);
+router.delete("/activation-keys/:id", adminMiddleware, deleteActivationKey);
+
+// ─── أكواد الأدمن (نقاط — بدون متجر) ───────────────────────────────────────
+router.post("/admin-codes/generate", roleMiddleware(["admin"]), generateAdminCodes);
+router.get("/admin-codes", listAdminCodes);
+router.delete("/admin-codes/:id", adminMiddleware, deleteAdminCode);
+
+// ─── إعدادات النظام ──────────────────────────────────────────────────────────
+router.post("/settings/home-video", adminController.updateSystemSettings);
+router.post("/settings",             adminController.updateSystemSettings);
+router.get("/settings",             adminController.getSystemSettings);
+
+// ─── إدارة البطاقات والصناديق ────────────────────────────────────────────────
+router.post("/cards",          boxAdminController.createCardType);
+router.get("/cards",           boxAdminController.getCardTypes);
+router.post("/treasure-boxes", boxAdminController.createTreasureBox);
+router.get("/treasure-boxes",  boxAdminController.getTreasureBoxes);
+
+// ─── إحصائيات وتنبيهات ───────────────────────────────────────────────────────
+router.get("/dashboard", dashboardController.getDashboard);
+router.get("/stats", dashboardController.getStats);
+router.get("/analytics", analyticsController.getAnalytics);
+router.get("/heatmaps", heatmapController.getHeatMaps);
+router.get("/security-alerts", adminController.getSecurityAlerts);
+
+// ─── إدارة المستخدمين ────────────────────────────────────────────────────────
+router.get("/users/search",          adminController.searchUsers);
+router.get("/users/options",         usersAdmin.getFilterOptions);
+router.get("/users/count",           adminController.getUsersCount);
+router.patch("/users/update-manual", adminController.updateUserManually);
+router.get("/users",                 usersAdmin.listUsers);
+router.get("/users/:id",             usersAdmin.getUserDetail);
+router.delete("/users/:id",          adminMiddleware, adminController.deleteUser);
+router.patch("/users/:id/ban",       adminMiddleware, adminController.banUser);
+
+// ─── أكواد التفعيل ───────────────────────────────────────────────────────────
+router.post("/activation-code",       adminController.generateBulkCodes);
+router.post("/generate-bulk-codes",   adminController.generateBulkCodes);
+router.post("/codes/generate",        adminController.generateBulkCodes);
+router.get("/codes",                  adminController.getAllCodes);
+router.get("/check-code/:code",       adminController.checkCode);
+router.get("/code",                   adminController.getCodes);
+router.delete("/codes/:id",           adminMiddleware, adminController.deleteCode);
+router.post("/codes/delete-bulk",     adminMiddleware, adminController.deleteBulkCodes);
+
+// ─── التصنيفات ───────────────────────────────────────────────────────────────
+router.get("/categories",  adminController.getCategories);
+router.post("/categories", adminController.addCategory);
+
+// ─── السحوبات ────────────────────────────────────────────────────────────────
+router.get("/draws",                adminController.getAllDraws);
+router.post("/draws",               adminController.createDraw);
+router.patch("/draws/:drawId/approve", adminController.approveDraw);
+router.post("/draws/:drawId/draw-winners", adminController.drawWinners);
+
+// ─── سجل النشاطات ────────────────────────────────────────────────────────────
+router.get("/activity-logs", adminController.getActivityLogs);
+
+// =============================================================================
+// من هنا: endpoints الأدمن الجديدة (تطبق adminMiddleware على كل ما يليها)
+// =============================================================================
+router.use(adminMiddleware);
+
+// ─── GET /admin/stores ───────────────────────────────────────────────────────
+// جلب جميع المتاجر والمستودعات مع role المالك
+// الفرونت يفرق بين store وsupplier عبر owner.role
+router.get('/stores', async (req, res) => {
+    try {
+        const { type } = req.query; // type=store | type=supplier | فارغ = الكل
+
+        // populate المالك مع role لأنه الأساس في التمييز بين متجر ومستودع
+        let stores = await Store.find()
+            .select(ADMIN_STORE_LIST_SELECT)
+            .populate('owner', 'name email phone role')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // فلترة حسب نوع الحساب إذا طُلب
+        if (type === 'supplier' || type === 'store') {
+            stores = stores.filter(s => s.owner?.role === type);
+        }
+
+        res.json(stores.map((s) => stripBase64ListImage(s, "logo")));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/stores/:storeId/toggle ─────────────────────────────────────
+router.patch('/stores/:storeId/toggle', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+        store.isActive = !store.isActive;
+        await store.save();
+        res.json({ message: store.isActive ? 'تم تفعيل المتجر' : 'تم إيقاف المتجر', isActive: store.isActive });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// تطابق مع الروت القديم toggle-status
+router.patch('/stores/:storeId/toggle-status', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+        store.isActive = !store.isActive;
+        await store.save();
+        res.json({ message: store.isActive ? 'تم تفعيل المتجر' : 'تم إيقاف المتجر', isActive: store.isActive });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── DELETE /admin/stores/:storeId ───────────────────────────────────────────
+router.delete('/stores/:storeId', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findByIdAndDelete(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+        await Product.deleteMany({ store: storeId });
+        await Offer.deleteMany({ store: storeId });
+        res.json({ message: 'تم حذف المتجر وجميع بياناته' });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── GET /admin/stores/:storeId/products ─────────────────────────────────────
+// جلب منتجات متجر معين (للأدمن)
+router.get('/stores/:storeId/products', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const products = await Product.find({ store: storeId })
+            .select(ADMIN_PRODUCT_LIST_SELECT)
+            .sort({ createdAt: -1 })
+            .lean();
+        res.json(products.map((p) => stripBase64ListImage(p, "image")));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── GET /admin/stores/:storeId/offers ───────────────────────────────────────
+// جلب عروض متجر معين (للأدمن)
+router.get('/stores/:storeId/offers', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const offers = await Offer.find({ store: storeId })
+            .select(ADMIN_OFFER_LIST_SELECT)
+            .sort({ createdAt: -1 })
+            .lean();
+        res.json(offers.map((o) => stripBase64ListImage(o, "image")));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/products/:productId/toggle ─────────────────────────────────
+router.patch('/products/:productId/toggle', async (req, res) => {
+    try {
+        const productId = requireObjectId(req.params.productId, "productId");
+        const product = await Product.findById(productId);
+        if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
+        product.isActive = !product.isActive;
+        await product.save();
+        res.json({ message: product.isActive ? 'تم إظهار المنتج' : 'تم إخفاء المنتج', isActive: product.isActive });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── DELETE /admin/products/:productId ───────────────────────────────────────
+router.delete('/products/:productId', async (req, res) => {
+    try {
+        const productId = requireObjectId(req.params.productId, "productId");
+        const product = await Product.findByIdAndDelete(productId);
+        if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
+        res.json({ message: 'تم حذف المنتج' });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/offers/:offerId/toggle ─────────────────────────────────────
+router.patch('/offers/:offerId/toggle', async (req, res) => {
+    try {
+        const offerId = requireObjectId(req.params.offerId, "offerId");
+        const offer = await Offer.findById(offerId);
+        if (!offer) return res.status(404).json({ message: 'العرض غير موجود' });
+        offer.isActive = !offer.isActive;
+        await offer.save();
+        res.json({ message: offer.isActive ? 'تم إظهار العرض' : 'تم إخفاء العرض', isActive: offer.isActive });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── DELETE /admin/offers/:offerId ───────────────────────────────────────────
+router.delete('/offers/:offerId', async (req, res) => {
+    try {
+        const offerId = requireObjectId(req.params.offerId, "offerId");
+        const offer = await Offer.findByIdAndDelete(offerId);
+        if (!offer) return res.status(404).json({ message: 'العرض غير موجود' });
+        res.json({ message: 'تم حذف العرض' });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── BazaarX — موافقة إعلانات سوق الأفراد ───────────────────────────────────
+router.get("/bazaar", bazaarAdmin.list);
+router.get("/bazaar/:id", bazaarAdmin.getOne);
+router.patch("/bazaar/:id/approve", bazaarAdmin.approve);
+router.patch("/bazaar/:id/reject", bazaarAdmin.reject);
+router.delete("/bazaar/:id", bazaarAdmin.remove);
+
+router.get("/achievements", achievementAdmin.list);
+router.post("/achievements", achievementAdmin.create);
+router.put("/achievements/:id", achievementAdmin.update);
+router.delete("/achievements/:id", achievementAdmin.remove);
+router.patch("/achievements/reorder", achievementAdmin.reorder);
+
+router.get("/suggestions", userCenter.listSuggestionsAdmin);
+router.patch("/suggestions/:id", userCenter.updateSuggestionAdmin);
+
+module.exports = router;

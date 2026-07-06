@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { isVerifiedUser } from '../hooks/useVerification';
-import { useVerificationPolicy } from '../hooks/useVerification';
+import { isVerifiedUser, useVerificationPolicy } from '../hooks/useVerification';
 import { useAuth } from './AuthContext';
 import VerificationPromptModal from '../components/auth/VerificationPromptModal';
 import VerifyAccountModal from '../components/auth/VerifyAccountModal';

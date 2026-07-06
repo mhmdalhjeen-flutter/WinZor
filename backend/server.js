@@ -57,17 +57,25 @@ if (process.env.TRUST_PROXY) {
     app.set("trust proxy", trustProxy);
 }
 
-const allowedOrigins = (process.env.CORS_ORIGINS || "")
+const LOCALHOST_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+const DEFAULT_DEV_ORIGINS = [5173, 5174, 5175].flatMap((port) => [
+    `http://localhost:${port}`,
+    `http://127.0.0.1:${port}`,
+]);
+
+const envOrigins = (process.env.CORS_ORIGINS || "")
     .split(",")
     .map(o => o.trim())
     .filter(Boolean);
 
-if (allowedOrigins.length === 0) {
+const allowedOrigins = [...new Set([...envOrigins, ...DEFAULT_DEV_ORIGINS])];
+
+if (envOrigins.length === 0) {
     const message = "CORS_ORIGINS غير مضبوط";
     if (isProduction) {
-        safeLog("warn", "startup_config_warning", { message, mode: "production", behavior: "browser origins rejected" });
+        safeLog("warn", "startup_config_warning", { message, mode: "production", behavior: "production frontend origins rejected unless listed in CORS_ORIGINS" });
     } else {
-        safeLog("warn", "startup_config_warning", { message, mode: "development", behavior: "open local CORS" });
+        safeLog("warn", "startup_config_warning", { message, mode: "development", behavior: "localhost origins allowed" });
     }
 }
 
@@ -89,7 +97,10 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return cb(null, true);
         }
-        if (!isProduction && allowedOrigins.length === 0) {
+        if (!isProduction && LOCALHOST_ORIGIN_RE.test(origin)) {
+            return cb(null, true);
+        }
+        if (!isProduction && envOrigins.length === 0) {
             return cb(null, true);
         }
         return cb(new Error("Origin not allowed by CORS"));

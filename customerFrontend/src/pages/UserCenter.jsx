@@ -140,7 +140,6 @@ const UserCenter = () => {
 
   const handleAvatarFile = async (file) => {
     if (!file) return;
-    if (file.size > 600_000) return showToast('الصورة كبيرة — اختر صورة أصغر');
     try {
       const avatar = await toBase64(file);
       const { data } = await api.patch('/users/me/profile', { avatar });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import SocialLoginButtons from './SocialLoginButtons';
-import { hasAnySocialProvider } from '../../services/authService';
+import { getEnabledSocialProviders } from '../../services/authService';
 
 const SocialAuthSection = ({
   googleBtnId,
@@ -10,8 +10,14 @@ const SocialAuthSection = ({
   disabled = false,
   loading = false,
   loadingLabel = 'جاري إكمال تسجيل الدخول...',
+  hideGoogle = false,
 }) => {
-  if (!hasAnySocialProvider()) return null;
+  const providers = getEnabledSocialProviders();
+  const showFacebook = providers.facebook;
+  const showTiktok = providers.tiktok;
+  const showGoogle = providers.google && !hideGoogle;
+
+  if (!showGoogle && !showFacebook && !showTiktok) return null;
 
   return (
     <div className="mt-2">
@@ -26,6 +32,7 @@ const SocialAuthSection = ({
         onSuccess={onSuccess}
         onError={onError}
         disabled={disabled || loading}
+        hideGoogle={hideGoogle}
       />
     </div>
   );

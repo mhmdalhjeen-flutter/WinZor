@@ -80,14 +80,15 @@ export const tiktokAuth = async ({ code, redirectUri }) => {
   return data;
 };
 
-/** المزودون المفعّلون عبر متغيرات VITE_* — Google معطّل في الإنتاج ما لم يُفعَّل صراحةً */
-export const getEnabledSocialProviders = () => {
+/** Google Sign-In متاح عند وجود Client ID (يُخفى تلقائياً إن غاب) */
+export const isGoogleAuthAvailable = () => {
   const googleId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
-  const googleExplicitlyOff = import.meta.env.VITE_ENABLE_GOOGLE === 'false';
-  const googleExplicitlyOn = import.meta.env.VITE_ENABLE_GOOGLE === 'true';
-  const googleEnabled = !!googleId
-    && !googleExplicitlyOff
-    && (!import.meta.env.PROD || googleExplicitlyOn);
+  return !!googleId && import.meta.env.VITE_ENABLE_GOOGLE !== 'false';
+};
+
+/** المزودون المفعّلون عبر متغيرات VITE_* */
+export const getEnabledSocialProviders = () => {
+  const googleEnabled = isGoogleAuthAvailable();
 
   return {
     google: googleEnabled,

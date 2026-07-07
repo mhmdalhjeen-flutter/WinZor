@@ -46,6 +46,7 @@ export const useSocialAuth = ({ onAuthenticated, successMessage = 'تم تسجي
 
   return {
     socialLoading,
+    startSocialLoading: () => setSocialLoading(true),
     handleSocialSuccess,
     handleSocialError,
   };

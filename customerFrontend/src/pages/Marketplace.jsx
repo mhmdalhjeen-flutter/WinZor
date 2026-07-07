@@ -55,7 +55,6 @@ const readImages = async (files, existing = []) => {
 
   const optimized = [];
   for (const file of picked) {
-    if (file.size > 600_000) throw new Error('حجم الصورة كبير — الحد 600KB');
     optimized.push(await fileToOptimizedDataUrl(file));
   }
   return [...existing, ...optimized].slice(0, 3);

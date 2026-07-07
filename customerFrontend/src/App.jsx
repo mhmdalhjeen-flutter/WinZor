@@ -1,5 +1,5 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from "./context/AuthContext";
 
 // Components
@@ -56,21 +56,15 @@ const AUTH_SHELL_ROUTES = ['/login', '/register', '/intro', '/forgot-password'];
 function AppShell() {
   const { isAuth } = useAuth();
   const location = useLocation();
-  const [isFirstVisit, setIsFirstVisit] = useState(false);
+  const isGuestIntro =
+    !isAuth && (location.pathname === '/' || location.pathname === '/intro');
   const isAuthShell = AUTH_SHELL_ROUTES.some(
     (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
-  );
+  ) || isGuestIntro;
   const showAppChrome = isAuth || !isAuthShell;
 
-  useEffect(() => {
-    const firstVisit = localStorage.getItem('firstVisit');
-    if (firstVisit === null) {
-      setIsFirstVisit(true);
-    }
-  }, []);
-
   return (
-    <Router>
+    <>
       <AuthWelcomeEffects />
       {isAuth && <NotificationListener />}
       {isAuth && <PointsFloatLayer />}
@@ -83,20 +77,12 @@ function AppShell() {
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}
-            <Route 
-              path="/" 
-              element={
-                isFirstVisit && !isAuth ? (
-                  <Navigate to="/intro" />
-                ) : isAuth ? (
-                  <Home />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              } 
+            <Route
+              path="/"
+              element={isAuth ? <Home /> : <Intro />}
             />
-            
-            <Route path="/intro" element={!isAuth ? <Intro /> : <Navigate to="/" />} />
+
+            <Route path="/intro" element={!isAuth ? <Intro /> : <Navigate to="/" replace />} />
             <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/" />} />
             <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/" />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
@@ -139,7 +125,7 @@ function AppShell() {
         {/* شريط التنقل السفلي */}
         {isAuth && <BottomNav />}
       </div>
-    </Router>
+    </>
   );
 }
 
@@ -148,12 +134,10 @@ function App() {
 
   if (maintenance.enabled) {
     return (
-      <Router>
-        <Routes>
-          <Route path="/maintenance" element={<Maintenance message={maintenance.message} />} />
-          <Route path="*" element={<Navigate to="/maintenance" replace />} />
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/maintenance" element={<Maintenance message={maintenance.message} />} />
+        <Route path="*" element={<Navigate to="/maintenance" replace />} />
+      </Routes>
     );
   }
 

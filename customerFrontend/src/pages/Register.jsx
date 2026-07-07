@@ -3,12 +3,14 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
-import { registerCustomer } from '../services/authService';
+import { registerCustomer, isGoogleAuthAvailable } from '../services/authService';
 import { getAuthErrorMessage, validateRegisterForm } from '../utils/authValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
 import AuthShell from '../components/auth/AuthShell';
 import AuthField from '../components/auth/AuthField';
 import AuthPrimaryButton from '../components/auth/AuthPrimaryButton';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import AuthOrDivider from '../components/auth/AuthOrDivider';
 import SocialAuthSection from '../components/auth/SocialAuthSection';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import {
@@ -37,6 +39,7 @@ const Register = () => {
   const { toast } = useToast();
   const refFromUrl = (searchParams.get('ref') || '').trim().toUpperCase();
   const refCode = refFromUrl || getReferralCode();
+  const showGoogle = isGoogleAuthAvailable();
 
   useEffect(() => {
     const code = refFromUrl || getReferralCode();
@@ -46,7 +49,7 @@ const Register = () => {
     navigate(`/intro?ref=${encodeURIComponent(code)}`, { replace: true });
   }, [refFromUrl, navigate]);
 
-  const { socialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
+  const { socialLoading, startSocialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
     successMessage: 'تم إنشاء حسابك بنجاح',
     onAuthenticated: () => navigate('/'),
   });
@@ -109,7 +112,7 @@ const Register = () => {
     <AuthShell
       badge={refCode ? '🎉 دعوة من صديق' : 'ابدأ رحلتك'}
       title="أنشئ حسابك"
-      subtitle="سجّل بالبريد الإلكتروني أو الهاتف مع كلمة مرور"
+      subtitle={showGoogle ? 'الطريقة الأسرع: Google — أو بالبريد/الهاتف' : 'سجّل بالبريد الإلكتروني أو الهاتف مع كلمة مرور'}
       highlights={['دقيقة واحدة', 'مجاني', 'ابدأ فوراً']}
       footer={
         <>
@@ -120,7 +123,7 @@ const Register = () => {
         </>
       }
     >
-      <form onSubmit={handleRegister} className="space-y-4" noValidate>
+      <div className="space-y-5">
         {error && (
           <div
             role="alert"
@@ -136,122 +139,139 @@ const Register = () => {
           </div>
         )}
 
-        <div className="flex items-center gap-2 rounded-2xl bg-white/5 p-3">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400/20 text-xs font-black text-amber-200">
-            1
-          </span>
-          <div>
-            <p className="text-xs font-black text-white/90">بياناتك الأساسية</p>
-            <p className="text-[10px] font-bold text-white/40">
-              اسم + {signupMode === 'email' ? 'بريد' : 'هاتف'} + كلمة مرور
-            </p>
+        <GoogleSignInButton
+          label="🚀 إنشاء حساب سريع بواسطة Google"
+          onSuccess={handleSocialSuccess}
+          onStart={startSocialLoading}
+          onError={(msg) => {
+            setError(msg);
+            handleSocialError(msg);
+          }}
+          disabled={busy}
+          loading={socialLoading}
+        />
+
+        {showGoogle && <AuthOrDivider />}
+
+        <form onSubmit={handleRegister} className="space-y-4" noValidate>
+          <div className="flex items-center gap-2 rounded-2xl bg-white/5 p-3">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400/20 text-xs font-black text-amber-200">
+              1
+            </span>
+            <div>
+              <p className="text-xs font-black text-white/90">بياناتك الأساسية</p>
+              <p className="text-[10px] font-bold text-white/40">
+                اسم + {signupMode === 'email' ? 'بريد' : 'هاتف'} + كلمة مرور
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setSignupMode('email');
-              setError('');
-            }}
-            disabled={busy}
-            className={`rounded-xl py-2.5 text-xs font-black transition ${
-              signupMode === 'email' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
-            }`}
-          >
-            بالبريد
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSignupMode('phone');
-              setError('');
-            }}
-            disabled={busy}
-            className={`rounded-xl py-2.5 text-xs font-black transition ${
-              signupMode === 'phone' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
-            }`}
-          >
-            بالهاتف
-          </button>
-        </div>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setSignupMode('email');
+                setError('');
+              }}
+              disabled={busy}
+              className={`rounded-xl py-2.5 text-xs font-black transition ${
+                signupMode === 'email' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
+              }`}
+            >
+              بالبريد
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSignupMode('phone');
+                setError('');
+              }}
+              disabled={busy}
+              className={`rounded-xl py-2.5 text-xs font-black transition ${
+                signupMode === 'phone' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
+              }`}
+            >
+              بالهاتف
+            </button>
+          </div>
 
-        <div className="space-y-3">
-          <AuthField
-            icon={User}
-            name="name"
-            type="text"
-            placeholder="الاسم الكامل"
-            value={formData.name}
-            onChange={handleChange}
-            disabled={busy}
-            required
-            minLength={2}
-          />
-
-          {signupMode === 'email' ? (
+          <div className="space-y-3">
             <AuthField
-              icon={Mail}
-              name="email"
-              type="email"
-              placeholder="البريد الإلكتروني"
-              value={formData.email}
-              onChange={handleChange}
-              autoComplete="email"
-              disabled={busy}
-              required
-            />
-          ) : (
-            <PalestinianPhoneInput
-              name="phone"
-              variant="auth"
-              value={formData.phone}
+              icon={User}
+              name="name"
+              type="text"
+              placeholder="الاسم الكامل"
+              value={formData.name}
               onChange={handleChange}
               disabled={busy}
               required
+              minLength={2}
             />
-          )}
 
-          <AuthField
-            icon={Lock}
-            name="password"
-            type="password"
-            placeholder="كلمة المرور (6 أحرف على الأقل)"
-            value={formData.password}
-            onChange={handleChange}
-            minLength={6}
-            autoComplete="new-password"
-            disabled={busy}
-            required
-          />
-        </div>
+            {signupMode === 'email' ? (
+              <AuthField
+                icon={Mail}
+                name="email"
+                type="email"
+                placeholder="البريد الإلكتروني"
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="email"
+                disabled={busy}
+                required
+              />
+            ) : (
+              <PalestinianPhoneInput
+                name="phone"
+                variant="auth"
+                value={formData.phone}
+                onChange={handleChange}
+                disabled={busy}
+                required
+              />
+            )}
 
-        <AuthPrimaryButton
-          type="submit"
-          loading={loading}
-          disabled={busy || formData.password.length < 6}
-        >
-          {!loading && (
-            <>
-              إنشاء الحساب
-              <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
-            </>
-          )}
-        </AuthPrimaryButton>
-      </form>
+            <AuthField
+              icon={Lock}
+              name="password"
+              type="password"
+              placeholder="كلمة المرور (6 أحرف على الأقل)"
+              value={formData.password}
+              onChange={handleChange}
+              minLength={6}
+              autoComplete="new-password"
+              disabled={busy}
+              required
+            />
+          </div>
 
-      <SocialAuthSection
-        googleBtnId="googleBtnRegister"
-        onSuccess={handleSocialSuccess}
-        onError={(msg) => {
-          setError(msg);
-          handleSocialError(msg);
-        }}
-        disabled={busy}
-        loading={socialLoading}
-        loadingLabel="جاري إكمال التسجيل..."
-      />
+          <AuthPrimaryButton
+            type="submit"
+            loading={loading}
+            disabled={busy || formData.password.length < 6}
+          >
+            {!loading && (
+              <>
+                إنشاء الحساب
+                <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
+              </>
+            )}
+          </AuthPrimaryButton>
+        </form>
+
+        <SocialAuthSection
+          googleBtnId="googleBtnRegister"
+          hideGoogle
+          onSuccess={handleSocialSuccess}
+          onError={(msg) => {
+            setError(msg);
+            handleSocialError(msg);
+          }}
+          disabled={busy}
+          loading={socialLoading}
+          loadingLabel="جاري إكمال التسجيل..."
+        />
+      </div>
     </AuthShell>
   );
 };

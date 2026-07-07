@@ -92,7 +92,7 @@ const loadGoogleSdk = () =>
     document.body.appendChild(script);
   });
 
-const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', disabled = false }) => {
+const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', disabled = false, hideGoogle = false }) => {
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
   onSuccessRef.current = onSuccess;
@@ -115,7 +115,7 @@ const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', dis
   }, [reportError]);
 
   useEffect(() => {
-    if (!providers.google || disabled) {
+    if (!providers.google || disabled || hideGoogle) {
       setGoogleReady(false);
       return undefined;
     }
@@ -154,7 +154,7 @@ const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', dis
     return () => {
       cancelled = true;
     };
-  }, [googleBtnId, handleGoogle, disabled, providers.google]);
+  }, [googleBtnId, handleGoogle, disabled, hideGoogle, providers.google]);
 
   useEffect(() => {
     if (!providers.facebook || disabled) return;
@@ -192,7 +192,7 @@ const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', dis
     window.location.href = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=user.info.basic&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
   };
 
-  const showGoogle = providers.google && googleReady;
+  const showGoogle = providers.google && googleReady && !hideGoogle;
   const showDivider = showGoogle || providers.facebook || providers.tiktok;
 
   if (!showDivider) return null;

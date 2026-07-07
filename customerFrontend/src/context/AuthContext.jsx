@@ -6,11 +6,15 @@ import { logout as apiLogout } from '../services/authService';
 
 const AuthContext = createContext();
 
+function isValidToken(value) {
+  return typeof value === 'string' && value.length > 0 && value !== 'undefined';
+}
+
 function readStoredAuth() {
   try {
     const savedUser = localStorage.getItem('user');
     const savedToken = localStorage.getItem('token');
-    if (savedUser && savedToken) {
+    if (savedUser && isValidToken(savedToken)) {
       return { user: JSON.parse(savedUser), token: savedToken };
     }
   } catch {
@@ -54,8 +58,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback((userData, tokenData, session = {}) => {
-    setUser(userData);
-    setToken(tokenData);
+    if (!userData || !isValidToken(tokenData)) return;
+
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', tokenData);
     if (session.refreshToken) {
@@ -64,6 +68,9 @@ export const AuthProvider = ({ children }) => {
     if (session.deviceId) {
       setDeviceId(session.deviceId);
     }
+
+    setUser(userData);
+    setToken(tokenData);
   }, []);
 
   const updateUser = useCallback((patch, options = {}) => {
@@ -103,7 +110,7 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       updateUser,
-      isAuth: !!token,
+      isAuth: isValidToken(token) || isValidToken(localStorage.getItem('token')),
       role: user?.role,
     }),
     [user, token, login, logout, updateUser]

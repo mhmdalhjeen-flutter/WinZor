@@ -7,30 +7,13 @@ function toObjectId(userId) {
   return new mongoose.Types.ObjectId(userId);
 }
 
-/** Atomic push to usedBy + increment currentUses + deactivate at maxUses */
-function usageUpdatePipeline(userId) {
+/** Atomic push to usedBy + increment currentUses */
+function usageUpdate(userId) {
   const uid = toObjectId(userId);
-  const usedAt = new Date();
-  return [
-    {
-      $set: {
-        usedBy: {
-          $concatArrays: [
-            { $ifNull: ["$usedBy", []] },
-            [{ user: uid, usedAt }],
-          ],
-        },
-        currentUses: { $add: ["$currentUses", 1] },
-        isActive: {
-          $cond: {
-            if: { $gte: [{ $add: ["$currentUses", 1] }, "$maxUses"] },
-            then: false,
-            else: "$isActive",
-          },
-        },
-      },
-    },
-  ];
+  return {
+    $push: { usedBy: { user: uid, usedAt: new Date() } },
+    $inc: { currentUses: 1 },
+  };
 }
 
 function promoRedeemFilter(code, userId) {
@@ -72,33 +55,12 @@ function activationCodeFilter(code) {
   };
 }
 
-function rollbackUsagePipeline(userId) {
+function rollbackUsage(userId) {
   const uid = toObjectId(userId);
-  return [
-    {
-      $set: {
-        usedBy: {
-          $filter: {
-            input: { $ifNull: ["$usedBy", []] },
-            cond: { $ne: ["$$this.user", uid] },
-          },
-        },
-        currentUses: { $max: [0, { $subtract: ["$currentUses", 1] }] },
-        isActive: {
-          $cond: {
-            if: {
-              $lt: [
-                { $max: [0, { $subtract: ["$currentUses", 1] }] },
-                "$maxUses",
-              ],
-            },
-            then: true,
-            else: "$isActive",
-          },
-        },
-      },
-    },
-  ];
+  return {
+    $pull: { usedBy: { user: uid } },
+    $inc: { currentUses: -1 },
+  };
 }
 
 function claimUpdateOptions(session) {
@@ -107,37 +69,65 @@ function claimUpdateOptions(session) {
   return opts;
 }
 
-/** Returns claimed promo doc or null if already used / exhausted / inactive */
-async function atomicClaimPromo(code, userId, session) {
-  return PromoCode.findOneAndUpdate(
-    promoRedeemFilter(code, userId),
-    usageUpdatePipeline(userId),
-    claimUpdateOptions(session)
+/** Claim usage; deactivates on the final allowed use */
+async function claimCodeUsage(Model, filter, userId, session) {
+  const update = usageUpdate(userId);
+  const opts = claimUpdateOptions(session);
+  const lastUseFilter = {
+    ...filter,
+    $expr: { $eq: [{ $add: ["$currentUses", 1] }, "$maxUses"] },
+  };
+
+  return (
+    (await Model.findOneAndUpdate(
+      lastUseFilter,
+      { ...update, $set: { isActive: false } },
+      opts
+    )) || (await Model.findOneAndUpdate(filter, update, opts))
   );
 }
 
+/** Roll back a claim; reactivates when uses drop below maxUses */
+async function rollbackCodeUsage(Model, code, userId, session) {
+  const uid = toObjectId(userId);
+  const filter = { code, "usedBy.user": uid };
+  const update = rollbackUsage(userId);
+  const opts = claimUpdateOptions(session);
+  const reactivateFilter = {
+    ...filter,
+    isActive: false,
+    $expr: { $lt: [{ $subtract: ["$currentUses", 1] }, "$maxUses"] },
+  };
+
+  return (
+    (await Model.findOneAndUpdate(
+      reactivateFilter,
+      { ...update, $set: { isActive: true } },
+      opts
+    )) || (await Model.findOneAndUpdate(filter, update, opts))
+  );
+}
+
+/** Returns claimed promo doc or null if already used / exhausted / inactive */
+async function atomicClaimPromo(code, userId, session) {
+  return claimCodeUsage(PromoCode, promoRedeemFilter(code, userId), userId, session);
+}
+
 async function atomicClaimRegistrationPromo(code, userId, session) {
-  return PromoCode.findOneAndUpdate(
+  return claimCodeUsage(
+    PromoCode,
     registrationPromoFilter(code, userId),
-    usageUpdatePipeline(userId),
-    claimUpdateOptions(session)
+    userId,
+    session
   );
 }
 
 async function atomicClaimAdminCode(code, userId, session) {
-  return AdminCode.findOneAndUpdate(
-    adminCodeFilter(code, userId),
-    usageUpdatePipeline(userId),
-    claimUpdateOptions(session)
-  );
+  return claimCodeUsage(AdminCode, adminCodeFilter(code, userId), userId, session);
 }
 
 async function rollbackPromoClaim(code, userId, session) {
-  return PromoCode.findOneAndUpdate(
-    { code, "usedBy.user": toObjectId(userId) },
-    rollbackUsagePipeline(userId),
-    claimUpdateOptions(session)
-  );
+  return rollbackCodeUsage(PromoCode, code, userId, session);
 }
 
 async function rollbackRegistrationPromoClaim(code, userId, session) {
@@ -145,11 +135,7 @@ async function rollbackRegistrationPromoClaim(code, userId, session) {
 }
 
 async function rollbackAdminCodeClaim(code, userId, session) {
-  return AdminCode.findOneAndUpdate(
-    { code, "usedBy.user": toObjectId(userId) },
-    rollbackUsagePipeline(userId),
-    claimUpdateOptions(session)
-  );
+  return rollbackCodeUsage(AdminCode, code, userId, session);
 }
 
 /** Returns pre-update doc (includes role) or null */

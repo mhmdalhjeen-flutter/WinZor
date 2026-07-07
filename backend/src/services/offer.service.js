@@ -196,7 +196,7 @@ async function getMyOffers(ownerId, query = {}) {
   if (limit) dbQuery = dbQuery.limit(limit);
 
   const offers = await dbQuery.select(LIST_OFFER_SELECT).lean();
-  return attachPricingList(offers, { forList: true });
+  return attachPricingList(offers, { forList: false });
 }
 
 async function getDashboardOffers(user, query = {}) {
@@ -239,7 +239,7 @@ async function getDashboardOffers(user, query = {}) {
   }
 
   return {
-    ownOffers: attachPricingList(ownOffers, { forList: true }),
+    ownOffers: attachPricingList(ownOffers, { forList: false }),
     networkOffers: attachPricingList(networkOffers, { forList: true }),
     myStoreId: myStore?._id || null,
   };

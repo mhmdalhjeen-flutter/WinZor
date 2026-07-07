@@ -1,6 +1,6 @@
 const User = require("../models/user");
 const {
-  USER_SENSITIVE_SELECT,
+  AUTH_USER_SELECT,
   isUserBlocked,
   blockedAuthMessage,
 } = require("../utils/userSanitize.util");
@@ -15,7 +15,7 @@ module.exports = async (req, res, next) => {
     }
 
     const decoded = tokenService.verifyJwt(token);
-    const user = await User.findById(decoded.id).select(USER_SENSITIVE_SELECT);
+    const user = await User.findById(decoded.id).select(AUTH_USER_SELECT);
     if (!user) {
       return res.status(401).json({ message: "User not found", code: "TOKEN_INVALID" });
     }

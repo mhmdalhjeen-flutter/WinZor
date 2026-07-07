@@ -3,6 +3,9 @@ const { isUserVerified } = require("./verification.util");
 const USER_SENSITIVE_SELECT =
   "-password -passwordResetCode -passwordResetExpires -verifyEmailCode -verifyEmailLinkToken -verifyEmailExpires -verifyPhoneCode -verifyPhoneExpires -phoneVerifyCode -phoneVerifyExpires -sensitivePasswordHash -tokenVersion -refreshTokenVersion -sessions -googleId -facebookId -tiktokId -phonePending";
 
+/** For auth middleware only — re-include session fields excluded from USER_SENSITIVE_SELECT */
+const AUTH_USER_SELECT = `${USER_SENSITIVE_SELECT} +tokenVersion +refreshTokenVersion +sessions`;
+
 const SENSITIVE_USER_FIELDS = [
   "password",
   "passwordResetCode",
@@ -66,6 +69,7 @@ function sanitizeChatParticipant(participant) {
 
 module.exports = {
   USER_SENSITIVE_SELECT,
+  AUTH_USER_SELECT,
   SENSITIVE_USER_FIELDS,
   isUserBlocked,
   blockedAuthMessage,

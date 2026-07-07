@@ -1,6 +1,6 @@
 const User = require("../models/user");
 const {
-  USER_SENSITIVE_SELECT,
+  AUTH_USER_SELECT,
   isUserBlocked,
   blockedAuthMessage,
 } = require("../utils/userSanitize.util");
@@ -28,7 +28,7 @@ const authMiddleware = async (req, res, next) => {
 
     let user = await authSessionCache.get(decoded.id, decoded.tv);
     if (!user) {
-      user = await User.findById(decoded.id).select(USER_SENSITIVE_SELECT);
+      user = await User.findById(decoded.id).select(AUTH_USER_SELECT);
       if (user) {
         authSessionCache.set(decoded.id, user).catch(() => {});
       }

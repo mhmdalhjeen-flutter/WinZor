@@ -1,5 +1,5 @@
 const User = require("../models/user");
-const { USER_SENSITIVE_SELECT } = require("../utils/userSanitize.util");
+const { AUTH_USER_SELECT } = require("../utils/userSanitize.util");
 const { isRedisEnabled, getRedis, prefixKey } = require("../config/redis");
 
 const AUTH_TTL_SEC = Number(process.env.AUTH_SESSION_CACHE_TTL_SEC) || 60;
@@ -97,7 +97,7 @@ async function invalidate(userId) {
 }
 
 async function loadFromDb(userId) {
-  const user = await User.findById(userId).select(USER_SENSITIVE_SELECT);
+  const user = await User.findById(userId).select(AUTH_USER_SELECT);
   if (user) await set(userId, user);
   return user;
 }

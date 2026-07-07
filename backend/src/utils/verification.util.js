@@ -3,6 +3,13 @@ const crypto = require("crypto");
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
+/**
+ * FROZEN — customer account verification is intentionally disabled for production.
+ * Keeps all verification code in place but gates behave as if verification does not exist.
+ * Re-enable only with explicit product approval (set to false here and in customerFrontend verificationPolicy.js).
+ */
+const VERIFICATION_FEATURE_FROZEN = true;
+
 function isEmailVerificationAvailable() {
   return require("../services/email.service").isEmailConfigured();
 }
@@ -11,12 +18,20 @@ function isPhoneVerificationAvailable() {
   return require("../services/sms.service").isSmsConfigured();
 }
 
-/** When neither SMTP nor SMS is configured, verification gates are disabled. */
+/** When frozen or neither SMTP nor SMS is configured, verification gates are disabled. */
 function isAccountVerificationEnforced() {
+  if (VERIFICATION_FEATURE_FROZEN) return false;
   return isEmailVerificationAvailable() || isPhoneVerificationAvailable();
 }
 
 function getVerificationPolicy() {
+  if (VERIFICATION_FEATURE_FROZEN) {
+    return {
+      enforced: false,
+      emailAvailable: false,
+      phoneAvailable: false,
+    };
+  }
   const enforced = isAccountVerificationEnforced();
   return {
     enforced,
@@ -26,6 +41,7 @@ function getVerificationPolicy() {
 }
 
 function isUserVerified(user) {
+  if (VERIFICATION_FEATURE_FROZEN) return true;
   if (!user) return false;
   if (!isAccountVerificationEnforced()) return true;
   if (user.isVerified) return true;
@@ -83,6 +99,7 @@ async function awardVerificationBonus(user) {
 }
 
 module.exports = {
+  VERIFICATION_FEATURE_FROZEN,
   VERIFICATION_CODE_TTL_MS,
   RESEND_COOLDOWN_MS,
   isEmailVerificationAvailable,

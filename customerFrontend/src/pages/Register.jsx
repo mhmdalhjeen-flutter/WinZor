@@ -51,7 +51,10 @@ const Register = () => {
 
   const { socialLoading, startSocialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
     successMessage: 'تم إنشاء حسابك بنجاح',
-    onAuthenticated: () => navigate('/'),
+    onAuthenticated: () => {
+      clearReferralSession();
+      navigate('/');
+    },
   });
 
   const handleChange = (e) => {

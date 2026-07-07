@@ -24,7 +24,7 @@ const POPULATE_PUBLIC = [
 ];
 
 const BAZAAR_LIST_SELECT =
-  "seller title condition price description freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
+  "seller title condition price description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
 
 const normalizeKeywords = (raw) => {
   if (!raw) return [];
@@ -92,8 +92,13 @@ const formatListing = (doc, userId) => {
 
 const formatListingForBrowse = (doc, userId) => {
   const obj = formatListing(doc, userId);
+  const imgs = obj.images;
+  if (Array.isArray(imgs) && imgs.length) {
+    const idx = Math.min(obj.mainImageIndex || 0, imgs.length - 1);
+    obj.mainImage = imgs[idx];
+  }
   delete obj.images;
-  obj.hasImages = true;
+  obj.hasImages = !!(Array.isArray(imgs) && imgs.length);
   return obj;
 };
 

@@ -464,7 +464,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const googleAuth = async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, referralCode } = req.body;
 
     if (!credential) {
       return res.status(400).json({ message: "No credential provided" });
@@ -499,6 +499,12 @@ const googleAuth = async (req, res) => {
     }
 
     if (!user) {
+      const cleanReferral = referralCode
+        ? cleanString(referralCode, { field: "referralCode", max: 20 })
+        : undefined;
+      const { resolveReferrer } = require("../services/referral.service");
+      const referrer = await resolveReferrer(cleanReferral);
+
       user = await User.create({
         name,
         email,
@@ -509,6 +515,7 @@ const googleAuth = async (req, res) => {
         password: null,
         emailVerified: !!payload.email_verified,
         isVerified: !!payload.email_verified,
+        referredBy: referrer?._id || null,
       });
       if (payload.email_verified) {
         await awardVerificationBonus(user);

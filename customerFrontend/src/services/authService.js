@@ -1,6 +1,7 @@
 import api from '../api/axios';
 import { normalizePhone } from '../utils/phoneValidation';
 import { getDeviceId, clearDeviceId } from '../utils/deviceId';
+import { getReferralCode } from '../utils/referralStorage';
 
 export const loginCustomer = async (identifier, password) => {
   const { data } = await api.post('/auth/login', {
@@ -50,10 +51,14 @@ export const logout = async () => {
 };
 
 export const googleAuth = async (credential) => {
-  const { data } = await api.post('/auth/google', {
+  const referralCode = getReferralCode();
+  const payload = {
     credential,
     deviceId: getDeviceId(),
-  }, {
+  };
+  if (referralCode?.trim()) payload.referralCode = referralCode.trim();
+
+  const { data } = await api.post('/auth/google', payload, {
     headers: { 'x-device-id': getDeviceId() },
   });
   return data;

@@ -11,6 +11,17 @@ import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimati
 import ReferralCardsModal from './ReferralCardsModal';
 
 const FloatingCodeButton = () => {
+  const [viewerOpen, setViewerOpen] = useState(
+    () => typeof document !== 'undefined' && document.body.classList.contains('offer-viewer-open')
+  );
+
+  useEffect(() => {
+    const sync = () => setViewerOpen(document.body.classList.contains('offer-viewer-open'));
+    const obs = new MutationObserver(sync);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
   const [isOpen, setIsOpen] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -131,6 +142,8 @@ const FloatingCodeButton = () => {
       setLoading(false);
     }
   };
+
+  if (viewerOpen) return null;
 
   return (
     <>

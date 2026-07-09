@@ -220,14 +220,17 @@ const Home = () => {
 
           {!showCategoryReels && items.length > 0 && (
             <>
-              <div className="marketplace-grid">
-                {items.map((offer, idx) => (
-                  <MarketplaceOfferCard
-                    key={offer._id}
-                    offer={offer}
-                    onClick={() => openGridViewer(offer, idx)}
-                  />
-                ))}
+              <div className="category-reel__track-wrap">
+                <div className="category-reel__track horizontal-swipe touch-pan-x">
+                  {items.map((offer, idx) => (
+                    <div key={offer._id} className="category-reel__slide">
+                      <MarketplaceOfferCard
+                        offer={offer}
+                        onClick={() => openGridViewer(offer, idx)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div ref={sentinelRef} className="h-10 flex items-center justify-center">

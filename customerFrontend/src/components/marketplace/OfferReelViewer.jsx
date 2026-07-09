@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  X, Heart, Bookmark, MessageCircle, Share2, Eye, ShoppingCart,
+  X, Heart, MessageCircle, Share2, Eye, ShoppingCart,
   Check, Loader2, ImageOff, ChevronUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import { logActivity, toggleFavorite } from '../../utils/activity';
+import { logActivity } from '../../utils/activity';
 import { recordOfferView, recordOfferShare } from '../../utils/offerAnalytics';
 import { useVerificationGate } from '../../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../../lib/queryClient';
@@ -15,20 +15,51 @@ import OfferPriceDisplay from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
 import SwipeTutorial from './SwipeTutorial';
 
+function OfferSlideImage({ src, alt, isActive }) {
+  if (!src) {
+    return (
+      <div className="offer-reel-slide__placeholder">
+        <ImageOff size={48} />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        className="offer-reel-slide__bg-blur"
+        loading={isActive ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+      <img
+        src={src}
+        alt={alt}
+        className="offer-reel-slide__image"
+        loading={isActive ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    </>
+  );
+}
+
 function OfferSlide({
   offer,
   isActive,
   favorited,
   onToggleFavorite,
   onShare,
+  onChat,
   viewCount,
 }) {
-  const navigate = useNavigate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  const [chatBusy, setChatBusy] = useState(false);
 
   const store = offer?.store;
   const displayViews = viewCount ?? offer?.views ?? 0;
@@ -57,25 +88,19 @@ function OfferSlide({
     }
   };
 
-  const handleBuy = () => {
+  const handleOrder = () => {
     if (adding || added) return;
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 
-  const handleChat = () => {
-    const ownerId = store?.owner?._id || store?.owner;
-    if (!ownerId) return;
-    localStorage.setItem('chatContext', JSON.stringify({
-      recipientId: ownerId,
-      context: {
-        itemId: offer._id,
-        itemType: 'Offer',
-        itemName: offer.title,
-        itemImage: offer.image || '',
-        itemUrl: `/offer/${offer._id}`,
-      },
-    }));
-    navigate('/chat');
+  const handleChat = async () => {
+    if (chatBusy) return;
+    setChatBusy(true);
+    try {
+      await onChat?.(offer);
+    } finally {
+      setChatBusy(false);
+    }
   };
 
   const handleShare = async () => {
@@ -89,10 +114,7 @@ function OfferSlide({
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
       }
-      const result = await onShare?.(offer._id);
-      if (result?.shareCount != null) {
-        /* parent updates count */
-      }
+      await onShare?.(offer._id);
     } catch {
       /* user cancelled share */
     } finally {
@@ -107,33 +129,39 @@ function OfferSlide({
       aria-hidden={!isActive}
     >
       <div className="offer-reel-slide__media">
-        {offer.image ? (
-          <img
-            src={offer.image}
-            alt={offer.title}
-            className="offer-reel-slide__image"
-            loading={isActive ? 'eager' : 'lazy'}
-            decoding="async"
-          />
-        ) : (
-          <div className="offer-reel-slide__placeholder">
-            <ImageOff size={48} />
-          </div>
-        )}
+        <OfferSlideImage src={offer.image} alt={offer.title} isActive={isActive} />
         <div className="offer-reel-slide__gradient" aria-hidden />
       </div>
 
       <div className="offer-reel-slide__content">
-        <div className="offer-reel-slide__meta">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
+        <div className="offer-reel-slide__store-header">
+          <div className="offer-reel-slide__store-info">
             {store?.logo && (
               <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
             )}
-            <div>
+            <div className="offer-reel-slide__store-text">
               <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
               {store?.isVerifiedStore && <VerifiedBadge className="mt-1" />}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleOrder}
+            disabled={adding}
+            className="offer-reel-slide__order-btn"
+          >
+            {adding ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : added ? (
+              <Check size={18} />
+            ) : (
+              <ShoppingCart size={18} />
+            )}
+            <span>{added ? 'تم' : 'اطلب الآن'}</span>
+          </button>
+        </div>
+
+        <div className="offer-reel-slide__meta">
           <span className="offer-reel-slide__discount-badge">{getOfferBadge(offer)}</span>
           <h2 className="offer-reel-slide__title">{offer.title}</h2>
           <OfferPriceDisplay
@@ -156,34 +184,12 @@ function OfferSlide({
           onClick={handleFav}
           fill={favorited}
         />
-        <ActionBtn
-          icon={Bookmark}
-          label="حفظ"
-          active={favorited}
-          onClick={handleFav}
-          fill={favorited}
-        />
-        <ActionBtn icon={MessageCircle} label="محادثة" onClick={handleChat} />
+        <ActionBtn icon={MessageCircle} label="محادثة" onClick={handleChat} busy={chatBusy} />
         <ActionBtn icon={Share2} label="مشاركة" onClick={handleShare} busy={shareBusy} />
         <div className="offer-reel-actions__stat" aria-label={`${displayViews} مشاهدة`}>
           <Eye size={22} />
           <span>{formatCount(displayViews)}</span>
         </div>
-        <button
-          type="button"
-          onClick={handleBuy}
-          disabled={adding}
-          className="offer-reel-actions__buy"
-        >
-          {adding ? (
-            <Loader2 size={22} className="animate-spin" />
-          ) : added ? (
-            <Check size={22} />
-          ) : (
-            <ShoppingCart size={22} />
-          )}
-          <span>{added ? 'تم' : 'اشتري الآن'}</span>
-        </button>
       </aside>
     </section>
   );
@@ -211,52 +217,114 @@ function formatCount(n) {
   return String(v);
 }
 
+function CategoryTransitionOverlay({ message, visible }) {
+  if (!visible || !message) return null;
+  return (
+    <div className="offer-reel-category-transition" role="status" aria-live="polite">
+      <div className="offer-reel-category-transition__pill">{message}</div>
+    </div>
+  );
+}
+
 export default function OfferReelViewer({
   offers = [],
+  boundaries = [],
   initialIndex = 0,
+  multiCategory = false,
   onClose,
   favoriteIds = new Set(),
   onToggleFavorite,
 }) {
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [viewCounts, setViewCounts] = useState({});
   const [showTutorial, setShowTutorial] = useState(true);
+  const [categoryTransition, setCategoryTransition] = useState(null);
   const viewedRef = useRef(new Set());
+  const prevIndexRef = useRef(initialIndex);
+  const historyPushedRef = useRef(false);
+  const closingRef = useRef(false);
   const reducedMotion = useRef(
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 
   const preloadRange = useCallback((index) => {
-    const indices = [index - 1, index, index + 1].filter(
-      (i) => i >= 0 && i < offers.length
-    );
-    indices.forEach((i) => {
-      const img = offers[i]?.image;
-      if (img) {
-        const el = new Image();
-        el.src = img;
-      }
-    });
+    [index - 1, index, index + 1]
+      .filter((i) => i >= 0 && i < offers.length)
+      .forEach((i) => {
+        const img = offers[i]?.image;
+        if (img) {
+          const el = new Image();
+          el.src = img;
+        }
+      });
   }, [offers]);
+
+  const resolveOwnerAndOpenChat = useCallback(async (offer) => {
+    let ownerId = offer?.store?.owner?._id || offer?.store?.owner;
+
+    if (!ownerId) {
+      const { data } = await api.get(`/offers/${offer._id}`);
+      ownerId = data?.offer?.store?.owner?._id || data?.offer?.store?.owner;
+    }
+
+    if (!ownerId) return;
+
+    localStorage.setItem('chatContext', JSON.stringify({
+      recipientId: ownerId,
+      context: {
+        itemId: offer._id,
+        itemType: 'Offer',
+        itemName: offer.title,
+        itemImage: offer.image || '',
+        itemUrl: `/offer/${offer._id}`,
+      },
+    }));
+    navigate('/chat');
+  }, [navigate]);
+
+  const closeViewer = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    document.body.classList.remove('offer-viewer-open');
+    onClose?.();
+  }, [onClose]);
+
+  const handleCloseClick = useCallback(() => {
+    if (historyPushedRef.current) {
+      window.history.back();
+    } else {
+      closeViewer();
+    }
+  }, [closeViewer]);
+
+  useEffect(() => {
+    document.body.classList.add('offer-viewer-open');
+    window.history.pushState({ offerViewer: true }, '');
+    historyPushedRef.current = true;
+
+    const onPopState = () => {
+      historyPushedRef.current = false;
+      closeViewer();
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      document.body.classList.remove('offer-viewer-open');
+    };
+  }, [closeViewer]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !offers.length) return;
 
-    const scrollToIndex = (idx) => {
-      const slide = el.querySelector(`[data-offer-id="${offers[idx]?._id}"]`);
-      if (slide) {
-        if (reducedMotion.current) {
-          el.scrollTop = slide.offsetTop;
-        } else {
-          slide.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-    };
-
-    scrollToIndex(initialIndex);
+    const slide = el.querySelector(`[data-offer-id="${offers[initialIndex]?._id}"]`);
+    if (slide) {
+      el.scrollTop = slide.offsetTop;
+    }
     preloadRange(initialIndex);
   }, [initialIndex, offers, preloadRange]);
 
@@ -267,7 +335,6 @@ export default function OfferReelViewer({
     const onScroll = () => {
       const slides = el.querySelectorAll('.offer-reel-slide');
       const scrollTop = el.scrollTop;
-      const vh = el.clientHeight;
       let best = 0;
       let bestDist = Infinity;
 
@@ -288,6 +355,28 @@ export default function OfferReelViewer({
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, [activeIndex, preloadRange]);
+
+  useEffect(() => {
+    if (!multiCategory || offers.length < 2) return;
+
+    const prev = prevIndexRef.current;
+    if (prev === activeIndex) return;
+
+    const prevOffer = offers[prev];
+    const currOffer = offers[activeIndex];
+    const prevCat = prevOffer?.__categoryId ?? prevOffer?.__categoryName;
+    const currCat = currOffer?.__categoryId ?? currOffer?.__categoryName;
+
+    if (prevCat && currCat && prevCat !== currCat && activeIndex > prev) {
+      const name = currOffer?.__categoryName || 'القسم التالي';
+      setCategoryTransition(`الانتقال إلى قسم ${name}`);
+      const timer = setTimeout(() => setCategoryTransition(null), 2200);
+      prevIndexRef.current = activeIndex;
+      return () => clearTimeout(timer);
+    }
+
+    prevIndexRef.current = activeIndex;
+  }, [activeIndex, offers, multiCategory]);
 
   useEffect(() => {
     const offer = offers[activeIndex];
@@ -315,13 +404,7 @@ export default function OfferReelViewer({
     return () => clearTimeout(timer);
   }, [activeIndex, offers]);
 
-  const handleShare = async (offerId) => {
-    return recordOfferShare(offerId);
-  };
-
-  const handleToggleFav = async (offer) => {
-    await onToggleFavorite?.(offer);
-  };
+  const handleShare = (offerId) => recordOfferShare(offerId);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -333,7 +416,7 @@ export default function OfferReelViewer({
     <div className="offer-reel-viewer" role="dialog" aria-modal="true" aria-label="عارض العروض">
       <button
         type="button"
-        onClick={onClose}
+        onClick={handleCloseClick}
         className="offer-reel-viewer__close"
         aria-label="إغلاق"
       >
@@ -342,18 +425,18 @@ export default function OfferReelViewer({
 
       {showTutorial && <SwipeTutorial onComplete={() => setShowTutorial(false)} />}
 
-      <div
-        ref={containerRef}
-        className="offer-reel-viewer__scroll"
-      >
+      <CategoryTransitionOverlay message={categoryTransition} visible={!!categoryTransition} />
+
+      <div ref={containerRef} className="offer-reel-viewer__scroll">
         {offers.map((offer, i) => (
           <OfferSlide
             key={offer._id}
             offer={offer}
             isActive={i === activeIndex}
             favorited={favoriteIds.has(String(offer._id))}
-            onToggleFavorite={handleToggleFav}
+            onToggleFavorite={onToggleFavorite}
             onShare={handleShare}
+            onChat={resolveOwnerAndOpenChat}
             viewCount={viewCounts[String(offer._id)] ?? offer.views}
           />
         ))}

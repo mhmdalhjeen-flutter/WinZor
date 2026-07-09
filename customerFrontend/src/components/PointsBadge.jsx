@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins } from 'lucide-react';
 
 function useAnimatedCounter(target, duration = 650) {
   const [display, setDisplay] = useState(target);
@@ -35,7 +34,7 @@ function useAnimatedCounter(target, duration = 650) {
 }
 
 /**
- * شارة النقاط — العنصر الأبرز في الـ Header.
+ * Premium compact rewards badge — logo, brand, English points.
  */
 export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const displayPoints = useAnimatedCounter(points);
@@ -47,93 +46,51 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       type="button"
       onClick={onClick}
       id="points-header-anchor"
-      aria-label={`${points} نقطة`}
+      aria-label={`${displayPoints.toLocaleString('en-US')} points`}
       animate={
         isUp
-          ? {
-              scale: [1, 1.14, 1],
-              boxShadow: [
-                '0 0 12px rgba(251,191,36,0.45), 0 4px 20px rgba(245,158,11,0.35)',
-                '0 0 28px rgba(252,211,77,0.95), 0 8px 32px rgba(245,158,11,0.55)',
-                '0 0 14px rgba(251,191,36,0.5), 0 4px 22px rgba(245,158,11,0.4)',
-              ],
-            }
+          ? { scale: [1, 1.06, 1] }
           : isDown
-            ? {
-                scale: [1, 0.96, 1],
-                boxShadow: [
-                  '0 0 10px rgba(251,191,36,0.35)',
-                  '0 0 16px rgba(239,68,68,0.35)',
-                  '0 0 10px rgba(251,191,36,0.35)',
-                ],
-              }
-            : {
-                boxShadow: [
-                  '0 0 10px rgba(251,191,36,0.35), 0 4px 18px rgba(245,158,11,0.25)',
-                  '0 0 18px rgba(252,211,77,0.55), 0 4px 22px rgba(245,158,11,0.35)',
-                  '0 0 10px rgba(251,191,36,0.35), 0 4px 18px rgba(245,158,11,0.25)',
-                ],
-              }
+            ? { scale: [1, 0.97, 1] }
+            : {}
       }
-      transition={{
-        duration: isUp || isDown ? 0.75 : 2.8,
-        repeat: isUp || isDown ? 0 : Infinity,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      whileTap={{ scale: 0.94 }}
-      className="relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-2xl border border-amber-300/50 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 shrink-0 overflow-hidden"
+      transition={{ duration: 0.5 }}
+      whileTap={{ scale: 0.96 }}
+      className="relative flex items-center gap-2 px-2.5 py-1 rounded-xl shrink-0 overflow-hidden border border-white/40 shadow-sm home-rewards-badge"
     >
       <span
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/25 via-transparent to-white/10 opacity-60"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 opacity-100"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/5"
         aria-hidden
       />
 
-      <motion.span
-        animate={isUp ? { rotate: [0, -12, 12, 0], scale: [1, 1.15, 1] } : {}}
-        transition={{ duration: 0.6 }}
-        className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-amber-950/15 border border-amber-950/10"
-      >
-        <Coins size={20} className="text-amber-950 drop-shadow-sm" strokeWidth={2.25} />
-      </motion.span>
+      <span className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 shrink-0">
+        <span className="text-white text-[9px] font-black tracking-tight">WZ</span>
+      </span>
 
-      <div className="relative flex flex-col items-start leading-none min-w-[2.5rem]">
-        <span className="text-[9px] font-black text-amber-950/65 tracking-wide">نقاطي</span>
+      <div className="relative flex flex-col items-start leading-none min-w-0">
+        <span className="text-[10px] font-black text-white tracking-tight truncate max-w-[5rem] sm:max-w-none">
+          Winzor
+        </span>
+        <span className="text-[9px] font-semibold text-white/90 mt-0.5">⭐ Rewards</span>
         <AnimatePresence mode="popLayout">
           <motion.span
             key={displayPoints}
-            initial={{ y: isUp ? 8 : isDown ? -6 : 0, opacity: 0.6 }}
+            initial={{ y: isUp ? 4 : isDown ? -4 : 0, opacity: 0.5 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: isUp ? -8 : 6, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className={`text-xl font-black tabular-nums tracking-tight ${
-              isDown ? 'text-red-950/90' : 'text-amber-950'
+            exit={{ y: isUp ? -4 : 4, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={`text-[11px] font-black tabular-nums tracking-tight mt-0.5 ${
+              isDown ? 'text-red-100' : 'text-white'
             }`}
           >
-            {displayPoints.toLocaleString('ar-EG')}
+            {displayPoints.toLocaleString('en-US')} points
           </motion.span>
         </AnimatePresence>
       </div>
-
-      {isUp && (
-        <motion.span
-          initial={{ opacity: 0, y: 4, scale: 0.8 }}
-          animate={{ opacity: [0, 1, 0], y: -10 }}
-          transition={{ duration: 0.9 }}
-          className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px] font-black text-green-700 pointer-events-none"
-        >
-          +
-        </motion.span>
-      )}
-      {isDown && (
-        <motion.span
-          initial={{ opacity: 0, y: -4, scale: 0.8 }}
-          animate={{ opacity: [0, 1, 0], y: 10 }}
-          transition={{ duration: 0.9 }}
-          className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px] font-black text-red-700 pointer-events-none"
-        >
-          −
-        </motion.span>
-      )}
     </motion.button>
   );
 }

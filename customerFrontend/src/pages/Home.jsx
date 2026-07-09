@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Sparkles } from 'lucide-react';
-import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
-import CategoryFilter from '../components/CategoryFilter';
-import QuickSearchPanel from '../components/QuickSearchPanel';
-import MarketplaceOfferCard from '../components/marketplace/MarketplaceOfferCard';
-import OfferRailTrack from '../components/marketplace/OfferRailTrack';
-import CategoryReels from '../components/marketplace/CategoryReels';
-import OfferReelViewer from '../components/marketplace/OfferReelViewer';
-import { useCategoryTree } from '../hooks/useCategories';
-import { useRegionTree } from '../hooks/useRegionTree';
 import { toggleFavorite } from '../utils/activity';
 import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
+import HomeHero from '../components/home/HomeHero';
+import HomeSearchCards from '../components/home/HomeSearchCards';
+import ProgressiveCategoryReels from '../components/home/ProgressiveCategoryReels';
+import MarketplaceOfferCard from '../components/marketplace/MarketplaceOfferCard';
+import OfferRailTrack from '../components/marketplace/OfferRailTrack';
+import OfferReelViewer from '../components/marketplace/OfferReelViewer';
+import { useCategoryTree } from '../hooks/useCategories';
+import { useRegionTree } from '../hooks/useRegionTree';
 
-const CompetitionCard = lazy(() => import('../components/CompetitionCard'));
+const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
 
 const PAGE_SIZE = 12;
 
@@ -28,8 +28,8 @@ async function fetchFavoritesPayload() {
 }
 
 const Home = () => {
-  const [categoryPath, setCategoryPath] = useState([]);
   const [regionPath, setRegionPath] = useState([]);
+  const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
   const [gridViewer, setGridViewer] = useState(null);
   const sentinelRef = useRef(null);
@@ -39,6 +39,7 @@ const Home = () => {
     : null;
   const selectedRegionId = getEffectiveRegionId(regionPath);
   const feedKey = { effectiveCategoryId, selectedRegionId };
+  const showCategoryReels = !effectiveCategoryId;
 
   const {
     data: categories = [],
@@ -53,14 +54,6 @@ const Home = () => {
     isError: regionsError,
     refetch: refetchRegions,
   } = useRegionTree();
-
-  const { data: favoritesData } = useQuery({
-    queryKey: queryKeys.favorites,
-    queryFn: fetchFavoritesPayload,
-    staleTime: 60 * 1000,
-  });
-
-  const favoriteIds = favoriteIdsOverride ?? new Set(favoritesData?.favoriteIds ?? []);
 
   useEffect(() => {
     if (!regionPath.length || !regionTree.length) return;
@@ -78,32 +71,15 @@ const Home = () => {
       return false;
     };
     if (!exists(categories)) setCategoryPath([]);
-  }, [categories]);
+  }, [categories, categoryPath]);
 
-  const {
-    data: feedData,
-    isLoading: loading,
-    isFetchingNextPage: loadingMore,
-    fetchNextPage,
-    hasNextPage,
-    error: feedError,
-  } = useInfiniteQuery({
-    queryKey: queryKeys.offersFeed(feedKey),
-    queryFn: async ({ pageParam }) => {
-      const params = { limit: PAGE_SIZE };
-      if (effectiveCategoryId) params.category = effectiveCategoryId;
-      if (selectedRegionId) params.region = selectedRegionId;
-      if (pageParam) params.cursor = pageParam;
-      const { data } = await api.get('/offers/feed', { params });
-      return data;
-    },
-    getNextPageParam: (last) => last.nextCursor || undefined,
-    initialPageParam: null,
-    placeholderData: keepPreviousData,
+  const { data: favoritesData } = useQuery({
+    queryKey: queryKeys.favorites,
+    queryFn: fetchFavoritesPayload,
     staleTime: 60 * 1000,
   });
 
-  const showCategoryReels = !effectiveCategoryId;
+  const favoriteIds = favoriteIdsOverride ?? new Set(favoritesData?.favoriteIds ?? []);
 
   const { data: reelsData, isLoading: reelsLoading } = useQuery({
     queryKey: queryKeys.offersReels(feedKey),
@@ -117,8 +93,29 @@ const Home = () => {
     staleTime: 60 * 1000,
   });
 
+  const {
+    data: feedData,
+    isLoading: feedLoading,
+    isFetchingNextPage: loadingMore,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.offersFeed(feedKey),
+    queryFn: async ({ pageParam }) => {
+      const params = { limit: PAGE_SIZE };
+      if (effectiveCategoryId) params.category = effectiveCategoryId;
+      if (selectedRegionId) params.region = selectedRegionId;
+      if (pageParam) params.cursor = pageParam;
+      const { data } = await api.get('/offers/feed', { params });
+      return data;
+    },
+    getNextPageParam: (last) => last.nextCursor || undefined,
+    initialPageParam: null,
+    enabled: !showCategoryReels,
+    staleTime: 60 * 1000,
+  });
+
   const items = feedData?.pages.flatMap((p) => p.items || []) ?? [];
-  const error = feedError?.response?.data?.message || (feedError ? 'تعذّر تحميل العروض' : '');
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -147,66 +144,55 @@ const Home = () => {
     }
   };
 
-  const openGridViewer = (offer, index) => {
-    setGridViewer({ offers: items, index });
-  };
-
-  const isLoadingOffers = showCategoryReels ? reelsLoading : loading && items.length === 0;
-  const hasOffers = showCategoryReels
-    ? (reelsData?.length > 0)
-    : items.length > 0;
+  const isLoadingOffers = showCategoryReels ? reelsLoading : feedLoading && items.length === 0;
+  const hasOffers = showCategoryReels ? (reelsData?.length > 0) : items.length > 0;
 
   return (
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0 home-premium-bg" aria-hidden />
 
-      <div className="relative z-10 space-y-6 pb-20">
-        <Suspense fallback={<div className="max-w-4xl mx-auto h-40 rounded-[32px] bg-white border border-gray-100 shadow-sm animate-pulse" />}>
-          <CompetitionCard />
+      <div className="relative z-10 space-y-5 pb-20">
+        <HomeHero />
+
+        <Suspense fallback={
+          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+            <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
+          </div>
+        }>
+          <FeaturedCompetitions />
         </Suspense>
 
-        <div className="max-w-6xl mx-auto px-4">
-          <QuickSearchPanel
-            variant="light"
-            regionTree={regionTree}
-            regionPath={regionPath}
-            onRegionPathChange={setRegionPath}
-            regionsLoading={regionsLoading}
-            regionsError={regionsError}
-            onRegionsRetry={refetchRegions}
-            showProducts={false}
-          />
-        </div>
+        <HomeSearchCards
+          regionTree={regionTree}
+          regionPath={regionPath}
+          onRegionPathChange={setRegionPath}
+          regionsLoading={regionsLoading}
+          regionsError={regionsError}
+          onRegionsRetry={refetchRegions}
+          categoryTree={categories}
+          categoryPath={categoryPath}
+          onCategoryPathChange={setCategoryPath}
+          categoriesLoading={categoriesLoading}
+          categoriesError={categoriesError}
+          onCategoriesRetry={refetchCategories}
+        />
 
-        <div className="max-w-6xl mx-auto px-2 space-y-3">
-          <CategoryFilter
-            tree={categories}
-            pathIds={categoryPath}
-            onPathChange={setCategoryPath}
-            loading={categoriesLoading}
-            error={categoriesError}
-            onRetry={refetchCategories}
-            variant="light"
-          />
-        </div>
-
-        <div className="max-w-6xl mx-auto space-y-4">
-          <h3 className="text-xl font-black text-gray-900 flex items-center gap-2 px-4">
-            <Sparkles className="text-primary" size={20} /> العروض
+        <div id="home-offers" className="max-w-6xl mx-auto space-y-4 scroll-mt-4">
+          <h3 className="text-lg font-black text-gray-900 flex items-center gap-2 px-4">
+            <Sparkles className="text-primary" size={18} /> العروض
           </h3>
 
-          {error && <div className="text-center py-12 text-gray-500 font-bold">{error}</div>}
-
-          {isLoadingOffers && !error && (
+          {isLoadingOffers && (
             <LightLoadingHint variant="light" label="جاري تحميل العروض..." />
           )}
 
-          {!isLoadingOffers && !error && !hasOffers && (
+          {!isLoadingOffers && !hasOffers && (
             <div className="text-center py-12 text-gray-400 font-bold">لا توجد عروض مطابقة حالياً</div>
           )}
 
-          {showCategoryReels && reelsData?.length > 0 && (
-            <CategoryReels
+          {showCategoryReels && hasOffers && (
+            <ProgressiveCategoryReels
               reels={reelsData}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
@@ -214,25 +200,24 @@ const Home = () => {
           )}
 
           {!showCategoryReels && items.length > 0 && (
-            <>
+            <div className="home-progressive-reels">
               <OfferRailTrack>
                 {items.map((offer, idx) => (
                   <div key={offer._id} className="home-offers-rail__slide">
                     <MarketplaceOfferCard
                       offer={offer}
-                      onClick={() => openGridViewer(offer, idx)}
+                      onClick={() => setGridViewer({ offers: items, index: idx })}
                     />
                   </div>
                 ))}
               </OfferRailTrack>
-
               <div ref={sentinelRef} className="h-10 flex items-center justify-center">
                 {loadingMore && <span className="text-gray-400 text-xs font-bold">جاري التحميل...</span>}
                 {!hasNextPage && (
                   <span className="text-gray-300 text-xs font-bold">— انتهت العروض —</span>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

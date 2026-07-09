@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Bell, MessageCircle, Package, LayoutGrid, CircleDot, Medal,
+  Bell, MessageCircle, ShoppingCart, LayoutGrid, CircleDot, Medal,
   BarChart3, Settings, LogOut, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -212,18 +212,26 @@ const Header = () => {
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="max-w-lg mx-auto w-full px-3 py-1.5 flex justify-between items-center gap-2">
-          <button
-            type="button"
-            className="flex items-center gap-2 min-w-0 active:scale-[0.98] transition-transform"
-            onClick={() => navigate('/')}
-            aria-label="الرئيسية"
-          >
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-red-700 rounded-lg flex items-center justify-center shadow-md shrink-0">
-              <span className="text-white text-[11px] font-black tracking-tight">WZ</span>
-            </div>
-            <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">WinZor</span>
-          </button>
+        <div className="max-w-lg mx-auto w-full px-3 py-1 flex justify-between items-center gap-2">
+          {isAuth ? (
+            <PointsBadge
+              points={points}
+              pulse={pointsPulse}
+              onClick={() => setPointsOpen(true)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="flex items-center gap-2 min-w-0 active:scale-[0.98] transition-transform"
+              onClick={() => navigate('/')}
+              aria-label="الرئيسية"
+            >
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-red-700 rounded-lg flex items-center justify-center shadow-md shrink-0">
+                <span className="text-white text-[11px] font-black tracking-tight">WZ</span>
+              </div>
+              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Winzor</span>
+            </button>
+          )}
 
           {isAuth && (
             <div className="flex items-center gap-0.5 shrink-0">
@@ -234,7 +242,7 @@ const Header = () => {
                 onClick={() => navigate('/notifications')}
               />
               <HeaderIconBtn
-                icon={Package}
+                icon={ShoppingCart}
                 label="طلباتي"
                 onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
               />
@@ -248,11 +256,6 @@ const Header = () => {
                 icon={LayoutGrid}
                 label="المزيد"
                 onClick={() => setMoreOpen(true)}
-              />
-              <PointsBadge
-                points={points}
-                pulse={pointsPulse}
-                onClick={() => setPointsOpen(true)}
               />
             </div>
           )}

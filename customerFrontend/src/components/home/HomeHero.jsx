@@ -10,26 +10,24 @@ export default function HomeHero() {
 
   return (
     <>
-      <section className="home-hero max-w-6xl mx-auto px-3 sm:px-4">
+      <section className="home-hero max-w-6xl mx-auto px-3 sm:px-4" dir="rtl">
         <div className="home-hero__inner">
           <div className="home-hero__glow home-hero__glow--violet" aria-hidden />
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
-          <div className="relative z-10 text-center space-y-2.5 sm:space-y-3 py-3 sm:py-4 px-3 sm:px-4">
-            <h1 className="text-sm sm:text-lg font-black text-gray-900 leading-snug">
-              Earn your points with every purchase
-              <br />
-              <span className="text-primary">From trusted stores</span>
+          <div className="relative z-10 text-center space-y-2 py-2.5 sm:py-3 px-3 sm:px-4">
+            <h1 className="text-xs sm:text-base font-black text-gray-900 leading-snug">
+              اكسب نقاطاً من كل عملية شراء.
             </h1>
 
             <button
               type="button"
               onClick={() => setPointsOpen(true)}
-              className="home-hero__cta inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black text-white shadow-md shadow-primary/25 active:scale-[0.98] transition-transform"
+              className="home-hero__cta inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold text-white shadow-sm shadow-primary/20 active:scale-[0.98] transition-transform"
             >
-              <Sparkles size={14} className="sm:hidden" />
-              <Sparkles size={16} className="hidden sm:block" />
-              What are the points?
+              <Sparkles size={11} className="sm:hidden" />
+              <Sparkles size={12} className="hidden sm:block" />
+              كيف أستخدم نقاطي؟
             </button>
           </div>
         </div>

@@ -131,12 +131,15 @@ const Competitions = () => {
       await axios.patch(`/competitions/${id}/feature`);
       await refreshCompetitions();
     } catch (err) {
-      alert(err.response?.data?.message || 'تعذّر تعيين المسابقة الرئيسية');
+      alert(err.response?.data?.message || 'تعذّر تحديث حالة التمييز');
     }
   };
 
   const statusLabel = (s) =>
     s === 'active' ? 'قيد التشغيل' : s === 'draft' ? 'مسودّة' : 'انتهت';
+
+  const featuredCount = competitions.filter((c) => c.isFeatured).length;
+  const canFeatureMore = featuredCount < 2;
 
   const displayStatusLabel = (comp) =>
     statusLabel(comp.displayStatus || comp.status);
@@ -146,7 +149,7 @@ const Competitions = () => {
       <div className="admin-header">
         <div className="admin-title">
           <h1>إدارة المسابقات</h1>
-          <p>أنشئ المسابقات القائمة على النقاط، وحدّد المسابقة الرئيسية المعروضة في الصفحة الرئيسية</p>
+          <p>أنشئ المسابقات القائمة على النقاط، وحدّد حتى مسابقتين مميزتين للصفحة الرئيسية ({featuredCount}/2)</p>
         </div>
         <button className="btn-primary" onClick={openCreate}>
           <Plus size={20} /> مسابقة جديدة
@@ -215,7 +218,7 @@ const Competitions = () => {
             <div key={comp._id} className="admin-card group relative">
               {comp.isFeatured && (
                 <span className="absolute top-4 left-4 badge badge-warning flex items-center gap-1">
-                  <Star size={14} fill="currentColor" /> رئيسية
+                  <Star size={14} fill="currentColor" /> مميزة
                 </span>
               )}
 
@@ -269,13 +272,22 @@ const Competitions = () => {
                 >
                   <Users size={16} /> المشاركون
                 </Link>
-                {!comp.isFeatured && (
+                {!comp.isFeatured && canFeatureMore && (
                   <button
                     onClick={() => handleFeature(comp._id)}
-                    title="تعيين كمسابقة رئيسية"
+                    title="تعيين كمسابقة مميزة"
                     className="flex-1 py-2 bg-warning/10 text-warning hover:bg-warning hover:text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1"
                   >
-                    <Star size={16} /> رئيسية
+                    <Star size={16} /> مميزة
+                  </button>
+                )}
+                {comp.isFeatured && (
+                  <button
+                    onClick={() => handleFeature(comp._id)}
+                    title="إلغاء التمييز"
+                    className="flex-1 py-2 bg-warning/20 text-warning hover:bg-warning/30 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1"
+                  >
+                    <Star size={16} fill="currentColor" /> إلغاء التمييز
                   </button>
                 )}
                 <button
@@ -399,8 +411,16 @@ const Competitions = () => {
                   </select>
                 </div>
                 <label className="flex items-center gap-2 mt-6 cursor-pointer">
-                  <input type="checkbox" name="isFeatured" checked={form.isFeatured} onChange={handleChange} />
-                  <span className="text-sm font-bold">مسابقة رئيسية (الصفحة الرئيسية)</span>
+                  <input
+                    type="checkbox"
+                    name="isFeatured"
+                    checked={form.isFeatured}
+                    onChange={handleChange}
+                    disabled={!form.isFeatured && !canFeatureMore}
+                  />
+                  <span className="text-sm font-bold">
+                    مسابقة مميزة (الصفحة الرئيسية) {featuredCount}/2
+                  </span>
                 </label>
               </div>
 

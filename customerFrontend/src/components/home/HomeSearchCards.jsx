@@ -1,30 +1,32 @@
 import React, { useState } from 'react';
-import { Store, Tag } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { MapPin, Tag } from 'lucide-react';
 import HierarchySelect from '../HierarchySelect';
-import { getEffectiveRegionId } from '../../utils/regionTree';
 import { getEffectiveCategoryId } from '../../utils/categoryTree';
 
 const SEARCH_MODES = [
   {
-    id: 'store',
-    label: 'Find a store',
-    labelMobile: 'Find store',
-    icon: Store,
+    id: 'region',
+    label: 'فلترة العروض',
+    labelMobile: 'فلترة العروض',
+    icon: MapPin,
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
     activeRing: 'ring-emerald-400/50',
   },
   {
     id: 'offer',
-    label: 'Search about the offer',
-    labelMobile: 'Find offer',
+    label: 'تصنيف العروض',
+    labelMobile: 'تصنيف العروض',
     icon: Tag,
     iconBg: 'bg-violet-100',
     iconColor: 'text-violet-600',
     activeRing: 'ring-violet-400/50',
   },
 ];
+
+function scrollToOffers() {
+  document.getElementById('home-offers')?.scrollIntoView({ behavior: 'smooth' });
+}
 
 export default function HomeSearchCards({
   regionTree,
@@ -40,20 +42,24 @@ export default function HomeSearchCards({
   categoriesError,
   onCategoriesRetry,
 }) {
-  const navigate = useNavigate();
   const [activeMode, setActiveMode] = useState(null);
 
   const toggleMode = (id) => {
     setActiveMode((prev) => (prev === id ? null : id));
   };
 
-  const handleStoreSearch = () => {
-    const regionId = getEffectiveRegionId(regionPath);
-    navigate('/stores/search', { state: { regionPath, regionId } });
+  const handleRegionSearch = () => {
+    setActiveMode(null);
+    scrollToOffers();
+  };
+
+  const handleOfferSearch = () => {
+    setActiveMode(null);
+    scrollToOffers();
   };
 
   return (
-    <section className="max-w-6xl mx-auto px-3 sm:px-4">
+    <section className="max-w-6xl mx-auto px-3 sm:px-4" dir="rtl">
       <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
         {SEARCH_MODES.map((mode) => {
           const isActive = activeMode === mode.id;
@@ -79,7 +85,7 @@ export default function HomeSearchCards({
         })}
       </div>
 
-      {activeMode === 'store' && (
+      {activeMode === 'region' && (
         <div className="mt-2 sm:mt-2.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white border border-gray-100 shadow-sm space-y-2">
           <HierarchySelect
             tree={regionTree}
@@ -90,22 +96,22 @@ export default function HomeSearchCards({
             onRetry={onRegionsRetry}
             variant="light"
             allowAllAtRoot
-            firstPlaceholder="All regions"
-            optionalPlaceholder="Optional — narrower region"
+            firstPlaceholder="كل المناطق"
+            optionalPlaceholder="اختياري — منطقة أدق"
             showPath={false}
           />
           <button
             type="button"
-            onClick={handleStoreSearch}
+            onClick={handleRegionSearch}
             className="w-full py-2 rounded-xl bg-emerald-600 text-white text-xs font-black active:scale-[0.99] transition-transform"
           >
-            Search stores
+            عرض العروض
           </button>
         </div>
       )}
 
       {activeMode === 'offer' && (
-        <div className="mt-2 sm:mt-2.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white border border-gray-100 shadow-sm">
+        <div className="mt-2 sm:mt-2.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white border border-gray-100 shadow-sm space-y-2">
           <HierarchySelect
             tree={categoryTree}
             pathIds={categoryPath}
@@ -115,17 +121,17 @@ export default function HomeSearchCards({
             onRetry={onCategoriesRetry}
             variant="light"
             allowAllAtRoot
-            firstPlaceholder="All categories"
-            optionalPlaceholder="Optional — subcategory"
+            firstPlaceholder="كل التصنيفات"
+            optionalPlaceholder="اختياري — تصنيف فرعي"
             showPath={false}
           />
           {getEffectiveCategoryId(categoryPath) && (
             <button
               type="button"
-              onClick={() => document.getElementById('home-offers')?.scrollIntoView({ behavior: 'smooth' })}
-              className="w-full mt-2 py-2 rounded-xl bg-violet-600 text-white text-xs font-black active:scale-[0.99] transition-transform"
+              onClick={handleOfferSearch}
+              className="w-full py-2 rounded-xl bg-violet-600 text-white text-xs font-black active:scale-[0.99] transition-transform"
             >
-              View offers
+              عرض العروض
             </button>
           )}
         </div>

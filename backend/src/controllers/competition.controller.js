@@ -84,13 +84,17 @@ const toAdminSummary = (comp) => {
 
 /* ============== العميل / العام ============== */
 
+const MAX_FEATURED_COMPETITIONS = 2;
+
 exports.getFeatured = async (req, res) => {
   try {
-    const comp = await Competition.findOne({
+    const comps = await Competition.find({
       isFeatured: true,
       status: { $in: ["active", "ended"] },
     })
       .select(PUBLIC_FIELDS + " participants")
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(MAX_FEATURED_COMPETITIONS)
       .lean();
 
     let userPoints = 0;
@@ -99,12 +103,11 @@ exports.getFeatured = async (req, res) => {
       userPoints = u ? u.points : 0;
     }
 
-    if (!comp) {
-      return res.json({ competition: null, userPoints });
-    }
+    const competitions = comps.map((c) => toPublic(c, req.user?.id, { forList: true }));
 
     return res.json({
-      competition: toPublic(comp, req.user?.id, { forList: true }),
+      competitions,
+      competition: competitions[0] || null,
       userPoints,
     });
   } catch (err) {
@@ -456,10 +459,20 @@ exports.createCompetition = async (req, res) => {
     const comp = await Competition.create(data);
 
     if (comp.isFeatured) {
-      await Competition.updateMany(
-        { _id: { $ne: comp._id } },
-        { $set: { isFeatured: false } }
-      );
+      const featuredOthers = await Competition.find({
+        isFeatured: true,
+        _id: { $ne: comp._id },
+      })
+        .sort({ updatedAt: 1 })
+        .select("_id");
+
+      if (featuredOthers.length >= MAX_FEATURED_COMPETITIONS) {
+        const excess = featuredOthers.slice(0, featuredOthers.length - MAX_FEATURED_COMPETITIONS + 1);
+        await Competition.updateMany(
+          { _id: { $in: excess.map((c) => c._id) } },
+          { $set: { isFeatured: false } }
+        );
+      }
     }
 
     res.status(201).json(toAdminSummary(comp));
@@ -494,10 +507,20 @@ exports.updateCompetition = async (req, res) => {
     });
 
     if (comp.isFeatured) {
-      await Competition.updateMany(
-        { _id: { $ne: comp._id } },
-        { $set: { isFeatured: false } }
-      );
+      const featuredOthers = await Competition.find({
+        isFeatured: true,
+        _id: { $ne: comp._id },
+      })
+        .sort({ updatedAt: 1 })
+        .select("_id");
+
+      if (featuredOthers.length >= MAX_FEATURED_COMPETITIONS) {
+        const excess = featuredOthers.slice(0, featuredOthers.length - MAX_FEATURED_COMPETITIONS + 1);
+        await Competition.updateMany(
+          { _id: { $in: excess.map((c) => c._id) } },
+          { $set: { isFeatured: false } }
+        );
+      }
     }
 
     res.json(toAdminSummary(comp));
@@ -529,7 +552,23 @@ exports.setFeatured = async (req, res) => {
     const comp = await Competition.findById(id);
     if (!comp) return res.status(404).json({ message: "المسابقة غير موجودة" });
 
-    await Competition.updateMany({}, { $set: { isFeatured: false } });
+    if (comp.isFeatured) {
+      comp.isFeatured = false;
+      await comp.save();
+      return res.json(toAdminSummary(comp));
+    }
+
+    const featuredCount = await Competition.countDocuments({
+      isFeatured: true,
+      _id: { $ne: comp._id },
+    });
+
+    if (featuredCount >= MAX_FEATURED_COMPETITIONS) {
+      return res.status(400).json({
+        message: `يمكن تعيين ${MAX_FEATURED_COMPETITIONS} مسابقات مميزة فقط في الصفحة الرئيسية`,
+      });
+    }
+
     comp.isFeatured = true;
     if (comp.status === "draft") comp.status = "active";
     await comp.save();

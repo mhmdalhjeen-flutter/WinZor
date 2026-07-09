@@ -146,6 +146,12 @@ const Home = () => {
 
   const isLoadingOffers = showCategoryReels ? reelsLoading : feedLoading && items.length === 0;
   const hasOffers = showCategoryReels ? (reelsData?.length > 0) : items.length > 0;
+  const hasActiveFilters = regionPath.length > 0 || categoryPath.length > 0;
+
+  const resetFilters = () => {
+    setRegionPath([]);
+    setCategoryPath([]);
+  };
 
   return (
     <div className="relative min-h-screen">
@@ -179,9 +185,20 @@ const Home = () => {
         />
 
         <div id="home-offers" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
-          <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2 px-3 sm:px-4">
-            <Sparkles className="text-primary w-4 h-4 sm:w-[18px] sm:h-[18px]" /> العروض
-          </h3>
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-4">
+            <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
+              <Sparkles className="text-primary w-4 h-4 sm:w-[18px] sm:h-[18px]" /> العروض
+            </h3>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="shrink-0 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold text-violet-600 bg-violet-50 border border-violet-100 active:scale-[0.98] transition-transform"
+              >
+                إلغاء التصفية
+              </button>
+            )}
+          </div>
 
           {isLoadingOffers && (
             <LightLoadingHint variant="light" label="جاري تحميل العروض..." />

@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
  * مستقل تماماً عن نظام Draw/Entries الحالي (القرار AD-002).
  * يعتمد على النقاط فقط: كل (pointsPerEntry) نقطة = مشاركة واحدة،
  * وإنفاق نقاط أكثر يزيد عدد المشاركات (وبالتالي الحظ).
- * يديره الأدمن بالكامل، ويُعرض منه واحدة مميّزة (isFeatured) في الصفحة الرئيسية.
+ * يديره الأدمن بالكامل، ويُعرض منه اثنتان مميزتان (isFeatured) في الصفحة الرئيسية.
  */
 const competitionSchema = new mongoose.Schema(
   {
@@ -34,7 +34,7 @@ const competitionSchema = new mongoose.Schema(
     drawLink: { type: String, default: "" },
     drawNotificationSent: { type: Boolean, default: false },
 
-    // المسابقة المعروضة في الصفحة الرئيسية (يجب أن تكون واحدة فقط).
+    // المسابقات المعروضة في الصفحة الرئيسية (حتى اثنتين).
     isFeatured: { type: Boolean, default: false },
 
     status: {

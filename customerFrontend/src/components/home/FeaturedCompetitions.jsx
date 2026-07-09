@@ -22,16 +22,18 @@ export default function FeaturedCompetitions() {
         if (cancelled) return;
 
         const points = featuredRes.data?.userPoints || 0;
-        const primary = featuredRes.data?.competition;
+        const fromFeatured = featuredRes.data?.competitions
+          || (featuredRes.data?.competition ? [featuredRes.data.competition] : []);
         const list = unwrapList(listRes.data, ['competitions']);
         const featuredFromList = list.filter((c) => c?.isFeatured);
 
         const seen = new Set();
         const merged = [];
 
-        if (primary?._id) {
-          merged.push(primary);
-          seen.add(String(primary._id));
+        for (const comp of fromFeatured) {
+          if (!comp?._id || merged.length >= 2) break;
+          merged.push(comp);
+          seen.add(String(comp._id));
         }
 
         for (const comp of featuredFromList) {

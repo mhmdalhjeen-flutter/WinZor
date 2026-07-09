@@ -34,8 +34,7 @@ function useAnimatedCounter(target, duration = 650) {
 }
 
 /**
- * Premium compact rewards badge — logo, brand, English points.
- * Mobile: tighter layout, hides brand name to save header space.
+ * Premium compact rewards badge — Arabic label, English digit points.
  */
 export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const displayPoints = useAnimatedCounter(points);
@@ -47,7 +46,7 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       type="button"
       onClick={onClick}
       id="points-header-anchor"
-      aria-label={`${displayPoints.toLocaleString('en-US')} points`}
+      aria-label={`نقاطك ${displayPoints.toLocaleString('en-US')}`}
       animate={
         isUp
           ? { scale: [1, 1.06, 1] }
@@ -73,10 +72,9 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       </span>
 
       <div className="relative flex flex-col items-start leading-none min-w-0">
-        <span className="hidden sm:block text-[10px] font-black text-white tracking-tight">
-          Winzor
+        <span className="text-[9px] sm:text-[10px] font-bold text-white/95 tracking-tight">
+          نقاطك
         </span>
-        <span className="text-[8px] sm:text-[9px] font-semibold text-white/90 sm:mt-0.5">⭐ Rewards</span>
         <AnimatePresence mode="popLayout">
           <motion.span
             key={displayPoints}
@@ -84,11 +82,11 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: isUp ? -4 : 4, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className={`text-[10px] sm:text-[11px] font-black tabular-nums tracking-tight sm:mt-0.5 truncate max-w-full ${
+            className={`text-[13px] sm:text-[15px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
               isDown ? 'text-red-100' : 'text-white'
             }`}
           >
-            {displayPoints.toLocaleString('en-US')} points
+            {displayPoints.toLocaleString('en-US')}
           </motion.span>
         </AnimatePresence>
       </div>

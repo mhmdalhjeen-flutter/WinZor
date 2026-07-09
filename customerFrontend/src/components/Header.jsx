@@ -18,10 +18,11 @@ const HeaderIconBtn = ({ icon: Icon, label, onClick, badge }) => (
   <button
     type="button"
     onClick={onClick}
-    className="relative flex items-center justify-center w-11 h-11 rounded-xl active:scale-95 transition-transform"
+    className="relative flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl active:scale-95 transition-transform shrink-0"
     aria-label={label}
   >
-    <Icon size={24} className="text-gray-800" strokeWidth={2.1} />
+    <Icon size={20} className="text-gray-800 sm:hidden" strokeWidth={2.1} />
+    <Icon size={24} className="text-gray-800 hidden sm:block" strokeWidth={2.1} />
     {badge > 0 && (
       <span className="absolute top-0.5 left-0.5 min-w-[16px] h-[16px] px-1 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
         {badge > 9 ? '9+' : badge}
@@ -212,7 +213,7 @@ const Header = () => {
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="max-w-lg mx-auto w-full px-3 py-1 flex justify-between items-center gap-2">
+        <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
           {isAuth ? (
             <PointsBadge
               points={points}
@@ -234,7 +235,7 @@ const Header = () => {
           )}
 
           {isAuth && (
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-0 sm:gap-0.5 shrink-0 min-w-0">
               <HeaderIconBtn
                 icon={Bell}
                 label="إشعارات"

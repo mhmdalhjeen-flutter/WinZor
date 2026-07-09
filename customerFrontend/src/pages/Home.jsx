@@ -151,7 +151,7 @@ const Home = () => {
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0 home-premium-bg" aria-hidden />
 
-      <div className="relative z-10 space-y-5 pb-20">
+      <div className="relative z-10 space-y-4 sm:space-y-5 pb-20">
         <HomeHero />
 
         <Suspense fallback={
@@ -178,9 +178,9 @@ const Home = () => {
           onCategoriesRetry={refetchCategories}
         />
 
-        <div id="home-offers" className="max-w-6xl mx-auto space-y-4 scroll-mt-4">
-          <h3 className="text-lg font-black text-gray-900 flex items-center gap-2 px-4">
-            <Sparkles className="text-primary" size={18} /> العروض
+        <div id="home-offers" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
+          <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2 px-3 sm:px-4">
+            <Sparkles className="text-primary w-4 h-4 sm:w-[18px] sm:h-[18px]" /> العروض
           </h3>
 
           {isLoadingOffers && (

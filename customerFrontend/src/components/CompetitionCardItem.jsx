@@ -143,10 +143,10 @@ export default function CompetitionCardItem({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-r from-primary/20 to-purple-900/40 border border-white/10 rounded-[24px] p-3.5 sm:p-4 h-full flex flex-col ${containerClass}`}
+        className={`bg-gradient-to-r from-primary/20 to-purple-900/40 border border-white/10 rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 h-full flex flex-col ${containerClass}`}
       >
-        <div className="flex items-start gap-3 flex-1">
-          <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-white/10 rounded-xl overflow-hidden border border-white/20">
+        <div className="flex items-start gap-2.5 sm:gap-3 flex-1">
+          <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-lg sm:rounded-xl overflow-hidden border border-white/20">
             {competition.image ? (
               <img src={competition.image} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={competition.title} />
             ) : (
@@ -158,7 +158,7 @@ export default function CompetitionCardItem({
 
           <div className="flex-1 min-w-0">
             <span className="text-primary-light text-[10px] font-black tracking-widest uppercase">مسابقة مميزة</span>
-            <h2 className="text-base sm:text-lg font-black text-white mt-0.5 line-clamp-2">{competition.title}</h2>
+            <h2 className="text-sm sm:text-lg font-black text-white mt-0.5 line-clamp-2">{competition.title}</h2>
 
             <div className="mt-2 flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -179,11 +179,11 @@ export default function CompetitionCardItem({
           </div>
 
           {remaining && (
-            <div className="text-center bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/5 shrink-0">
-              <div className="text-lg font-black text-white leading-none">{remaining.days}</div>
-              <div className="text-[9px] text-white/40 font-bold">يوم</div>
-              <div className="text-xs font-black text-white/70 leading-none mt-0.5 flex items-center gap-0.5 justify-center">
-                <Clock size={10} /> {remaining.hours}س
+            <div className="text-center bg-white/5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/5 shrink-0">
+              <div className="text-base sm:text-lg font-black text-white leading-none">{remaining.days}</div>
+              <div className="text-[8px] sm:text-[9px] text-white/40 font-bold">يوم</div>
+              <div className="text-[10px] sm:text-xs font-black text-white/70 leading-none mt-0.5 flex items-center gap-0.5 justify-center">
+                <Clock size={9} className="sm:hidden" /> <Clock size={10} className="hidden sm:block" /> {remaining.hours}س
               </div>
             </div>
           )}
@@ -199,7 +199,7 @@ export default function CompetitionCardItem({
             <button
               type="button"
               onClick={openModal}
-              className="w-full px-5 py-2.5 bg-primary text-white rounded-xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+              className="w-full px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-lg sm:rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
             >
               {competition.joined ? 'مشاركات إضافية' : 'انضم الآن'}
             </button>

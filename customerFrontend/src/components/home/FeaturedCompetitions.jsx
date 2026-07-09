@@ -60,13 +60,9 @@ export default function FeaturedCompetitions() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[0, 1].map((i) => (
-          <div
-            key={i}
-            className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse"
-          />
-        ))}
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="h-28 sm:h-32 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+        <div className="h-28 sm:h-32 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
       </div>
     );
   }
@@ -74,8 +70,8 @@ export default function FeaturedCompetitions() {
   if (!competitions.length) return null;
 
   return (
-    <section className="max-w-6xl mx-auto px-4">
-      <div className={`grid gap-3 items-stretch ${competitions.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
+    <section className="max-w-6xl mx-auto px-3 sm:px-4">
+      <div className={`grid gap-2.5 sm:gap-3 items-stretch ${competitions.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
         {competitions.map((comp) => (
           <CompetitionCardItem
             key={comp._id}

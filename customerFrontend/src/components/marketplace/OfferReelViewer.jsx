@@ -1,19 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  X, Heart, MessageCircle, Share2, Eye, ShoppingCart,
-  Check, Loader2, ImageOff, ChevronUp,
+  X, Heart, MessageCircle, Share2, Eye, ShoppingBag,
+  ImageOff, ChevronUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { logActivity } from '../../utils/activity';
 import { recordOfferView, recordOfferShare } from '../../utils/offerAnalytics';
-import { useVerificationGate } from '../../context/VerificationGateContext';
-import { queryClient, queryKeys } from '../../lib/queryClient';
-import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { getOfferBadge } from '../OfferCard';
 import OfferPriceDisplay from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
 import SwipeTutorial from './SwipeTutorial';
+import DirectOrderModal from './DirectOrderModal';
 
 function OfferSlideImage({ src, alt, isActive }) {
   if (!src) {
@@ -34,6 +32,7 @@ function OfferSlideImage({ src, alt, isActive }) {
         loading={isActive ? 'eager' : 'lazy'}
         decoding="async"
       />
+      <div className="offer-reel-slide__bg-darken" aria-hidden />
       <img
         src={src}
         alt={alt}
@@ -54,9 +53,7 @@ function OfferSlide({
   onChat,
   viewCount,
 }) {
-  const { runWithVerification, handleApiVerificationError } = useVerificationGate();
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
@@ -74,24 +71,7 @@ function OfferSlide({
     }
   };
 
-  const performAdd = async () => {
-    setAdding(true);
-    try {
-      await api.post('/cart/add', { itemId: offer._id, itemType: 'offer', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
-      setAdded(true);
-      setTimeout(() => setAdded(false), 1800);
-    } catch (err) {
-      handleApiVerificationError(err, performAdd, CART_VERIFICATION);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleOrder = () => {
-    if (adding || added) return;
-    runWithVerification(performAdd, CART_VERIFICATION);
-  };
+  const handleOrder = () => setOrderOpen(true);
 
   const handleChat = async () => {
     if (chatBusy) return;
@@ -147,17 +127,10 @@ function OfferSlide({
           <button
             type="button"
             onClick={handleOrder}
-            disabled={adding}
             className="offer-reel-slide__order-btn"
           >
-            {adding ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : added ? (
-              <Check size={18} />
-            ) : (
-              <ShoppingCart size={18} />
-            )}
-            <span>{added ? 'تم' : 'اطلب الآن'}</span>
+            <ShoppingBag size={18} />
+            <span>اطلب الآن</span>
           </button>
         </div>
 
@@ -187,10 +160,18 @@ function OfferSlide({
         <ActionBtn icon={MessageCircle} label="محادثة" onClick={handleChat} busy={chatBusy} />
         <ActionBtn icon={Share2} label="مشاركة" onClick={handleShare} busy={shareBusy} />
         <div className="offer-reel-actions__stat" aria-label={`${displayViews} مشاهدة`}>
-          <Eye size={22} />
+          <span className="offer-reel-actions__icon-wrap">
+            <Eye size={22} />
+          </span>
           <span>{formatCount(displayViews)}</span>
         </div>
       </aside>
+
+      <DirectOrderModal
+        offer={offer}
+        open={orderOpen}
+        onClose={() => setOrderOpen(false)}
+      />
     </section>
   );
 }
@@ -204,7 +185,9 @@ function ActionBtn({ icon: Icon, label, onClick, active, fill, busy }) {
       className={`offer-reel-actions__btn ${active ? 'offer-reel-actions__btn--active' : ''}`}
       aria-label={label}
     >
-      <Icon size={22} fill={fill ? 'currentColor' : 'none'} />
+      <span className="offer-reel-actions__icon-wrap">
+        <Icon size={22} fill={fill ? 'currentColor' : 'none'} />
+      </span>
       <span>{label}</span>
     </button>
   );

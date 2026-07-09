@@ -157,23 +157,16 @@ const Home = () => {
 
   return (
     <div className="relative min-h-screen">
-      <div className="fixed inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=1000&q=80"
-          className="w-full h-full object-cover"
-          alt="bg"
-        />
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-      </div>
+      <div className="fixed inset-0 z-0 home-premium-bg" aria-hidden />
 
       <div className="relative z-10 space-y-6 pb-20">
-        <Suspense fallback={<div className="max-w-4xl mx-auto h-40 rounded-[32px] bg-white/5 border border-white/10 animate-pulse" />}>
+        <Suspense fallback={<div className="max-w-4xl mx-auto h-40 rounded-[32px] bg-white border border-gray-100 shadow-sm animate-pulse" />}>
           <CompetitionCard />
         </Suspense>
 
         <div className="max-w-6xl mx-auto px-4">
           <QuickSearchPanel
-            variant="dark"
+            variant="light"
             regionTree={regionTree}
             regionPath={regionPath}
             onRegionPathChange={setRegionPath}
@@ -192,22 +185,23 @@ const Home = () => {
             loading={categoriesLoading}
             error={categoriesError}
             onRetry={refetchCategories}
+            variant="light"
           />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 space-y-4">
-          <h3 className="text-xl font-black text-white flex items-center gap-2">
-            <Sparkles className="text-primary-light" size={20} /> العروض
+          <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+            <Sparkles className="text-primary" size={20} /> العروض
           </h3>
 
-          {error && <div className="text-center py-12 text-white/70 font-bold">{error}</div>}
+          {error && <div className="text-center py-12 text-gray-500 font-bold">{error}</div>}
 
           {isLoadingOffers && !error && (
-            <LightLoadingHint variant="dark" label="جاري تحميل العروض..." />
+            <LightLoadingHint variant="light" label="جاري تحميل العروض..." />
           )}
 
           {!isLoadingOffers && !error && !hasOffers && (
-            <div className="text-center py-12 text-white/50 font-bold">لا توجد عروض مطابقة حالياً</div>
+            <div className="text-center py-12 text-gray-400 font-bold">لا توجد عروض مطابقة حالياً</div>
           )}
 
           {showCategoryReels && reelsData?.length > 0 && (
@@ -234,9 +228,9 @@ const Home = () => {
               </div>
 
               <div ref={sentinelRef} className="h-10 flex items-center justify-center">
-                {loadingMore && <span className="text-white/40 text-xs font-bold">جاري التحميل...</span>}
+                {loadingMore && <span className="text-gray-400 text-xs font-bold">جاري التحميل...</span>}
                 {!hasNextPage && (
-                  <span className="text-white/30 text-xs font-bold">— انتهت العروض —</span>
+                  <span className="text-gray-300 text-xs font-bold">— انتهت العروض —</span>
                 )}
               </div>
             </>

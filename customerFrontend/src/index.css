@@ -585,13 +585,13 @@ body.offer-viewer-open {
 
 .offer-reel-slide__bg-blur {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
   object-fit: cover;
   object-position: center center;
-  filter: blur(40px) brightness(0.35) saturate(1.2);
-  transform: scale(1.12);
+  filter: blur(32px) brightness(0.62) saturate(1.25);
+  transform: scale(1.06);
   pointer-events: none;
   z-index: 0;
 }
@@ -599,7 +599,7 @@ body.offer-viewer-open {
 .offer-reel-slide__bg-darken {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.14);
   pointer-events: none;
   z-index: 0;
 }

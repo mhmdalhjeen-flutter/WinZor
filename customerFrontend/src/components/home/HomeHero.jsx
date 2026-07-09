@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import PointsModal from '../PointsModal';
 
 export default function HomeHero() {

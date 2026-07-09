@@ -1,6 +1,9 @@
 const Offer = require("../models/offer");
 const Store = require("../models/store");
 const User = require("../models/user");
+const UserActivity = require("../models/userActivity");
+const OfferViewDedup = require("../models/offerViewDedup");
+const Category = require("../models/category");
 const pricingService = require("./pricing.service");
 const { getCategoryAndDescendantNames, resolveCategoryNamesForSearch } = require("../controllers/category.controller");
 const { restrictOfferQueryToCustomerStores } = require("../utils/storeFilter");
@@ -9,7 +12,12 @@ const { buildUserSignals, sortOffersPersonalized, sortOffersByRank } = require("
 const { getDescendantIds } = require("../utils/region.util");
 
 const LIST_OFFER_SELECT =
-  "title description offerType originalPrice value finalPrice currency isActive priority views createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
+  "title description offerType originalPrice value finalPrice currency isActive priority featuredPriority views shareCount createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
+
+const STORE_POPULATE_SELECT =
+  "name logo region subRegion category ratingAvg ratingCount regionId subRegionId isVerifiedStore";
+
+const VIEW_DEDUP_MS = 30 * 60 * 1000;
 
 function isDataUrl(value) {
   return typeof value === "string" && value.startsWith("data:");
@@ -102,10 +110,7 @@ async function listActiveOffers(query, userId) {
   const offerQuery = await buildPublicOfferQuery(query);
   const offers = await Offer.find(offerQuery)
     .select(LIST_OFFER_SELECT)
-    .populate(
-      "store",
-      "name logo region subRegion category ratingAvg ratingCount regionId subRegionId"
-    )
+    .populate("store", STORE_POPULATE_SELECT)
     .limit(200)
     .lean();
   return rankOffers(offers, userId);
@@ -134,10 +139,7 @@ async function listOfferFeed(query, userId) {
   const fetchLimit = Math.min(limit * 4, 200);
   const docs = await Offer.find(offerQuery)
     .select(LIST_OFFER_SELECT)
-    .populate(
-      "store",
-      "name logo region subRegion category ratingAvg ratingCount regionId subRegionId"
-    )
+    .populate("store", STORE_POPULATE_SELECT)
     .limit(fetchLimit)
     .lean();
 
@@ -155,10 +157,83 @@ async function listOfferFeed(query, userId) {
   return { items, nextCursor };
 }
 
-async function getOfferById(offerId, { incrementViews = true } = {}) {
+async function shouldCountView(offerId, { userId, clientId } = {}) {
+  const since = new Date(Date.now() - VIEW_DEDUP_MS);
+
+  if (userId) {
+    const existing = await UserActivity.findOne({
+      user: userId,
+      type: "view_offer",
+      targetId: offerId,
+      createdAt: { $gte: since },
+    }).select("_id");
+    if (existing) return false;
+  } else if (clientId) {
+    const existing = await OfferViewDedup.findOne({
+      clientId,
+      offerId,
+      createdAt: { $gte: since },
+    }).select("_id");
+    if (existing) return false;
+  }
+
+  return true;
+}
+
+async function recordMeaningfulView(offerId, { userId, clientId } = {}) {
+  const offer = await Offer.findById(offerId).populate("store", "category region");
+  if (!offer || !offer.isActive) {
+    const err = new Error("العرض غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  const count = await shouldCountView(offerId, { userId, clientId });
+  if (!count) {
+    return { counted: false, views: offer.views || 0 };
+  }
+
+  await Offer.findByIdAndUpdate(offerId, { $inc: { views: 1 } });
+
+  if (userId) {
+    const activityService = require("./activity.service");
+    await activityService.log({
+      user: userId,
+      type: "view_offer",
+      targetType: "Offer",
+      targetId: offerId,
+      meta: {
+        category: offer.store?.category,
+        region: offer.store?.region,
+      },
+    });
+  } else if (clientId) {
+    await OfferViewDedup.create({ clientId, offerId });
+  }
+
+  return { counted: true, views: (offer.views || 0) + 1 };
+}
+
+async function recordOfferShare(offerId) {
+  const offer = await Offer.findByIdAndUpdate(
+    offerId,
+    { $inc: { shareCount: 1 } },
+    { new: true }
+  ).select("shareCount isActive");
+
+  if (!offer || !offer.isActive) {
+    const err = new Error("العرض غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  return { shareCount: offer.shareCount };
+}
+
+async function getOfferById(offerId, { incrementViews = false, userId, clientId } = {}) {
   const offer = await Offer.findById(offerId).populate(
     "store",
-    "name phone whatsapp region subRegion logo category owner"
+    "name phone whatsapp region subRegion logo category owner isVerifiedStore ratingAvg ratingCount"
   );
 
   if (!offer) {
@@ -173,11 +248,68 @@ async function getOfferById(offerId, { incrementViews = true } = {}) {
   }
 
   if (incrementViews) {
-    await Offer.findByIdAndUpdate(offer._id, { $inc: { views: 1 } });
-    offer.views = (offer.views || 0) + 1;
+    const result = await recordMeaningfulView(offerId, { userId, clientId });
+    if (result.counted) offer.views = result.views;
   }
 
   return attachPricing(offer);
+}
+
+async function listCategoryReels(query, userId) {
+  const { region, subRegion } = query;
+  const perReel = Math.min(parseInt(query.limit, 10) || 20, 40);
+
+  const roots = await Category.find({ type: "store", isActive: true, parent: null })
+    .sort({ order: 1, name: 1 })
+    .lean();
+
+  const offerQuery = { isActive: true };
+  const storeQuery = {};
+  const regionFilter = subRegion || region;
+  if (regionFilter) await applyRegionToStoreQuery(storeQuery, regionFilter);
+  if (Object.keys(storeQuery).length > 0) {
+    const stores = await Store.find(storeQuery).select("_id");
+    offerQuery.store = { $in: stores.map((s) => s._id) };
+  }
+
+  await restrictOfferQueryToCustomerStores(offerQuery);
+
+  const docs = await Offer.find(offerQuery)
+    .select(LIST_OFFER_SELECT)
+    .populate("store", STORE_POPULATE_SELECT)
+    .limit(400)
+    .lean();
+
+  const ranked = await rankOffers(docs, userId);
+
+  const reels = [];
+  for (const root of roots) {
+    const names = await getCategoryAndDescendantNames(root._id);
+    const nameSet = new Set(names);
+    const categoryOffers = ranked.filter((o) => nameSet.has(o.store?.category));
+    if (!categoryOffers.length) continue;
+
+    reels.push({
+      categoryId: root._id,
+      categoryName: root.name,
+      categoryIcon: root.icon || "",
+      offers: categoryOffers.slice(0, perReel),
+    });
+  }
+
+  const uncategorized = ranked.filter(
+    (o) => !reels.some((r) => r.offers.some((x) => String(x._id) === String(o._id)))
+  );
+  if (uncategorized.length) {
+    reels.push({
+      categoryId: null,
+      categoryName: "عروض متنوعة",
+      categoryIcon: "✨",
+      offers: uncategorized.slice(0, perReel),
+    });
+  }
+
+  return { reels };
 }
 
 async function getMyOffers(ownerId, query = {}) {
@@ -232,7 +364,7 @@ async function getDashboardOffers(user, query = {}) {
       isActive: true,
     })
       .select(LIST_OFFER_SELECT)
-      .populate("store", "name logo category region subRegion")
+      .populate("store", "name logo category region subRegion isVerifiedStore")
       .sort({ priority: -1, createdAt: -1 })
       .limit(networkLimit)
       .lean();
@@ -281,7 +413,10 @@ module.exports = {
   attachPricingList,
   listActiveOffers,
   listOfferFeed,
+  listCategoryReels,
   getOfferById,
+  recordMeaningfulView,
+  recordOfferShare,
   getMyOffers,
   getDashboardOffers,
   previewPricing,

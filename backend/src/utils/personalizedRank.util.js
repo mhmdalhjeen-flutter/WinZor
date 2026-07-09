@@ -1,5 +1,11 @@
 const UserActivity = require("../models/userActivity");
-const { computeOfferRankScore, sortOffersByRank, bayesianRating, freshnessBoost } = require("./ranking.util");
+const {
+  computeOfferRankScore,
+  sortOffersByRank,
+  applyFeaturedPrioritySort,
+  bayesianRating,
+  freshnessBoost,
+} = require("./ranking.util");
 
 async function buildUserSignals(userId) {
   if (!userId) return null;
@@ -49,15 +55,18 @@ function computePersonalizedScore(offer, store, signals) {
 }
 
 function sortOffersPersonalized(offers, signals) {
-  return [...offers]
-    .map((o) => ({
-      ...o,
-      _rankScore: computePersonalizedScore(o, o.store, signals),
-    }))
-    .sort((a, b) => {
-      if (b._rankScore !== a._rankScore) return b._rankScore - a._rankScore;
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
+  const rankAuto = (list) =>
+    [...list]
+      .map((o) => ({
+        ...o,
+        _rankScore: computePersonalizedScore(o, o.store, signals),
+      }))
+      .sort((a, b) => {
+        if (b._rankScore !== a._rankScore) return b._rankScore - a._rankScore;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+  return applyFeaturedPrioritySort(offers, rankAuto);
 }
 
 module.exports = { buildUserSignals, computePersonalizedScore, sortOffersPersonalized, sortOffersByRank };

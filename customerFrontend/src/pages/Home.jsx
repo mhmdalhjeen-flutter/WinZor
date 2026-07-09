@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '../api/axios';
-import OfferCard from '../components/OfferCard';
 import CategoryFilter from '../components/CategoryFilter';
 import QuickSearchPanel from '../components/QuickSearchPanel';
+import MarketplaceOfferCard from '../components/marketplace/MarketplaceOfferCard';
+import CategoryReels from '../components/marketplace/CategoryReels';
+import OfferReelViewer from '../components/marketplace/OfferReelViewer';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { toggleFavorite } from '../utils/activity';
@@ -28,6 +30,7 @@ const Home = () => {
   const [categoryPath, setCategoryPath] = useState([]);
   const [regionPath, setRegionPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
+  const [gridViewer, setGridViewer] = useState(null);
   const sentinelRef = useRef(null);
 
   const effectiveCategoryId = categoryPath.length
@@ -99,19 +102,33 @@ const Home = () => {
     staleTime: 60 * 1000,
   });
 
+  const showCategoryReels = !effectiveCategoryId;
+
+  const { data: reelsData, isLoading: reelsLoading } = useQuery({
+    queryKey: queryKeys.offersReels(feedKey),
+    queryFn: async () => {
+      const params = { limit: 20 };
+      if (selectedRegionId) params.region = selectedRegionId;
+      const { data } = await api.get('/offers/reels', { params });
+      return data?.reels || [];
+    },
+    enabled: showCategoryReels,
+    staleTime: 60 * 1000,
+  });
+
   const items = feedData?.pages.flatMap((p) => p.items || []) ?? [];
   const error = feedError?.response?.data?.message || (feedError ? 'تعذّر تحميل العروض' : '');
 
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || showCategoryReels) return;
     const obs = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting && hasNextPage && !loadingMore) fetchNextPage(); },
       { rootMargin: '300px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [fetchNextPage, hasNextPage, loadingMore]);
+  }, [fetchNextPage, hasNextPage, loadingMore, showCategoryReels]);
 
   const handleToggleFavorite = async (offer) => {
     const id = String(offer._id);
@@ -129,6 +146,15 @@ const Home = () => {
     }
   };
 
+  const openGridViewer = (offer, index) => {
+    setGridViewer({ offers: items, index });
+  };
+
+  const isLoadingOffers = showCategoryReels ? reelsLoading : loading && items.length === 0;
+  const hasOffers = showCategoryReels
+    ? (reelsData?.length > 0)
+    : items.length > 0;
+
   return (
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0">
@@ -137,16 +163,14 @@ const Home = () => {
           className="w-full h-full object-cover"
           alt="bg"
         />
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       </div>
 
       <div className="relative z-10 space-y-6 pb-20">
-        {/* Featured Competition */}
         <Suspense fallback={<div className="max-w-4xl mx-auto h-40 rounded-[32px] bg-white/5 border border-white/10 animate-pulse" />}>
           <CompetitionCard />
         </Suspense>
 
-        {/* فلترة العروض — مناطق + تصنيفات (بدون بحث متاجر) */}
         <div className="max-w-6xl mx-auto px-4">
           <QuickSearchPanel
             variant="dark"
@@ -160,7 +184,6 @@ const Home = () => {
           />
         </div>
 
-        {/* Filters — تصنيفات ديناميكية من لوحة الأدمن */}
         <div className="max-w-6xl mx-auto px-2 space-y-3">
           <CategoryFilter
             tree={categories}
@@ -170,10 +193,8 @@ const Home = () => {
             error={categoriesError}
             onRetry={refetchCategories}
           />
-
         </div>
 
-        {/* Offers grid + infinite scroll */}
         <div className="max-w-6xl mx-auto px-4 space-y-4">
           <h3 className="text-xl font-black text-white flex items-center gap-2">
             <Sparkles className="text-primary-light" size={20} /> العروض
@@ -181,28 +202,36 @@ const Home = () => {
 
           {error && <div className="text-center py-12 text-white/70 font-bold">{error}</div>}
 
-          {loading && items.length === 0 && !error && (
+          {isLoadingOffers && !error && (
             <LightLoadingHint variant="dark" label="جاري تحميل العروض..." />
           )}
 
-          {!loading && !error && items.length === 0 && (
+          {!isLoadingOffers && !error && !hasOffers && (
             <div className="text-center py-12 text-white/50 font-bold">لا توجد عروض مطابقة حالياً</div>
           )}
 
-          {items.length > 0 && (
+          {showCategoryReels && reelsData?.length > 0 && (
+            <CategoryReels
+              reels={reelsData}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={handleToggleFavorite}
+            />
+          )}
+
+          {!showCategoryReels && items.length > 0 && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {items.map((offer) => (
-                  <OfferCard
+              <div className="marketplace-grid">
+                {items.map((offer, idx) => (
+                  <MarketplaceOfferCard
                     key={offer._id}
                     offer={offer}
-                    favorited={favoriteIds.has(String(offer._id))}
-                    onToggleFavorite={handleToggleFavorite}
+                    onClick={() => openGridViewer(offer, idx)}
                   />
                 ))}
               </div>
 
               <div ref={sentinelRef} className="h-10 flex items-center justify-center">
+                {loadingMore && <span className="text-white/40 text-xs font-bold">جاري التحميل...</span>}
                 {!hasNextPage && (
                   <span className="text-white/30 text-xs font-bold">— انتهت العروض —</span>
                 )}
@@ -211,6 +240,16 @@ const Home = () => {
           )}
         </div>
       </div>
+
+      {gridViewer && (
+        <OfferReelViewer
+          offers={gridViewer.offers}
+          initialIndex={gridViewer.index}
+          onClose={() => setGridViewer(null)}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )}
     </div>
   );
 };

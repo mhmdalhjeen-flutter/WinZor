@@ -6,6 +6,7 @@ import {
 import api from '../api/axios';
 import { logActivity } from '../utils/activity';
 import StarRating from '../components/StarRating';
+import VerifiedBadge from '../components/marketplace/VerifiedBadge';
 import OfferCard from '../components/OfferCard';
 import ProductCard from '../shared/ProductCard';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -94,6 +95,7 @@ const StoreDetail = () => {
           <img src={logo} alt="" className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow -mt-10" />
           <div className="flex-1 min-w-0 pt-1">
             <h1 className="text-lg font-black text-gray-900 truncate">{store.name}</h1>
+            {store.isVerifiedStore && <VerifiedBadge className="mt-1" />}
             <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
               <MapPin size={11} /> {store.region}{store.subRegion ? ` · ${store.subRegion}` : ''}
             </p>

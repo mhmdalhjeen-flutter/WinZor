@@ -34,6 +34,45 @@ router.get("/feed", optionalAuth, async (req, res) => {
   }
 });
 
+router.get("/reels", optionalAuth, async (req, res) => {
+  try {
+    const reels = await offerService.listCategoryReels(req.query, req.user?.id);
+    res.json(reels);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/:id/view", optionalAuth, async (req, res) => {
+  try {
+    const clientId = req.headers["x-client-id"] || req.body?.clientId;
+    const result = await offerService.recordMeaningfulView(req.params.id, {
+      userId: req.user?.id,
+      clientId,
+    });
+    res.json(result);
+  } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(400).json({ message: "معرّف العرض غير صحيح" });
+    }
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message });
+  }
+});
+
+router.post("/:id/share", optionalAuth, async (req, res) => {
+  try {
+    const result = await offerService.recordOfferShare(req.params.id);
+    res.json(result);
+  } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(400).json({ message: "معرّف العرض غير صحيح" });
+    }
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message });
+  }
+});
+
 router.get("/my", authMiddleware, roleMiddleware.businessOrAdmin, async (req, res) => {
   try {
     const offers = await offerService.getMyOffers(req.user.id, req.query);
@@ -54,9 +93,14 @@ router.get("/dashboard", authMiddleware, roleMiddleware.business, async (req, re
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", optionalAuth, async (req, res) => {
   try {
-    const offer = await offerService.getOfferById(req.params.id);
+    const clientId = req.headers["x-client-id"];
+    const offer = await offerService.getOfferById(req.params.id, {
+      incrementViews: req.query.countView === "true",
+      userId: req.user?.id,
+      clientId,
+    });
     res.json({ offer });
   } catch (err) {
     if (err.name === "CastError") {

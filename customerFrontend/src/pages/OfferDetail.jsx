@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import axios from '../api/axios';
 import { logActivity, toggleFavorite } from '../utils/activity';
+import { recordOfferView } from '../utils/offerAnalytics';
 import StarRating from '../components/StarRating';
 import OfferPriceDisplay from '../components/OfferPriceDisplay';
 import { useVerificationGate } from '../context/VerificationGateContext';
@@ -58,7 +59,7 @@ const OfferDetail = () => {
         const { data } = await axios.get(`/offers/${id}`);
         if (!mounted) return;
         setOffer(data.offer);
-        // تسجيل فتح العرض كنشاط (لتغذية التوصيات — Phase 7)
+        recordOfferView(data.offer?._id);
         logActivity('open_offer', {
           targetType: 'Offer',
           targetId: data.offer?._id,
@@ -226,6 +227,11 @@ const OfferDetail = () => {
               <div>
                 <h4 className="font-black text-gray-900">{offer.store?.name || 'متجر'}</h4>
                 <p className="text-[10px] text-gray-400 font-bold">{offer.store?.category || ''}</p>
+                {offer.store?.isVerifiedStore && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 mt-1">
+                    ✔ متجر موثق
+                  </span>
+                )}
                 {offer.store?._id && (
                   <StarRating
                     targetType="store"

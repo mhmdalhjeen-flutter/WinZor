@@ -28,9 +28,9 @@ const auditController = require("../../controllers/admin/audit.controller");
 const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
 const { requireObjectId } = require("../../utils/inputSecurity.util");
 
-const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive owner cards bypassCards createdAt";
+const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore owner cards bypassCards createdAt";
 const ADMIN_PRODUCT_LIST_SELECT = "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive createdAt";
-const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority expiresAt createdAt";
+const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority featuredPriority expiresAt createdAt";
 
 function stripBase64ListImage(row, field = "image") {
     if (!row || typeof row !== "object") return row;
@@ -225,6 +225,55 @@ router.get('/stores/:storeId/offers', async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
         res.json(offers.map((o) => stripBase64ListImage(o, "image")));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/stores/:storeId/verify ─────────────────────────────────────
+router.patch('/stores/:storeId/verify', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+
+        if (typeof req.body?.isVerifiedStore === 'boolean') {
+            store.isVerifiedStore = req.body.isVerifiedStore;
+        } else {
+            store.isVerifiedStore = !store.isVerifiedStore;
+        }
+        await store.save();
+        res.json({
+            message: store.isVerifiedStore ? 'تم توثيق المتجر' : 'تم إلغاء توثيق المتجر',
+            isVerifiedStore: store.isVerifiedStore,
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/offers/:offerId/featured-priority ──────────────────────────
+router.patch('/offers/:offerId/featured-priority', async (req, res) => {
+    try {
+        const offerId = requireObjectId(req.params.offerId, "offerId");
+        const offer = await Offer.findById(offerId);
+        if (!offer) return res.status(404).json({ message: 'العرض غير موجود' });
+
+        const raw = req.body?.featuredPriority;
+        if (raw === null || raw === '' || raw === undefined) {
+            offer.featuredPriority = null;
+        } else {
+            const num = parseInt(raw, 10);
+            if (!Number.isFinite(num) || num < 1) {
+                return res.status(400).json({ message: 'أولوية التمييز يجب أن تكون رقماً موجباً أو فارغة' });
+            }
+            offer.featuredPriority = num;
+        }
+        await offer.save();
+        res.json({
+            message: 'تم تحديث أولوية التمييز',
+            featuredPriority: offer.featuredPriority,
+        });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message });
     }

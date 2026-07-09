@@ -128,6 +128,13 @@ const storeSchema = new mongoose.Schema({
         type: Boolean,
         default: false,      // الأدمن يفعّلها ليتخطى شرط الكروت
     },
+
+    /** متجر موثّق — يُعدّل من الأدمن فقط */
+    isVerifiedStore: {
+        type: Boolean,
+        default: false,
+    },
+
     address: { type: String, default: "" },
 
     owner: {

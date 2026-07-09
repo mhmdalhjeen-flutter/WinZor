@@ -55,6 +55,17 @@ const offerSchema = new mongoose.Schema({
         default: false
     },
 
+    /** ترتيب يدوي من الأدمن — null = نظام التوصيات الحالي */
+    featuredPriority: {
+        type: Number,
+        default: null,
+    },
+
+    shareCount: {
+        type: Number,
+        default: 0,
+    },
+
     startDate: { // تاريخ بداية ظهور العرض
         type: Date,
         default: Date.now

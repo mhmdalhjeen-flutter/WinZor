@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from '../api/axios';
 import {
   Search, CheckCircle, XCircle, MapPin, Tag, Eye, EyeOff,
-  Package, Gift, Trash2, Loader2, Store, MessageCircle,
+  Package, Gift, Trash2, Loader2, Store, MessageCircle, BadgeCheck,
 } from 'lucide-react';
 import '../style/stores.css';
 import { queryKeys } from '../lib/queryClient';
@@ -26,6 +26,7 @@ export default function AdminStores() {
   const [storeOffers, setStoreOffers]     = useState([]);
   const [detailTab, setDetailTab]         = useState('products');
   const [detailLoading, setDetailLoading] = useState(false);
+  const [priorityDrafts, setPriorityDrafts] = useState({});
 
   const { data: stores = [], isLoading } = useQuery({
     queryKey: queryKeys.adminStores,
@@ -49,6 +50,39 @@ export default function AdminStores() {
         )
       );
       showToast(res.data.message || 'تم تغيير الحالة');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'حدث خطأ');
+    }
+  };
+
+  const toggleVerify = async (storeId, current) => {
+    try {
+      const res = await axios.patch(`/admin/stores/${storeId}/verify`, {
+        isVerifiedStore: !current,
+      });
+      queryClient.setQueryData(queryKeys.adminStores, (prev = []) =>
+        prev.map((s) =>
+          s._id === storeId ? { ...s, isVerifiedStore: res.data.isVerifiedStore } : s
+        )
+      );
+      showToast(res.data.message || 'تم تحديث التوثيق');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'حدث خطأ');
+    }
+  };
+
+  const saveFeaturedPriority = async (offerId) => {
+    const raw = priorityDrafts[offerId];
+    try {
+      const res = await axios.patch(`/admin/offers/${offerId}/featured-priority`, {
+        featuredPriority: raw === '' || raw === undefined ? null : Number(raw),
+      });
+      setStoreOffers((prev) =>
+        prev.map((o) =>
+          o._id === offerId ? { ...o, featuredPriority: res.data.featuredPriority } : o
+        )
+      );
+      showToast('تم تحديث أولوية التمييز');
     } catch (err) {
       showToast(err.response?.data?.message || 'حدث خطأ');
     }
@@ -279,6 +313,9 @@ export default function AdminStores() {
                   <span className={`badge ${store.isActive ? 'badge-success' : 'badge-danger'}`}>
                     {store.isActive ? 'نشط' : 'متوقف'}
                   </span>
+                  {store.isVerifiedStore && (
+                    <span className="badge badge-success">✔ موثق</span>
+                  )}
                 </div>
 
                 <div className="store-card-header">
@@ -321,6 +358,15 @@ export default function AdminStores() {
                 </div>
 
                 <div className="store-actions">
+                  <button
+                    type="button"
+                    className={`btn-toggle ${store.isVerifiedStore ? 'active' : 'inactive'}`}
+                    onClick={() => toggleVerify(store._id, store.isVerifiedStore)}
+                    title={store.isVerifiedStore ? 'إلغاء التوثيق' : 'توثيق المتجر'}
+                  >
+                    <BadgeCheck size={14} />
+                    {store.isVerifiedStore ? 'موثق' : 'توثيق'}
+                  </button>
                   <button
                     type="button"
                     className={`btn-toggle ${store.isActive ? 'active' : 'inactive'}`}
@@ -404,7 +450,7 @@ export default function AdminStores() {
                               <img src={item.image || item.images[0]} alt={item.name} />
                             )}
                             <div className="store-detail-item-info">
-                              <p className="store-detail-item-name">{item.name}</p>
+                              <p className="store-detail-item-name">{item.title || item.name}</p>
                               {item.price !== undefined && (
                                 <p className="store-detail-item-meta">
                                   {item.price} ₪
@@ -412,6 +458,36 @@ export default function AdminStores() {
                                     ? ` — خصم ${item.discountPercentage}%`
                                     : ''}
                                 </p>
+                              )}
+                              {detailTab === 'offers' && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <label className="text-xs font-bold text-muted">أولوية التمييز:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    className="admin-input"
+                                    style={{ width: '4.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                    placeholder="فارغ"
+                                    value={
+                                      priorityDrafts[item._id] !== undefined
+                                        ? priorityDrafts[item._id]
+                                        : (item.featuredPriority ?? '')
+                                    }
+                                    onChange={(e) =>
+                                      setPriorityDrafts((prev) => ({
+                                        ...prev,
+                                        [item._id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn-primary py-1 px-2 text-xs"
+                                    onClick={() => saveFeaturedPriority(item._id)}
+                                  >
+                                    حفظ
+                                  </button>
+                                </div>
                               )}
                             </div>
                             <span className={`badge ${item.isActive === false ? 'badge-danger' : 'badge-success'}`}>

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import VerifiedBadge from '../components/marketplace/VerifiedBadge';
 
 const StoreCard = ({ store, membershipStatus }) => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const StoreCard = ({ store, membershipStatus }) => {
       </div>
       <div className="p-3 space-y-1">
         <h4 className="font-black text-gray-900 text-xs truncate">{store.name}</h4>
+        {store.isVerifiedStore && <VerifiedBadge className="mt-1" />}
         <p className="text-[10px] text-gray-400 flex items-center gap-1 font-bold truncate">
           <MapPin size={10} /> {store.subRegion || store.region}
         </p>

@@ -15,6 +15,7 @@ export const queryKeys = {
   categoryTree: (type = 'store') => ['categories', 'tree', type],
   regionTree: ['regions', 'tree'],
   offersFeed: (params) => ['offersFeed', params],
+  offersReels: (params) => ['offersReels', params],
   recommendations: ['recommendations'],
   favorites: ['favorites'],
   cart: ['cart'],

@@ -50,18 +50,43 @@ function computeOfferRankScore(offer, store) {
   );
 }
 
+function hasFeaturedPriority(offer) {
+  const fp = offer?.featuredPriority;
+  return fp != null && fp !== "" && Number.isFinite(Number(fp));
+}
+
+/** يضع العروض ذات featuredPriority أولاً (1، 2، 3…) ثم يكمل بالترتيب الحالي */
+function applyFeaturedPrioritySort(offers = [], sortFn) {
+  const manual = [];
+  const auto = [];
+
+  for (const o of offers) {
+    if (hasFeaturedPriority(o)) manual.push(o);
+    else auto.push(o);
+  }
+
+  manual.sort((a, b) => Number(a.featuredPriority) - Number(b.featuredPriority));
+  const rankedAuto = sortFn(auto);
+  return [...manual, ...rankedAuto];
+}
+
 function sortOffersByRank(offers = []) {
-  return [...offers].sort((a, b) => {
-    const scoreA = a._rankScore ?? computeOfferRankScore(a, a.store);
-    const scoreB = b._rankScore ?? computeOfferRankScore(b, b.store);
-    if (scoreB !== scoreA) return scoreB - scoreA;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
+  const rankAuto = (list) =>
+    [...list].sort((a, b) => {
+      const scoreA = a._rankScore ?? computeOfferRankScore(a, a.store);
+      const scoreB = b._rankScore ?? computeOfferRankScore(b, b.store);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+  return applyFeaturedPrioritySort(offers, rankAuto);
 }
 
 module.exports = {
   bayesianRating,
   computeOfferRankScore,
   sortOffersByRank,
+  applyFeaturedPrioritySort,
+  hasFeaturedPriority,
   freshnessBoost,
 };

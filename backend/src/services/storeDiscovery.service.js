@@ -178,7 +178,7 @@ async function browseStores({ userId, region, regionId, category, categoryId, q 
   }
 
   const stores = (await Store.find(query)
-    .select("name logo region subRegion category description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address")
+    .select("name logo region subRegion category description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address isVerifiedStore")
     .lean()).map(stripBase64Logo);
 
   const interest = await getCategoryInterestScores(userId);

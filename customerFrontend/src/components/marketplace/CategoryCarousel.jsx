@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
+import OfferRailTrack from './OfferRailTrack';
 
 export default function CategoryCarousel({
   reel,
@@ -36,18 +37,16 @@ export default function CategoryCarousel({
         )}
       </header>
 
-      <div className="category-reel__track-wrap">
-        <div ref={trackRef} className="category-reel__track horizontal-swipe touch-pan-x">
-          {offers.map((offer, idx) => (
-            <div key={offer._id} className="category-reel__slide">
-              <MarketplaceOfferCard
-                offer={offer}
-                onClick={() => onOfferClick(reel, idx)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
+      <OfferRailTrack trackRef={trackRef}>
+        {offers.map((offer, idx) => (
+          <div key={offer._id} className="home-offers-rail__slide">
+            <MarketplaceOfferCard
+              offer={offer}
+              onClick={() => onOfferClick(reel, idx)}
+            />
+          </div>
+        ))}
+      </OfferRailTrack>
     </section>
   );
 }

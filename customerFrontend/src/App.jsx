@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from "./context/AuthContext";
 
@@ -63,6 +63,20 @@ function AppShell() {
   ) || isGuestIntro;
   const showAppChrome = isAuth || !isAuthShell;
 
+  const [offerViewerOpen, setOfferViewerOpen] = useState(
+    () => typeof document !== 'undefined' && document.body.classList.contains('offer-viewer-open')
+  );
+
+  useEffect(() => {
+    const sync = () => setOfferViewerOpen(document.body.classList.contains('offer-viewer-open'));
+    const obs = new MutationObserver(sync);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    sync();
+    return () => obs.disconnect();
+  }, []);
+
+  const hideChrome = offerViewerOpen;
+
   return (
     <>
       <AuthWelcomeEffects />
@@ -71,9 +85,9 @@ function AppShell() {
       <div className="flex flex-col min-h-screen bg-[#f7f5f2] text-right font-['Cairo']" dir="rtl">
         
         {/* الهيدر — يظهر للزوار على الصفحات العامة (استكشاف، متجر...) */}
-        {showAppChrome && <Header />}
+        {showAppChrome && !hideChrome && <Header />}
 
-        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome ? 'px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}>
+        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome && !hideChrome ? 'px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}>
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}
@@ -120,10 +134,10 @@ function AppShell() {
         </main>
 
         {/* زر الكود العائم */}
-        {isAuth && <FloatingCodeButton />}
+        {isAuth && !hideChrome && <FloatingCodeButton />}
         
         {/* شريط التنقل السفلي */}
-        {isAuth && <BottomNav />}
+        {isAuth && !hideChrome && <BottomNav />}
       </div>
     </>
   );

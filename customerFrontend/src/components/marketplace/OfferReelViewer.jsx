@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  X, ThumbsUp, MessageCircle, Share2, ShoppingBag,
-  ImageOff, ChevronUp,
+  X, Heart, MessageCircle, ArrowUpRight, Eye,
+  ImageOff, ChevronUp, ShoppingBag,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -32,18 +32,23 @@ function OfferSlideImage({ src, alt, isActive }) {
         loading={isActive ? 'eager' : 'lazy'}
         decoding="async"
       />
-      <div className="offer-reel-slide__bg-lighten" aria-hidden />
-      <div className="offer-reel-slide__image-frame">
-        <img
-          src={src}
-          alt={alt}
-          className="offer-reel-slide__image"
-          loading={isActive ? 'eager' : 'lazy'}
-          decoding="async"
-        />
-      </div>
+      <div className="offer-reel-slide__bg-darken" aria-hidden />
+      <img
+        src={src}
+        alt={alt}
+        className="offer-reel-slide__image"
+        loading={isActive ? 'eager' : 'lazy'}
+        decoding="async"
+      />
     </>
   );
+}
+
+function formatCount(n) {
+  const v = Number(n) || 0;
+  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+  return String(v);
 }
 
 function OfferSlide({
@@ -51,7 +56,7 @@ function OfferSlide({
   isActive,
   onShare,
   onChat,
-  onRequest,
+  viewCount,
 }) {
   const [orderOpen, setOrderOpen] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -59,6 +64,7 @@ function OfferSlide({
   const [chatBusy, setChatBusy] = useState(false);
 
   const store = offer?.store;
+  const displayViews = viewCount ?? offer?.views ?? 0;
 
   const handleLike = () => {
     setLiked((v) => !v);
@@ -66,13 +72,6 @@ function OfferSlide({
       targetType: 'Offer',
       targetId: offer._id,
     });
-  };
-
-  const handleOrder = () => setOrderOpen(true);
-
-  const handleRequest = () => {
-    onRequest?.();
-    setOrderOpen(true);
   };
 
   const handleChat = async () => {
@@ -112,34 +111,24 @@ function OfferSlide({
     >
       <div className="offer-reel-slide__media">
         <OfferSlideImage src={offer.image} alt={offer.title} isActive={isActive} />
-        <div className="offer-reel-slide__gradient" aria-hidden />
       </div>
 
-      <div className="offer-reel-slide__content">
-        <div className="offer-reel-slide__store-header">
-          <button
-            type="button"
-            onClick={handleOrder}
-            className="offer-reel-slide__order-btn"
-          >
-            <ShoppingBag size={18} />
-            <span>اطلب الآن</span>
-          </button>
-
-          <div className="offer-reel-slide__store-info">
-            <div className="offer-reel-slide__store-text">
-              <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
-              {store?.isVerifiedStore && <VerifiedBadge className="mt-1" />}
-            </div>
-            {store?.logo && (
-              <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
-            )}
+      <header className="offer-reel-slide__top-store">
+        <div className="offer-reel-slide__top-store-row">
+          {store?.logo && (
+            <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
+          )}
+          <div className="offer-reel-slide__store-text">
+            <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
+            {store?.isVerifiedStore && <VerifiedBadge className="mt-0.5" />}
           </div>
         </div>
+        <h2 className="offer-reel-slide__offer-title">{offer.title}</h2>
+      </header>
 
+      <div className="offer-reel-slide__content">
         <div className="offer-reel-slide__meta">
           <span className="offer-reel-slide__discount-badge">{getOfferBadge(offer)}</span>
-          <h2 className="offer-reel-slide__title">{offer.title}</h2>
           <OfferPriceDisplay
             offer={offer}
             oldClassName="offer-reel-slide__old-price"
@@ -150,19 +139,33 @@ function OfferSlide({
             <p className="offer-reel-slide__desc">{offer.description}</p>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setOrderOpen(true)}
+          className="offer-reel-slide__order-btn"
+        >
+          <ShoppingBag size={18} />
+          <span>اطلب الآن</span>
+        </button>
       </div>
 
       <aside className="offer-reel-actions" aria-label="إجراءات العرض">
         <ActionBtn
-          icon={ThumbsUp}
+          icon={Heart}
           label="إعجاب"
           active={liked}
           onClick={handleLike}
           fill={liked}
         />
         <ActionBtn icon={MessageCircle} label="محادثة" onClick={handleChat} busy={chatBusy} />
-        <ActionBtn icon={Share2} label="مشاركة" onClick={handleShare} busy={shareBusy} />
-        <ActionBtn icon={ShoppingBag} label="طلب" onClick={handleRequest} />
+        <ActionBtn icon={ArrowUpRight} label="مشاركة" onClick={handleShare} busy={shareBusy} />
+        <div className="offer-reel-actions__stat" aria-label={`${displayViews} مشاهدة`}>
+          <span className="offer-reel-actions__icon-wrap">
+            <Eye size={24} />
+          </span>
+          <span>{formatCount(displayViews)}</span>
+        </div>
       </aside>
 
       <DirectOrderModal
@@ -212,6 +215,7 @@ export default function OfferReelViewer({
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [viewCounts, setViewCounts] = useState({});
   const [showTutorial, setShowTutorial] = useState(true);
   const [categoryTransition, setCategoryTransition] = useState(null);
   const viewedRef = useRef(new Set());
@@ -359,7 +363,9 @@ export default function OfferReelViewer({
     const timer = setTimeout(async () => {
       const result = await recordOfferView(offer._id);
       viewedRef.current.add(id);
-      void result;
+      if (result?.views != null) {
+        setViewCounts((prev) => ({ ...prev, [id]: result.views }));
+      }
       logActivity('open_offer', {
         targetType: 'Offer',
         targetId: offer._id,
@@ -404,7 +410,7 @@ export default function OfferReelViewer({
             isActive={i === activeIndex}
             onShare={handleShare}
             onChat={resolveOwnerAndOpenChat}
-            onRequest={() => {}}
+            viewCount={viewCounts[String(offer._id)] ?? offer.views}
           />
         ))}
       </div>

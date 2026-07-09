@@ -5,6 +5,7 @@ import api from '../api/axios';
 import CategoryFilter from '../components/CategoryFilter';
 import QuickSearchPanel from '../components/QuickSearchPanel';
 import MarketplaceOfferCard from '../components/marketplace/MarketplaceOfferCard';
+import OfferRailTrack from '../components/marketplace/OfferRailTrack';
 import CategoryReels from '../components/marketplace/CategoryReels';
 import OfferReelViewer from '../components/marketplace/OfferReelViewer';
 import { useCategoryTree } from '../hooks/useCategories';
@@ -189,8 +190,8 @@ const Home = () => {
           />
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 space-y-4">
-          <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <h3 className="text-xl font-black text-gray-900 flex items-center gap-2 px-4">
             <Sparkles className="text-primary" size={20} /> العروض
           </h3>
 
@@ -214,18 +215,16 @@ const Home = () => {
 
           {!showCategoryReels && items.length > 0 && (
             <>
-              <div className="category-reel__track-wrap">
-                <div className="category-reel__track horizontal-swipe touch-pan-x">
-                  {items.map((offer, idx) => (
-                    <div key={offer._id} className="category-reel__slide">
-                      <MarketplaceOfferCard
-                        offer={offer}
-                        onClick={() => openGridViewer(offer, idx)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <OfferRailTrack>
+                {items.map((offer, idx) => (
+                  <div key={offer._id} className="home-offers-rail__slide">
+                    <MarketplaceOfferCard
+                      offer={offer}
+                      onClick={() => openGridViewer(offer, idx)}
+                    />
+                  </div>
+                ))}
+              </OfferRailTrack>
 
               <div ref={sentinelRef} className="h-10 flex items-center justify-center">
                 {loadingMore && <span className="text-gray-400 text-xs font-bold">جاري التحميل...</span>}

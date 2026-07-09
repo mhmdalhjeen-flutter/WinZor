@@ -68,12 +68,12 @@ function AppShell() {
       <AuthWelcomeEffects />
       {isAuth && <NotificationListener />}
       {isAuth && <PointsFloatLayer />}
-      <div className="flex flex-col min-h-screen bg-gray-50 text-right font-['Cairo']" dir="rtl">
+      <div className="flex flex-col min-h-screen bg-[#f7f5f2] text-right font-['Cairo']" dir="rtl">
         
         {/* الهيدر — يظهر للزوار على الصفحات العامة (استكشاف، متجر...) */}
         {showAppChrome && <Header />}
 
-        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome ? 'px-4 pt-4 pb-28 md:pb-8' : ''}`}>
+        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome ? 'px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}>
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}

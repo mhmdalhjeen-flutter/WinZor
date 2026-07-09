@@ -150,7 +150,7 @@ const FloatingCodeButton = () => {
       <button
         type="button"
         onClick={() => setReferralOpen(true)}
-        className="fixed bottom-44 left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-lg border-2 border-white hover:scale-110 active:scale-95 transition-all text-[9px] font-black text-center leading-tight"
+        className="fixed bottom-[8.5rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-lg border-2 border-white hover:scale-110 active:scale-95 transition-all text-[9px] font-black text-center leading-tight"
       >
         كروت<br />مجانية
       </button>
@@ -161,7 +161,7 @@ const FloatingCodeButton = () => {
         ref={codeBtnRef}
         type="button"
         onClick={() => runWithVerification(() => setIsOpen(true))}
-        className="fixed bottom-28 left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_0_22px_rgba(99,102,241,0.6)] border-2 border-white hover:scale-110 active:scale-95 transition-all duration-300 text-[10px] font-black text-center leading-tight"
+        className="fixed bottom-[5.75rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_0_22px_rgba(99,102,241,0.6)] border-2 border-white hover:scale-110 active:scale-95 transition-all duration-300 text-[10px] font-black text-center leading-tight"
       >
         ادخل<br />الكود
       </button>

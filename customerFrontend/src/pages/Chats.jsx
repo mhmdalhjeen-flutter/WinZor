@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { CornerUpLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
@@ -45,6 +45,7 @@ const useContextNavigator = () => {
 export default function Chats() {
   const { convId: routeConvId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const goContext = useContextNavigator();
   const { user: authUser } = useAuth();
   const myId = getMyId(authUser);
@@ -77,7 +78,7 @@ export default function Chats() {
   const pollingRef = useRef(null);
   const activeConvRef = useRef(null);
   const fileInputRef = useRef(null);
-  const chatContextHandledRef = useRef(false);
+  const chatContextHandledRef = useRef(null);
 
   useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
 
@@ -162,13 +163,13 @@ export default function Chats() {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
-  // فتح محادثة من منتج/عرض (مرة واحدة)
+  // فتح محادثة من منتج/عرض
   useEffect(() => {
-    if (chatContextHandledRef.current) return;
     const raw = localStorage.getItem('chatContext');
     if (!raw) return;
+    if (chatContextHandledRef.current === raw) return;
 
-    chatContextHandledRef.current = true;
+    chatContextHandledRef.current = raw;
     let cancelled = false;
 
     (async () => {
@@ -190,6 +191,7 @@ export default function Chats() {
         if (parsed.prefillText) setTimeout(() => setText(parsed.prefillText), 400);
       } catch (err) {
         localStorage.removeItem('chatContext');
+        chatContextHandledRef.current = null;
         if (!cancelled) {
           setBootError(err.response?.data?.message || 'تعذّر فتح المحادثة');
         }
@@ -197,7 +199,7 @@ export default function Chats() {
     })();
 
     return () => { cancelled = true; };
-  }, [openConversation, refetchConversations]);
+  }, [openConversation, refetchConversations, location.pathname]);
 
   // فتح محادثة من الرابط /chat/:convId
   useEffect(() => {

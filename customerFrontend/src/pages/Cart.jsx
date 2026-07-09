@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Trash2, Plus, Minus, Loader2, Send, Package,
@@ -22,11 +23,16 @@ const getItemPrice = (row) => row?.unitPrice ?? row?.item?.price ?? row?.item?.p
 const itemKey = (itemId, itemType) => `${itemType}:${itemId}`;
 
 const Cart = () => {
+  const location = useLocation();
   const qc = useQueryClient();
   const { runWithVerification, handleApiVerificationError, verified } = useVerificationGate();
   const [checkingOut, setCheckingOut] = useState(false);
   const [updatingKey, setUpdatingKey] = useState(null);
-  const [tab, setTab] = useState('cart');
+  const [tab, setTab] = useState(location.state?.tab === 'orders' ? 'orders' : 'cart');
+
+  useEffect(() => {
+    if (location.state?.tab === 'orders') setTab('orders');
+  }, [location.state?.tab]);
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.cart,

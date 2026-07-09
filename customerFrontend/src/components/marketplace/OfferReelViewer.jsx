@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  X, Heart, MessageCircle, Share2, Eye, ShoppingBag,
+  X, ThumbsUp, MessageCircle, Share2, ShoppingBag,
   ImageOff, ChevronUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -32,14 +32,16 @@ function OfferSlideImage({ src, alt, isActive }) {
         loading={isActive ? 'eager' : 'lazy'}
         decoding="async"
       />
-      <div className="offer-reel-slide__bg-darken" aria-hidden />
-      <img
-        src={src}
-        alt={alt}
-        className="offer-reel-slide__image"
-        loading={isActive ? 'eager' : 'lazy'}
-        decoding="async"
-      />
+      <div className="offer-reel-slide__bg-lighten" aria-hidden />
+      <div className="offer-reel-slide__image-frame">
+        <img
+          src={src}
+          alt={alt}
+          className="offer-reel-slide__image"
+          loading={isActive ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      </div>
     </>
   );
 }
@@ -47,31 +49,31 @@ function OfferSlideImage({ src, alt, isActive }) {
 function OfferSlide({
   offer,
   isActive,
-  favorited,
-  onToggleFavorite,
   onShare,
   onChat,
-  viewCount,
+  onRequest,
 }) {
   const [orderOpen, setOrderOpen] = useState(false);
-  const [favBusy, setFavBusy] = useState(false);
+  const [liked, setLiked] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
 
   const store = offer?.store;
-  const displayViews = viewCount ?? offer?.views ?? 0;
 
-  const handleFav = async () => {
-    if (favBusy) return;
-    setFavBusy(true);
-    try {
-      await onToggleFavorite?.(offer);
-    } finally {
-      setFavBusy(false);
-    }
+  const handleLike = () => {
+    setLiked((v) => !v);
+    logActivity('like_offer', {
+      targetType: 'Offer',
+      targetId: offer._id,
+    });
   };
 
   const handleOrder = () => setOrderOpen(true);
+
+  const handleRequest = () => {
+    onRequest?.();
+    setOrderOpen(true);
+  };
 
   const handleChat = async () => {
     if (chatBusy) return;
@@ -115,15 +117,6 @@ function OfferSlide({
 
       <div className="offer-reel-slide__content">
         <div className="offer-reel-slide__store-header">
-          <div className="offer-reel-slide__store-info">
-            {store?.logo && (
-              <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
-            )}
-            <div className="offer-reel-slide__store-text">
-              <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
-              {store?.isVerifiedStore && <VerifiedBadge className="mt-1" />}
-            </div>
-          </div>
           <button
             type="button"
             onClick={handleOrder}
@@ -132,6 +125,16 @@ function OfferSlide({
             <ShoppingBag size={18} />
             <span>اطلب الآن</span>
           </button>
+
+          <div className="offer-reel-slide__store-info">
+            <div className="offer-reel-slide__store-text">
+              <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
+              {store?.isVerifiedStore && <VerifiedBadge className="mt-1" />}
+            </div>
+            {store?.logo && (
+              <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
+            )}
+          </div>
         </div>
 
         <div className="offer-reel-slide__meta">
@@ -151,20 +154,15 @@ function OfferSlide({
 
       <aside className="offer-reel-actions" aria-label="إجراءات العرض">
         <ActionBtn
-          icon={Heart}
+          icon={ThumbsUp}
           label="إعجاب"
-          active={favorited}
-          onClick={handleFav}
-          fill={favorited}
+          active={liked}
+          onClick={handleLike}
+          fill={liked}
         />
         <ActionBtn icon={MessageCircle} label="محادثة" onClick={handleChat} busy={chatBusy} />
         <ActionBtn icon={Share2} label="مشاركة" onClick={handleShare} busy={shareBusy} />
-        <div className="offer-reel-actions__stat" aria-label={`${displayViews} مشاهدة`}>
-          <span className="offer-reel-actions__icon-wrap">
-            <Eye size={22} />
-          </span>
-          <span>{formatCount(displayViews)}</span>
-        </div>
+        <ActionBtn icon={ShoppingBag} label="طلب" onClick={handleRequest} />
       </aside>
 
       <DirectOrderModal
@@ -186,18 +184,11 @@ function ActionBtn({ icon: Icon, label, onClick, active, fill, busy }) {
       aria-label={label}
     >
       <span className="offer-reel-actions__icon-wrap">
-        <Icon size={22} fill={fill ? 'currentColor' : 'none'} />
+        <Icon size={24} fill={fill ? 'currentColor' : 'none'} />
       </span>
       <span>{label}</span>
     </button>
   );
-}
-
-function formatCount(n) {
-  const v = Number(n) || 0;
-  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
-  return String(v);
 }
 
 function CategoryTransitionOverlay({ message, visible }) {
@@ -215,23 +206,18 @@ export default function OfferReelViewer({
   initialIndex = 0,
   multiCategory = false,
   onClose,
-  favoriteIds = new Set(),
-  onToggleFavorite,
+  favoriteIds: _favoriteIds,
+  onToggleFavorite: _onToggleFavorite,
 }) {
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
-  const [viewCounts, setViewCounts] = useState({});
   const [showTutorial, setShowTutorial] = useState(true);
   const [categoryTransition, setCategoryTransition] = useState(null);
   const viewedRef = useRef(new Set());
   const prevIndexRef = useRef(initialIndex);
   const historyPushedRef = useRef(false);
   const closingRef = useRef(false);
-  const reducedMotion = useRef(
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
 
   const preloadRange = useCallback((index) => {
     [index - 1, index, index + 1]
@@ -244,6 +230,13 @@ export default function OfferReelViewer({
         }
       });
   }, [offers]);
+
+  const closeViewer = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    document.body.classList.remove('offer-viewer-open');
+    onClose?.();
+  }, [onClose]);
 
   const resolveOwnerAndOpenChat = useCallback(async (offer) => {
     let ownerId = offer?.store?.owner?._id || offer?.store?.owner;
@@ -265,15 +258,10 @@ export default function OfferReelViewer({
         itemUrl: `/offer/${offer._id}`,
       },
     }));
-    navigate('/chat');
-  }, [navigate]);
 
-  const closeViewer = useCallback(() => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    document.body.classList.remove('offer-viewer-open');
-    onClose?.();
-  }, [onClose]);
+    closeViewer();
+    navigate('/chat');
+  }, [navigate, closeViewer]);
 
   const handleCloseClick = useCallback(() => {
     if (historyPushedRef.current) {
@@ -371,9 +359,7 @@ export default function OfferReelViewer({
     const timer = setTimeout(async () => {
       const result = await recordOfferView(offer._id);
       viewedRef.current.add(id);
-      if (result?.views != null) {
-        setViewCounts((prev) => ({ ...prev, [id]: result.views }));
-      }
+      void result;
       logActivity('open_offer', {
         targetType: 'Offer',
         targetId: offer._id,
@@ -416,11 +402,9 @@ export default function OfferReelViewer({
             key={offer._id}
             offer={offer}
             isActive={i === activeIndex}
-            favorited={favoriteIds.has(String(offer._id))}
-            onToggleFavorite={onToggleFavorite}
             onShare={handleShare}
             onChat={resolveOwnerAndOpenChat}
-            viewCount={viewCounts[String(offer._id)] ?? offer.views}
+            onRequest={() => {}}
           />
         ))}
       </div>

@@ -62,6 +62,16 @@ const readImages = async (files, existing = []) => {
   return [...existing, ...optimized].slice(0, 3);
 };
 
+const isRequestListing = (type) => type === 'custom';
+
+const formatPublishAge = (dateStr) => {
+  if (!dateStr) return '';
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (days <= 0) return 'اليوم';
+  if (days === 1) return 'منذ يوم';
+  return `منذ ${days} يوماً`;
+};
+
 const Marketplace = () => {
   const navigate = useNavigate();
   const { isAuth, user, updateUser } = useAuth();
@@ -277,17 +287,24 @@ const Marketplace = () => {
       navigate('/login');
       return;
     }
-    if (images.length === 0) {
+    const requestListing = isRequestListing(form.transactionType);
+    if (!form.title.trim()) {
+      toast('أدخل عنوان الإعلان', 'error');
+      return;
+    }
+    if (!requestListing && images.length === 0) {
       toast('أضف صورة واحدة على الأقل', 'error');
       return;
     }
-    if (!form.regionId) {
-      toast('اختر المنطقة من مربع المناطق', 'error');
-      return;
+    if (form.contactPhone.trim()) {
+      const phoneErr = getLocalPhoneError(form.contactPhone);
+      if (phoneErr) {
+        toast(phoneErr, 'error');
+        return;
+      }
     }
-    const phoneErr = getLocalPhoneError(form.contactPhone);
-    if (phoneErr) {
-      toast(phoneErr, 'error');
+    if (!requestListing && form.price === '') {
+      toast('أدخل السعر', 'error');
       return;
     }
     if ((meta.pointsAvailable ?? user?.points ?? 0) < meta.pointsCost && !editingId) {
@@ -301,17 +318,20 @@ const Marketplace = () => {
       try {
         const payload = {
           ...form,
-          price: Number(form.price),
+          title: form.title.trim(),
+          price: form.price === '' ? 0 : Number(form.price),
           images,
           mainImageIndex,
-          contactPhone: normalizeLocalPhone(form.contactPhone),
+          contactPhone: form.contactPhone.trim()
+            ? normalizeLocalPhone(form.contactPhone)
+            : '',
           regionId: form.regionId || undefined,
           subRegionId: form.subRegionId || undefined,
         };
 
         if (editingId) {
           await api.patch(`/bazaar/${editingId}`, payload);
-          toast('تم تحديث الإعلان — بانتظار الموافقة', 'success');
+          toast('تم حفظ التعديل', 'success');
         } else {
           const { data } = await api.post('/bazaar', payload);
           toast(data.message || 'تم إرسال الإعلان', 'success');
@@ -501,12 +521,12 @@ const Marketplace = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <input
-                      required
+                      required={!isRequestListing(form.transactionType)}
                       type="number"
                       min="0"
                       value={form.price}
                       onChange={(e) => setForm({ ...form, price: e.target.value })}
-                      placeholder="السعر (د.ع)"
+                      placeholder={isRequestListing(form.transactionType) ? 'السعر (اختياري)' : 'السعر (د.ع)'}
                       className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
                     />
                     <select
@@ -548,17 +568,16 @@ const Marketplace = () => {
                   />
 
                   <input
-                    required
+                    required={!isRequestListing(form.transactionType)}
                     value={form.keywords}
                     onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                    placeholder="كلمات مفتاحية (2–5) مفصولة بفاصلة"
+                    placeholder={isRequestListing(form.transactionType) ? 'كلمات مفتاحية (اختياري)' : 'كلمات مفتاحية (2–5) مفصولة بفاصلة'}
                     className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
                   />
 
                   <PalestinianPhoneInput
                     value={form.contactPhone}
                     onValueChange={(v) => setForm({ ...form, contactPhone: v })}
-                    required
                   />
 
                   <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
@@ -572,7 +591,11 @@ const Marketplace = () => {
                   </label>
 
                   <div>
-                    <p className="text-sm font-black text-gray-700 mb-2">الصور (حتى 3 — اختر الرئيسية)</p>
+                    <p className="text-sm font-black text-gray-700 mb-2">
+                      {isRequestListing(form.transactionType)
+                        ? 'الصور (اختياري — حتى 3)'
+                        : 'الصور (حتى 3 — اختر الرئيسية)'}
+                    </p>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {images.map((img, idx) => (
                         <div key={idx} className="relative">
@@ -678,8 +701,17 @@ const Marketplace = () => {
                           <h3 className="font-black text-sm truncate">{item.title}</h3>
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${st.color}`}>{st.text}</span>
                         </div>
-                        <p className="text-primary font-black text-sm">{formatPrice(item.price)}</p>
+                        <p className="text-primary font-black text-sm">
+                          {isRequestListing(item.transactionType) && !item.price
+                            ? 'بدون سعر'
+                            : formatPrice(item.price)}
+                        </p>
                         <p className="text-[10px] text-gray-500 font-bold">{regionLabel(item)}</p>
+                        {item.createdAt && (
+                          <p className="text-[10px] text-gray-400 font-bold">
+                            نُشر {formatPublishAge(item.createdAt)}
+                          </p>
+                        )}
                         {item.expiresAt && item.status === 'approved' && (
                           <p className={`text-[10px] font-bold flex items-center gap-1 mt-1 ${expiringSoon ? 'text-amber-600' : 'text-gray-400'}`}>
                             <Clock size={12} />
@@ -690,11 +722,9 @@ const Marketplace = () => {
                           <p className="text-[10px] text-red-500 mt-1">{item.adminReview.note}</p>
                         )}
                         <div className="flex gap-2 mt-2 flex-wrap">
-                          {['pending', 'rejected'].includes(item.status) && (
-                            <button type="button" onClick={() => startEdit(item)} className="text-xs font-black text-primary flex items-center gap-1">
-                              <Edit3 size={12} /> تعديل
-                            </button>
-                          )}
+                          <button type="button" onClick={() => startEdit(item)} className="text-xs font-black text-primary flex items-center gap-1">
+                            <Edit3 size={12} /> تعديل
+                          </button>
                           <button type="button" onClick={() => handleDelete(item._id)} className="text-xs font-black text-red-500 flex items-center gap-1">
                             <Trash2 size={12} /> حذف
                           </button>

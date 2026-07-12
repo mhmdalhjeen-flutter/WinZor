@@ -178,6 +178,7 @@ const BazaarDetail = () => {
           >
             <MessageCircle size={20} /> تواصل
           </button>
+          {listing.contactPhone && (
           <a
             href={`tel:${listing.contactPhone}`}
             className={`flex-1 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${
@@ -189,6 +190,7 @@ const BazaarDetail = () => {
             <Phone size={20} />
             <PhoneDisplay phone={listing.contactPhone} showBadge={false} inheritColor className="text-white" />
           </a>
+          )}
           {isAuth && (
             <button
               type="button"

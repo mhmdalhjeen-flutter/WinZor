@@ -26,6 +26,10 @@ const POPULATE_PUBLIC = [
 const BAZAAR_LIST_SELECT =
   "seller title condition price description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
 
+const TRANSACTION_TYPES = ["sell", "buy", "exchange", "custom", "rent"];
+
+const isRequestListingType = (type) => type === "custom";
+
 const normalizeKeywords = (raw) => {
   if (!raw) return [];
   const list = Array.isArray(raw)
@@ -37,9 +41,10 @@ const normalizeKeywords = (raw) => {
   return [...new Set(list.map((k) => k.toLowerCase()))].slice(0, 5);
 };
 
-const validateImages = (images) => {
+const validateImages = (images, { required = true } = {}) => {
   if (!Array.isArray(images) || images.length === 0) {
-    throw new Error("أضف صورة واحدة على الأقل");
+    if (required) throw new Error("أضف صورة واحدة على الأقل");
+    return;
   }
   if (images.length > 3) throw new Error("3 صور كحد أقصى");
   for (const img of images) {
@@ -55,6 +60,12 @@ const parseContactPhone = (contactPhone) => {
     throw new Error(LOCAL_PHONE_MESSAGE);
   }
   return clean;
+};
+
+const parseOptionalContactPhone = (contactPhone) => {
+  const raw = contactPhone == null ? "" : String(contactPhone).trim();
+  if (!raw) return "";
+  return parseContactPhone(raw);
 };
 
 const deductPoints = async (userId) => {
@@ -136,7 +147,7 @@ exports.browse = async (req, res) => {
     }
     if (transactionType) {
       const safeTransactionType = cleanString(transactionType, { field: "transactionType", max: 20 });
-      if (!["sell", "buy", "exchange", "custom"].includes(safeTransactionType)) {
+      if (!TRANSACTION_TYPES.includes(safeTransactionType)) {
         return res.status(400).json({ message: "transactionType غير صالح" });
       }
       filter.transactionType = safeTransactionType;
@@ -226,26 +237,29 @@ exports.create = async (req, res) => {
       subRegionId,
     } = req.body;
 
-    validateImages(images);
-    const processedImages = await processDataUrlImages(images, { maxBytes: 800_000 });
-    const kw = normalizeKeywords(keywords);
-    if (kw.length < 2) {
-      return res.status(400).json({ message: "أضف 2–5 كلمات مفتاحية" });
-    }
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
     const safeCondition = cleanString(condition, { field: "condition", max: 20, required: true });
     const safeTransactionType = cleanString(transactionType, { field: "transactionType", max: 20, required: true });
     if (!["new", "used"].includes(safeCondition)) return res.status(400).json({ message: "condition غير صالح" });
-    if (!["sell", "buy", "exchange", "custom"].includes(safeTransactionType)) {
+    if (!TRANSACTION_TYPES.includes(safeTransactionType)) {
       return res.status(400).json({ message: "transactionType غير صالح" });
     }
-    let cleanPhone;
-    try {
-      cleanPhone = parseContactPhone(contactPhone);
-    } catch (phoneErr) {
-      return res.status(400).json({ message: phoneErr.message });
+    const isRequest = isRequestListingType(safeTransactionType);
+    validateImages(images, { required: !isRequest });
+    const processedImages = isRequest && (!images || images.length === 0)
+      ? []
+      : await processDataUrlImages(images, { maxBytes: 800_000 });
+    const kw = normalizeKeywords(keywords);
+    if (!isRequest && kw.length < 2) {
+      return res.status(400).json({ message: "أضف 2–5 كلمات مفتاحية" });
     }
-    const safePrice = numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: true });
+    if (isRequest && kw.length > 5) {
+      return res.status(400).json({ message: "5 كلمات مفتاحية كحد أقصى" });
+    }
+    const cleanPhone = parseOptionalContactPhone(contactPhone);
+    const safePrice = (isRequest && (price === "" || price == null))
+      ? 0
+      : numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: !isRequest });
     const safeRegionId = regionId ? requireObjectId(regionId, "regionId") : undefined;
     const safeSubRegionId = subRegionId ? requireObjectId(subRegionId, "subRegionId") : undefined;
 
@@ -320,9 +334,6 @@ exports.update = async (req, res) => {
     if (String(listing.seller) !== String(req.user.id)) {
       return res.status(403).json({ message: "غير مسموح" });
     }
-    if (!["pending", "rejected"].includes(listing.status)) {
-      return res.status(400).json({ message: "لا يمكن تعديل إعلان معتمد أو منتهٍ" });
-    }
 
     const fields = [
       "title",
@@ -344,7 +355,12 @@ exports.update = async (req, res) => {
       } else if (key === "description") {
         listing.description = cleanString(req.body.description, { field: "description", max: 2000 });
       } else if (key === "price") {
-        listing.price = numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: true });
+        const isRequest = isRequestListingType(
+          req.body.transactionType !== undefined ? req.body.transactionType : listing.transactionType
+        );
+        listing.price = (isRequest && (req.body.price === "" || req.body.price == null))
+          ? 0
+          : numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: !isRequest });
       } else if (key === "mainImageIndex") {
         listing.mainImageIndex = intInRange(req.body.mainImageIndex, { field: "mainImageIndex", min: 0, max: 2, required: true });
       } else if (key === "freeDelivery") {
@@ -355,7 +371,7 @@ exports.update = async (req, res) => {
         listing.condition = safeCondition;
       } else if (key === "transactionType") {
         const safeTransactionType = cleanString(req.body.transactionType, { field: "transactionType", max: 20, required: true });
-        if (!["sell", "buy", "exchange", "custom"].includes(safeTransactionType)) {
+        if (!TRANSACTION_TYPES.includes(safeTransactionType)) {
           return res.status(400).json({ message: "transactionType غير صالح" });
         }
         listing.transactionType = safeTransactionType;
@@ -363,21 +379,32 @@ exports.update = async (req, res) => {
         listing[key] = req.body[key] ? requireObjectId(req.body[key], key) : undefined;
       }
     }
-    if (req.body.images) {
-      validateImages(req.body.images);
-      listing.images = await processDataUrlImages(req.body.images, { maxBytes: 800_000 });
+    if (req.body.images !== undefined) {
+      const effectiveType = req.body.transactionType !== undefined
+        ? req.body.transactionType
+        : listing.transactionType;
+      const needsImages = !isRequestListingType(effectiveType);
+      if (!Array.isArray(req.body.images) || req.body.images.length === 0) {
+        if (needsImages) {
+          return res.status(400).json({ message: "أضف صورة واحدة على الأقل" });
+        }
+        listing.images = [];
+      } else {
+        validateImages(req.body.images, { required: true });
+        listing.images = await processDataUrlImages(req.body.images, { maxBytes: 800_000 });
+      }
     }
 
     if (req.body.contactPhone !== undefined) {
-      try {
-        listing.contactPhone = parseContactPhone(req.body.contactPhone);
-      } catch (phoneErr) {
-        return res.status(400).json({ message: phoneErr.message });
-      }
+      listing.contactPhone = parseOptionalContactPhone(req.body.contactPhone);
     }
     if (req.body.keywords !== undefined) {
       const kw = normalizeKeywords(req.body.keywords);
-      if (kw.length < 2) return res.status(400).json({ message: "2–5 كلمات مفتاحية" });
+      const isRequest = isRequestListingType(
+        req.body.transactionType !== undefined ? req.body.transactionType : listing.transactionType
+      );
+      if (!isRequest && kw.length < 2) return res.status(400).json({ message: "2–5 كلمات مفتاحية" });
+      if (isRequest && kw.length > 5) return res.status(400).json({ message: "5 كلمات مفتاحية كحد أقصى" });
       listing.keywords = kw;
     }
 
@@ -524,7 +551,8 @@ exports.getMeta = async (req, res) => {
         { value: "sell", label: "بيع" },
         { value: "buy", label: "شراء" },
         { value: "exchange", label: "بدل" },
-        { value: "custom", label: "حسب الطلب" },
+        { value: "rent", label: "إيجار" },
+        { value: "custom", label: "طلب" },
       ],
     });
   } catch (err) {

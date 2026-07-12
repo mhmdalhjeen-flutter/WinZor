@@ -20,14 +20,21 @@ const bazaarListingSchema = new mongoose.Schema(
     freeDelivery: { type: Boolean, default: false },
     transactionType: {
       type: String,
-      enum: ["sell", "buy", "exchange", "custom"],
+      enum: ["sell", "buy", "exchange", "custom", "rent"],
       required: true,
     },
     keywords: {
       type: [String],
-      validate: [(v) => v.length >= 2 && v.length <= 5, "2–5 كلمات مفتاحية"],
+      validate: {
+        validator(value) {
+          const list = value || [];
+          if (this.transactionType === "custom") return list.length <= 5;
+          return list.length >= 2 && list.length <= 5;
+        },
+        message: "2–5 كلمات مفتاحية (أو بدون كلمات لإعلانات الطلب)",
+      },
     },
-    contactPhone: { type: String, required: true, trim: true },
+    contactPhone: { type: String, trim: true, default: "" },
     regionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region", index: true },
     subRegionId: { type: mongoose.Schema.Types.ObjectId, ref: "Region" },
     status: {

@@ -290,7 +290,12 @@ const Header = () => {
         />
       )}
 
-      <PointsBalanceModal open={pointsOpen} onClose={() => setPointsOpen(false)} points={points} />
+      <PointsBalanceModal
+        open={pointsOpen}
+        onClose={() => setPointsOpen(false)}
+        points={points}
+        user={user || meData}
+      />
     </>
   );
 };

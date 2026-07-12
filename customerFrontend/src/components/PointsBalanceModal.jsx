@@ -1,29 +1,104 @@
-import React from 'react';
-import { Sparkles, X } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useCountUpOnOpen } from '../hooks/useCountUpOnOpen';
+import { usePointsLeaderboard } from '../hooks/usePointsLeaderboard';
+import PointsCelebrationBackground from './points/PointsCelebrationBackground';
+import AchievementGems from './points/AchievementGems';
+import PointsLeaderboardSection from './points/PointsLeaderboardSection';
 
-export default function PointsBalanceModal({ open, onClose, points = 0 }) {
-  if (!open) return null;
+export default function PointsBalanceModal({ open, onClose, points = 0, user = null }) {
+  const displayPoints = useCountUpOnOpen(points, open, 1200);
+  const { data: leaderboard, isLoading: lbLoading } = usePointsLeaderboard(open);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    document.body.classList.add('points-balance-open');
+    return () => document.body.classList.remove('points-balance-open');
+  }, [open]);
+
+  const currentUserId = user?._id || user?.id;
+  const currentUser = leaderboard?.me || (user ? {
+    id: currentUserId,
+    name: user.name,
+    avatar: user.avatar,
+    points: user.points ?? points,
+  } : null);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full max-w-sm bg-gradient-to-b from-[#1a1033] to-[#0b1220] rounded-t-[32px] sm:rounded-[32px] p-8 text-center shadow-2xl border border-white/10"
-        dir="rtl"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 left-4 text-white/50 hover:text-white"
-          aria-label="إغلاق"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="points-balance-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
         >
-          <X size={22} />
-        </button>
+          <button
+            type="button"
+            className="points-balance-overlay__backdrop"
+            aria-label="إغلاق"
+            onClick={onClose}
+          />
 
-        <Sparkles className="mx-auto text-yellow-300 mb-4" size={32} />
-        <p className="text-5xl font-black text-primary-light tabular-nums">{points}</p>
-        <p className="text-sm font-black text-white/70 mt-2">نقطة</p>
-      </div>
-    </div>
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="points-balance-title"
+            className="points-balance-modal"
+            dir="rtl"
+            initial={{ opacity: 0, y: 48, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 32, scale: 0.98 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+          >
+            <PointsCelebrationBackground />
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="points-balance-modal__close"
+              aria-label="إغلاق"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="points-balance-modal__content">
+              {/* 1 — Total points */}
+              <header className="points-balance-hero">
+                <p id="points-balance-title" className="points-balance-hero__label">
+                  عدد النقاط
+                </p>
+                <motion.div
+                  className="points-balance-hero__value-wrap"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.08, duration: 0.45, ease: 'easeOut' }}
+                >
+                  <Star className="points-balance-hero__star" size={28} fill="currentColor" />
+                  <span className="points-balance-hero__value tabular-nums">
+                    {displayPoints.toLocaleString('en-US')}
+                  </span>
+                  <span className="points-balance-hero__unit">Points</span>
+                </motion.div>
+              </header>
+
+              {/* 2 — Achievement gems */}
+              <AchievementGems points={points} active={open} />
+
+              {/* 3 — Leaderboard */}
+              <PointsLeaderboardSection
+                top={leaderboard?.top || []}
+                myRank={leaderboard?.myRank}
+                currentUser={currentUser}
+                currentUserId={currentUserId}
+                isLoading={lbLoading}
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

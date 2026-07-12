@@ -36,4 +36,5 @@ export const queryKeys = {
   storesBrowse: (params) => ['stores', 'browse', params],
   storesByRegions: (params) => ['stores', 'byRegions', params],
   pointsProgramStores: (params) => ['stores', 'points', params],
+  pointsLeaderboard: ['pointsLeaderboard'],
 };

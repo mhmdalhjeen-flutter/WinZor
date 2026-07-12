@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  Search, PlusCircle, Camera, Loader2, Gift, AlertCircle, Trash2, Edit3,
+  Camera, Loader2, Gift, AlertCircle, Trash2, Edit3,
   RefreshCw, Clock, CheckCircle2, XCircle,
 } from 'lucide-react';
 import api from '../api/axios';
@@ -16,7 +16,8 @@ import RegionPickerBox from '../components/RegionPickerBox';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { unwrapList } from '../utils/unwrapList';
 import EmptyState from '../shared/EmptyState';
-import { queryKeys } from '../lib/queryClient';
+import { queryClient, queryKeys } from '../lib/queryClient';
+import MarketplaceTabNav from '../components/marketplace/MarketplaceTabNav';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { getLocalPhoneError, normalizeLocalPhone } from '../utils/phoneValidation';
 import {
@@ -67,7 +68,8 @@ const Marketplace = () => {
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
 
   const [activeTab, setActiveTab] = useState('browse');
-  const [postMode, setPostMode] = useState('create');
+  const [favOverrides, setFavOverrides] = useState({});
+  const [favPulseId, setFavPulseId] = useState(null);
   const [myListings, setMyListings] = useState([]);
   const [meta, setMeta] = useState({ pointsCost: 3, listingDays: 7, pointsAvailable: 0 });
   const [submitting, setSubmitting] = useState(false);
@@ -111,6 +113,19 @@ const Marketplace = () => {
     staleTime: 60 * 1000,
   });
 
+  const {
+    data: favoriteListings = [],
+    isLoading: favoritesLoading,
+  } = useQuery({
+    queryKey: queryKeys.bazaarFavorites,
+    queryFn: async () => {
+      const { data } = await api.get('/bazaar/favorites');
+      return unwrapList(data, ['listings']);
+    },
+    enabled: activeTab === 'favorites' && isAuth,
+    staleTime: 60 * 1000,
+  });
+
   const handleFormRegionChange = (path) => {
     const { regionId, subRegionId } = regionPathToListingIds(path);
     setForm((f) => ({ ...f, regionId, subRegionId }));
@@ -148,8 +163,55 @@ const Marketplace = () => {
   }, [loadMeta]);
 
   useEffect(() => {
-    if (activeTab === 'post' && postMode === 'mine') loadMy();
-  }, [activeTab, postMode, loadMy]);
+    if (activeTab === 'mine') loadMy();
+  }, [activeTab, loadMy]);
+
+  const isFavorited = useCallback((listing) => {
+    const id = String(listing._id);
+    if (id in favOverrides) return favOverrides[id];
+    return !!listing.isFavorited;
+  }, [favOverrides]);
+
+  const handleToggleFavorite = async (listing) => {
+    if (!isAuth) {
+      navigate('/login');
+      return;
+    }
+    const id = String(listing._id);
+    const nextFav = !isFavorited(listing);
+    setFavOverrides((prev) => ({ ...prev, [id]: nextFav }));
+    setFavPulseId(id);
+    setTimeout(() => setFavPulseId(null), 300);
+    try {
+      const { data } = await api.post(`/bazaar/${listing._id}/favorite`);
+      setFavOverrides((prev) => ({ ...prev, [id]: data.favorited }));
+      queryClient.invalidateQueries({ queryKey: queryKeys.bazaarFavorites });
+      queryClient.invalidateQueries({ queryKey: ['bazaar', 'browse'] });
+    } catch (err) {
+      setFavOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
+    }
+  };
+
+  const handleTabChange = (tab) => {
+    if (tab === 'sell') {
+      if (!isAuth) {
+        navigate('/login');
+        return;
+      }
+      runWithVerification(() => setActiveTab('sell'));
+      return;
+    }
+    if ((tab === 'mine' || tab === 'favorites') && !isAuth) {
+      navigate('/login');
+      return;
+    }
+    setActiveTab(tab);
+  };
 
   const filteredMyListings = myListings.filter((item) => {
     if (!listingMatchesRegionFilter(item, filterRegionId, regionTree)) return false;
@@ -190,8 +252,7 @@ const Marketplace = () => {
     });
     setImages(listing.images || []);
     setMainImageIndex(listing.mainImageIndex || 0);
-    setPostMode('create');
-    setActiveTab('post');
+    setActiveTab('sell');
   };
 
   const resetForm = () => {
@@ -248,7 +309,7 @@ const Marketplace = () => {
           if (data.pointsRemaining != null) updateUser({ points: data.pointsRemaining });
         }
         resetForm();
-        setPostMode('mine');
+        setActiveTab('mine');
         loadMy();
         loadMeta();
       } catch (err) {
@@ -304,41 +365,38 @@ const Marketplace = () => {
     runWithVerification(renewListing);
   };
 
+  const visibleFavorites = favoriteListings.filter((item) => {
+    const id = String(item._id);
+    if (id in favOverrides) return favOverrides[id];
+    return true;
+  });
+
   const pointsAvailable = meta.pointsAvailable ?? user?.points ?? 0;
+
+  const renderListingGrid = (listings) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {listings.map((item) => (
+        <BazaarListingCard
+          key={item._id}
+          listing={item}
+          favorited={isFavorited(item)}
+          isPulsing={favPulseId === String(item._id)}
+          onToggleFavorite={handleToggleFavorite}
+          onClick={(l) => navigate(`/marketplace/${l._id}`)}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen text-right" dir="rtl">
-      <div className="px-4 pt-2 pb-3">
-        <h1 className="text-2xl font-black text-gray-900">اعرض غراضك</h1>
-        <p className="text-xs text-gray-500 font-bold">بيع وشراء وبدل بين الزبائن فقط — منفصل عن عروض المتاجر</p>
+      <div className="px-4 pt-4 pb-2">
+        <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug">
+          السوق المفتوح للمستعمل والجديد
+        </h1>
       </div>
 
-      <div className="sticky top-0 z-30 bg-white shadow-sm px-4 py-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab('browse')}
-          className={`flex-1 py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 ${
-            activeTab === 'browse' ? 'bg-primary text-white shadow-lg' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          <Search size={18} /> تصفح الإعلانات
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (!isAuth) {
-              navigate('/login');
-              return;
-            }
-            runWithVerification(() => setActiveTab('post'));
-          }}
-          className={`flex-1 py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 ${
-            activeTab === 'post' ? 'bg-primary text-white shadow-lg' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          <PlusCircle size={18} /> أضف إعلان
-        </button>
-      </div>
+      <MarketplaceTabNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       <div className="p-4">
         {activeTab === 'browse' && (
@@ -380,41 +438,12 @@ const Marketplace = () => {
               <EmptyState title="لا إعلانات" description="جرّب تغيير المنطقة أو الفلاتر" />
             )}
 
-            {browseListings.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {browseListings.map((item) => (
-                  <BazaarListingCard
-                    key={item._id}
-                    listing={item}
-                    onClick={(l) => navigate(`/marketplace/${l._id}`)}
-                  />
-                ))}
-              </div>
-            )}
+            {browseListings.length > 0 && renderListingGrid(browseListings)}
           </div>
         )}
 
-        {activeTab === 'post' && isAuth && (
+        {activeTab === 'sell' && isAuth && (
           <div className="space-y-4">
-            <div className="flex gap-2 bg-white p-1 rounded-2xl border border-gray-100">
-              <button
-                type="button"
-                onClick={() => { setPostMode('create'); if (!editingId) resetForm(); }}
-                className={`flex-1 py-2 rounded-xl text-sm font-black ${postMode === 'create' ? 'bg-primary text-white' : 'text-gray-500'}`}
-              >
-                {editingId ? 'تعديل إعلان' : 'نشر جديد'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setPostMode('mine'); loadMy(); }}
-                className={`flex-1 py-2 rounded-xl text-sm font-black ${postMode === 'mine' ? 'bg-primary text-white' : 'text-gray-500'}`}
-              >
-                إعلاناتي
-              </button>
-            </div>
-
-            {postMode === 'create' && (
-              <>
                 <div className={`rounded-2xl p-4 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
                   {pointsAvailable >= meta.pointsCost ? (
                     <CheckCircle2 className="text-green-600 shrink-0" size={22} />
@@ -575,11 +604,12 @@ const Marketplace = () => {
                     </button>
                   </div>
                 </form>
-              </>
-            )}
+          </div>
+        )}
 
-            {postMode === 'mine' && (
+        {activeTab === 'mine' && isAuth && (
               <div className="space-y-4">
+                <h2 className="text-lg font-black text-gray-900 sr-only">منشوراتي</h2>
                 <QuickSearchPanel
                   regionTree={regionTree}
                   regionPath={regionPath}
@@ -615,7 +645,7 @@ const Marketplace = () => {
                 </div>
 
                 {myListings.length === 0 && (
-                  <EmptyState title="لا إعلانات بعد" description="انشر إعلانك الأول من تبويب نشر جديد" />
+                  <EmptyState title="لا منشورات بعد" description="انشر إعلانك الأول من تبويب بيع" />
                 )}
                 {myListings.length > 0 && filteredMyListings.length === 0 && (
                   <EmptyState title="لا نتائج" description="جرّب تغيير المنطقة أو الفلاتر" />
@@ -673,6 +703,27 @@ const Marketplace = () => {
                   );
                 })}
               </div>
+        )}
+
+        {activeTab === 'favorites' && isAuth && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-black text-gray-900 sr-only">المفضلة</h2>
+
+            {favoritesLoading && (
+              <div className="flex justify-center py-12">
+                <Loader2 className="animate-spin text-amber-500" size={28} />
+              </div>
+            )}
+
+            {!favoritesLoading && favoriteListings.length > 0 && visibleFavorites.length === 0 && (
+              <EmptyState
+                title="لا مفضّلات بعد"
+                description="اضغط على القلب في أي إعلان لحفظه هنا"
+              />
+            )}
+
+            {!favoritesLoading && visibleFavorites.length > 0 && (
+              renderListingGrid(visibleFavorites)
             )}
           </div>
         )}

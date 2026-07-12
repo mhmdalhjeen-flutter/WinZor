@@ -5,6 +5,7 @@ const Region = require("../models/region");
 const { getDescendantIds } = require("../utils/region.util");
 const { getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const { bayesianRating, freshnessBoost } = require("../utils/ranking.util");
+const { applyDisplayPrioritySort, compareDisplayPriority } = require("../utils/displayPriority.util");
 const { expandCategoryIds } = require("../utils/offerFeed.util");
 const { getCategoryAndDescendantNames } = require("../controllers/category.controller");
 const {
@@ -145,11 +146,14 @@ async function attachMembershipStatus(stores, userId) {
 }
 
 function sortStoresList(stores, ctx) {
-  return [...stores].sort((a, b) => {
-    const diff = computeStoreScore(b, ctx) - computeStoreScore(a, ctx);
-    if (diff !== 0) return diff;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
+  const rankAuto = (list) =>
+    [...list].sort((a, b) => {
+      const diff = computeStoreScore(b, ctx) - computeStoreScore(a, ctx);
+      if (diff !== 0) return diff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+  return applyDisplayPrioritySort(stores, rankAuto);
 }
 
 async function browseStores({ userId, region, regionId, category, categoryId, q } = {}) {
@@ -180,7 +184,7 @@ async function browseStores({ userId, region, regionId, category, categoryId, q 
   }
 
   const stores = (await Store.find(query)
-    .select("name logo region subRegion category categoryId description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address isVerifiedStore")
+    .select("name logo region subRegion category categoryId description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address isVerifiedStore displayPriority")
     .lean()).map(stripBase64Logo);
 
   const interest = await getCategoryInterestScores(userId);
@@ -226,10 +230,20 @@ async function browseStores({ userId, region, regionId, category, categoryId, q 
     interest
   ).map((group) => ({
     ...group,
-    sections: [...group.sections].sort(
-      (a, b) => (b.interestScore || 0) - (a.interestScore || 0)
+    sections: applyDisplayPrioritySort(
+      group.sections,
+      (list) => [...list].sort((a, b) => (b.interestScore || 0) - (a.interestScore || 0))
     ),
   }));
+
+  const categoryById = new Map(categories.map((c) => [String(c._id), c]));
+  parentGroups.sort((a, b) => {
+    const rootA = categoryById.get(String(a.parentCategoryId));
+    const rootB = categoryById.get(String(b.parentCategoryId));
+    const pri = compareDisplayPriority(rootA || {}, rootB || {});
+    if (pri !== 0) return pri;
+    return String(a.parentCategory || '').localeCompare(String(b.parentCategory || ''), 'ar');
+  });
 
   if (uncategorizedStores.length) {
     parentGroups.push({
@@ -291,7 +305,7 @@ async function storesByRegions({ q, regionId, categoryId } = {}) {
   const [regions, stores] = await Promise.all([
     Region.find({ isActive: true, parent: null }).sort({ sortOrder: 1, name: 1 }).lean(),
     Store.find(storeQuery)
-      .select("name logo region subRegion category ratingAvg ratingCount regionId subRegionId")
+      .select("name logo region subRegion category ratingAvg ratingCount regionId subRegionId displayPriority createdAt")
       .lean()
       .then((rows) => rows.map(stripBase64Logo)),
   ]);
@@ -301,15 +315,21 @@ async function storesByRegions({ q, regionId, categoryId } = {}) {
     .lean();
 
   const byRegion = regions.map((r) => {
-    const mainStores = stores.filter(
-      (s) => String(s.regionId) === String(r._id) || s.region === r.name
+    const mainStores = sortStoresList(
+      stores.filter(
+        (s) => String(s.regionId) === String(r._id) || s.region === r.name
+      ),
+      {}
     );
     const subs = subRegions
       .filter((sr) => String(sr.parent) === String(r._id))
       .map((sr) => ({
         region: sr,
-        stores: stores.filter(
-          (s) => String(s.subRegionId) === String(sr._id) || s.subRegion === sr.name
+        stores: sortStoresList(
+          stores.filter(
+            (s) => String(s.subRegionId) === String(sr._id) || s.subRegion === sr.name
+          ),
+          {}
         ),
       }));
 
@@ -339,8 +359,8 @@ async function suggestNearestStore({ region, category, excludeIds = [] }) {
 
   const sameRegion = candidates.filter((s) => s.region === region);
   const pool = sameRegion.length ? sameRegion : candidates;
-  pool.sort((a, b) => computeStoreScore(b, {}) - computeStoreScore(a, {}));
-  return pool[0];
+  const ranked = sortStoresList(pool, {});
+  return ranked[0];
 }
 
 module.exports = {

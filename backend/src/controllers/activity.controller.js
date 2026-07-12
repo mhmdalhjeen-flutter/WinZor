@@ -4,6 +4,7 @@ const Store = require("../models/store");
 const activityService = require("../services/activity.service");
 const { getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const { computeOfferRankScore } = require("../utils/ranking.util");
+const { applyOfferDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const LOGGABLE = ["view_offer", "open_offer", "view_product", "visit_store", "search"];
 
@@ -159,7 +160,10 @@ exports.getRecommendations = async (req, res) => {
         score += computeOfferRankScore(o, o.store) * 0.15;
         o.__score = score;
       });
-      candidateOffers.sort((a, b) => b.__score - a.__score);
+      candidateOffers = applyOfferDisplayPrioritySort(
+        candidateOffers,
+        (list) => [...list].sort((a, b) => b.__score - a.__score)
+      );
     }
 
     let recommendations = candidateOffers.slice(0, limit);

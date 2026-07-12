@@ -3,6 +3,13 @@
  * دون إقصاء المتاجر/العروض الجديدة (Bayesian smoothing).
  */
 
+const {
+  applyOfferDisplayPrioritySort,
+  getOfferDisplayPriority,
+  hasDisplayPriority,
+  OFFER_LEGACY_FIELD,
+} = require("./displayPriority.util");
+
 const PRIOR_RATING = 3.5;
 const PRIOR_WEIGHT = 8;
 
@@ -51,23 +58,12 @@ function computeOfferRankScore(offer, store) {
 }
 
 function hasFeaturedPriority(offer) {
-  const fp = offer?.featuredPriority;
-  return fp != null && fp !== "" && Number.isFinite(Number(fp));
+  return hasDisplayPriority(offer, OFFER_LEGACY_FIELD);
 }
 
-/** يضع العروض ذات featuredPriority أولاً (1، 2، 3…) ثم يكمل بالترتيب الحالي */
+/** يضع العروض ذات displayPriority أولاً (1، 2، 3…) ثم يكمل بالترتيب الحالي */
 function applyFeaturedPrioritySort(offers = [], sortFn) {
-  const manual = [];
-  const auto = [];
-
-  for (const o of offers) {
-    if (hasFeaturedPriority(o)) manual.push(o);
-    else auto.push(o);
-  }
-
-  manual.sort((a, b) => Number(a.featuredPriority) - Number(b.featuredPriority));
-  const rankedAuto = sortFn(auto);
-  return [...manual, ...rankedAuto];
+  return applyOfferDisplayPrioritySort(offers, sortFn);
 }
 
 function sortOffersByRank(offers = []) {
@@ -88,5 +84,6 @@ module.exports = {
   sortOffersByRank,
   applyFeaturedPrioritySort,
   hasFeaturedPriority,
+  getOfferDisplayPriority,
   freshnessBoost,
 };

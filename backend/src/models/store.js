@@ -135,6 +135,9 @@ const storeSchema = new mongoose.Schema({
         default: false,
     },
 
+    /** أولوية عرض يدوية داخل التصنيف — null = نظام التوصيات الحالي */
+    displayPriority: { type: Number, default: null },
+
     address: { type: String, default: "" },
 
     owner: {

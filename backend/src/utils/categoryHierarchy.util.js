@@ -1,6 +1,9 @@
 const Category = require("../models/category");
+const { compareDisplayPriority } = require("./displayPriority.util");
 
 function sortCategories(a, b) {
+  const pri = compareDisplayPriority(a, b);
+  if (pri !== 0) return pri;
   return (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name), "ar");
 }
 
@@ -127,6 +130,7 @@ function buildDisplaySections(categories) {
         categoryId: root._id,
         categoryName: root.name,
         categoryIcon: root.icon || "",
+        displayPriority: root.displayPriority ?? null,
         parentCategoryId: null,
         parentCategoryName: null,
         rootCategoryId: root._id,
@@ -140,6 +144,7 @@ function buildDisplaySections(categories) {
         categoryId: child._id,
         categoryName: child.name,
         categoryIcon: child.icon || root.icon || "",
+        displayPriority: child.displayPriority ?? null,
         parentCategoryId: root._id,
         parentCategoryName: root.name,
         rootCategoryId: root._id,
@@ -151,6 +156,7 @@ function buildDisplaySections(categories) {
       categoryId: root._id,
       categoryName: root.name,
       categoryIcon: root.icon || "",
+      displayPriority: root.displayPriority ?? null,
       parentCategoryId: root._id,
       parentCategoryName: root.name,
       rootCategoryId: root._id,
@@ -163,7 +169,7 @@ function buildDisplaySections(categories) {
 
 async function loadActiveStoreCategories() {
   return Category.find({ type: "store", isActive: true })
-    .select("_id name icon parent order")
+    .select("_id name icon parent order displayPriority")
     .lean();
 }
 
@@ -212,6 +218,7 @@ function buildParentGroupsFromSections(sections, groupedStores, interest = {}) {
       categoryId: section.categoryId,
       category: section.categoryName,
       categoryIcon: section.categoryIcon || "",
+      displayPriority: section.displayPriority ?? null,
       isParentFallback: section.isParentFallback,
       interestScore: interest[section.categoryName] || 0,
       stores,

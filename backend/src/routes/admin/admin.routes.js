@@ -28,9 +28,9 @@ const auditController = require("../../controllers/admin/audit.controller");
 const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
 const { requireObjectId } = require("../../utils/inputSecurity.util");
 
-const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore owner cards bypassCards createdAt";
+const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore displayPriority owner cards bypassCards createdAt";
 const ADMIN_PRODUCT_LIST_SELECT = "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive createdAt";
-const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority featuredPriority expiresAt createdAt";
+const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority featuredPriority displayPriority expiresAt createdAt";
 
 function stripBase64ListImage(row, field = "image") {
     if (!row || typeof row !== "object") return row;
@@ -252,6 +252,33 @@ router.patch('/stores/:storeId/verify', async (req, res) => {
     }
 });
 
+// ─── PATCH /admin/stores/:storeId/display-priority ───────────────────────────
+router.patch('/stores/:storeId/display-priority', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+
+        const raw = req.body?.displayPriority;
+        if (raw === null || raw === '' || raw === undefined) {
+            store.displayPriority = null;
+        } else {
+            const num = parseInt(raw, 10);
+            if (!Number.isFinite(num) || num < 1) {
+                return res.status(400).json({ message: 'أولوية العرض يجب أن تكون رقماً موجباً أو فارغة' });
+            }
+            store.displayPriority = num;
+        }
+        await store.save();
+        res.json({
+            message: 'تم تحديث أولوية عرض المتجر',
+            displayPriority: store.displayPriority,
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
 // ─── PATCH /admin/offers/:offerId/featured-priority ──────────────────────────
 router.patch('/offers/:offerId/featured-priority', async (req, res) => {
     try {
@@ -259,19 +286,52 @@ router.patch('/offers/:offerId/featured-priority', async (req, res) => {
         const offer = await Offer.findById(offerId);
         if (!offer) return res.status(404).json({ message: 'العرض غير موجود' });
 
-        const raw = req.body?.featuredPriority;
+        const raw = req.body?.displayPriority ?? req.body?.featuredPriority;
         if (raw === null || raw === '' || raw === undefined) {
+            offer.displayPriority = null;
             offer.featuredPriority = null;
         } else {
             const num = parseInt(raw, 10);
             if (!Number.isFinite(num) || num < 1) {
-                return res.status(400).json({ message: 'أولوية التمييز يجب أن تكون رقماً موجباً أو فارغة' });
+                return res.status(400).json({ message: 'أولوية العرض يجب أن تكون رقماً موجباً أو فارغة' });
             }
+            offer.displayPriority = num;
             offer.featuredPriority = num;
         }
         await offer.save();
         res.json({
-            message: 'تم تحديث أولوية التمييز',
+            message: 'تم تحديث أولوية عرض العرض',
+            displayPriority: offer.displayPriority,
+            featuredPriority: offer.featuredPriority,
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/offers/:offerId/display-priority ───────────────────────────
+router.patch('/offers/:offerId/display-priority', async (req, res) => {
+    try {
+        const offerId = requireObjectId(req.params.offerId, "offerId");
+        const offer = await Offer.findById(offerId);
+        if (!offer) return res.status(404).json({ message: 'العرض غير موجود' });
+
+        const raw = req.body?.displayPriority;
+        if (raw === null || raw === '' || raw === undefined) {
+            offer.displayPriority = null;
+            offer.featuredPriority = null;
+        } else {
+            const num = parseInt(raw, 10);
+            if (!Number.isFinite(num) || num < 1) {
+                return res.status(400).json({ message: 'أولوية العرض يجب أن تكون رقماً موجباً أو فارغة' });
+            }
+            offer.displayPriority = num;
+            offer.featuredPriority = num;
+        }
+        await offer.save();
+        res.json({
+            message: 'تم تحديث أولوية عرض العرض',
+            displayPriority: offer.displayPriority,
             featuredPriority: offer.featuredPriority,
         });
     } catch (err) {

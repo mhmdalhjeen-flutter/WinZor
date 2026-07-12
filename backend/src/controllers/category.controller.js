@@ -1,11 +1,17 @@
 const Category = require("../models/category");
+const { sortCategories } = require("../utils/categoryHierarchy.util");
 const { assertNoMongoOperators, cleanString, intInRange, requireObjectId } = require("../utils/inputSecurity.util");
+
+function parseOptionalDisplayPriority(value, field = "displayPriority") {
+  if (value === null || value === "" || value === undefined) return null;
+  return intInRange(value, { field, min: 1, max: 10000 });
+}
 
 // بناء شجرة متداخلة من قائمة مسطّحة.
 const buildTree = (items, parent = null) => {
   return items
     .filter((c) => String(c.parent || null) === String(parent || null))
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .sort(sortCategories)
     .map((c) => ({
       _id: c._id,
       name: c.name,
@@ -13,6 +19,8 @@ const buildTree = (items, parent = null) => {
       description: c.description,
       type: c.type,
       parent: c.parent || null,
+      order: c.order,
+      displayPriority: c.displayPriority ?? null,
       children: buildTree(items, c._id),
     }));
 };
@@ -55,7 +63,8 @@ exports.getAll = async (req, res) => {
     const filter = {};
     if (req.query.type) filter.type = req.query.type;
     if (req.query.all !== "true") filter.isActive = true;
-    const categories = await Category.find(filter).sort({ order: 1, name: 1 });
+    const categories = await Category.find(filter).lean();
+    categories.sort(sortCategories);
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -79,7 +88,7 @@ exports.getTree = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     assertNoMongoOperators(req.body, "category");
-    const { name, description, icon, parent, order, type, isActive } = req.body;
+    const { name, description, icon, parent, order, type, isActive, displayPriority } = req.body;
     const safeName = cleanString(name, { field: "name", max: 80, required: true });
     const safeType = cleanString(type || "store", { field: "type", max: 20 });
     if (!["store", "product"].includes(safeType)) return res.status(400).json({ message: "type غير صالح" });
@@ -89,6 +98,7 @@ exports.create = async (req, res) => {
       icon: cleanString(icon, { field: "icon", max: 80 }),
       parent: parent ? requireObjectId(parent, "parent") : null,
       order: intInRange(order ?? 0, { field: "order", min: 0, max: 10000 }),
+      displayPriority: parseOptionalDisplayPriority(displayPriority),
       type: safeType,
       isActive: isActive !== undefined ? isActive : true,
     });
@@ -115,6 +125,9 @@ exports.update = async (req, res) => {
     if (req.body.icon !== undefined) patch.icon = cleanString(req.body.icon, { field: "icon", max: 80 });
     if (req.body.parent !== undefined) patch.parent = req.body.parent ? requireObjectId(req.body.parent, "parent") : null;
     if (req.body.order !== undefined) patch.order = intInRange(req.body.order, { field: "order", min: 0, max: 10000 });
+    if (req.body.displayPriority !== undefined) {
+      patch.displayPriority = parseOptionalDisplayPriority(req.body.displayPriority);
+    }
     if (req.body.type !== undefined) {
       patch.type = cleanString(req.body.type, { field: "type", max: 20 });
       if (!["store", "product"].includes(patch.type)) return res.status(400).json({ message: "type غير صالح" });

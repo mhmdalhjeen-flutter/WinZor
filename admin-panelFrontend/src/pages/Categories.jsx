@@ -6,7 +6,7 @@ import { queryKeys } from '../lib/queryClient';
 import { unwrapList } from '../utils/unwrapList';
 import LightLoadingHint from '../shared/LightLoadingHint';
 
-const EMPTY = { name: '', icon: '', description: '', parent: '', type: 'store', isActive: true };
+const EMPTY = { name: '', icon: '', description: '', parent: '', type: 'store', isActive: true, displayPriority: '' };
 
 const Categories = () => {
   const queryClient = useQueryClient();
@@ -40,7 +40,16 @@ const Categories = () => {
     const out = [];
     const walk = (parentId, depth) => {
       (byParent[parentId] || [])
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .sort((a, b) => {
+          const priA = a.displayPriority;
+          const priB = b.displayPriority;
+          const aHas = priA != null && priA !== '' && Number.isFinite(Number(priA));
+          const bHas = priB != null && priB !== '' && Number.isFinite(Number(priB));
+          if (aHas && bHas && Number(priA) !== Number(priB)) return Number(priA) - Number(priB);
+          if (aHas && !bHas) return -1;
+          if (!aHas && bHas) return 1;
+          return (a.order || 0) - (b.order || 0);
+        })
         .forEach((c) => {
           out.push({ ...c, depth });
           walk(c._id, depth + 1);
@@ -67,6 +76,7 @@ const Categories = () => {
       parent: cat.parent || '',
       type: cat.type || 'store',
       isActive: cat.isActive !== false,
+      displayPriority: cat.displayPriority ?? '',
     });
     setShowModal(true);
   };
@@ -80,7 +90,11 @@ const Categories = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, parent: form.parent || null };
+      const payload = {
+        ...form,
+        parent: form.parent || null,
+        displayPriority: form.displayPriority === '' ? null : Number(form.displayPriority),
+      };
       if (editingId) await axios.put(`/categories/${editingId}`, payload);
       else await axios.post('/categories', payload);
       setShowModal(false);
@@ -141,6 +155,7 @@ const Categories = () => {
                   {!cat.isActive && <span className="badge badge-danger mr-2">معطّل</span>}
                   <div className="text-[11px] text-muted">
                     {cat.parent ? `ضمن: ${nameById(cat.parent)}` : 'مستوى أعلى'} · {cat.type === 'store' ? 'متاجر' : 'منتجات'}
+                    {cat.displayPriority != null && ` · أولوية: ${cat.displayPriority}`}
                   </div>
                 </div>
               </div>
@@ -196,6 +211,19 @@ const Categories = () => {
               <div>
                 <label className="block text-sm font-bold mb-1">الوصف</label>
                 <input name="description" value={form.description} onChange={handleChange} className="admin-input w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">أولوية العرض (اختياري)</label>
+                <input
+                  name="displayPriority"
+                  type="number"
+                  min="1"
+                  value={form.displayPriority}
+                  onChange={handleChange}
+                  className="admin-input w-full"
+                  placeholder="فارغ = الترتيب الحالي"
+                />
+                <p className="text-[11px] text-muted mt-1">رقم أقل = يظهر أولاً. اتركه فارغاً لعدم التغيير.</p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="isActive" checked={form.isActive} onChange={handleChange} />

@@ -26,6 +26,9 @@ const categorySchema = new mongoose.Schema(
     // ترتيب العرض داخل نفس المستوى.
     order: { type: Number, default: 0 },
 
+    /** أولوية عرض يدوية من الأدمن — null = الترتيب الحالي (order + الاسم) */
+    displayPriority: { type: Number, default: null },
+
     type: {
       type: String,
       enum: ["store", "product"],

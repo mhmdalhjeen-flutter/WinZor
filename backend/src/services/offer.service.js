@@ -19,7 +19,7 @@ const { buildUserSignals, sortOffersPersonalized, sortOffersByRank } = require("
 const { getDescendantIds } = require("../utils/region.util");
 
 const LIST_OFFER_SELECT =
-  "title description offerType originalPrice value finalPrice currency isActive priority featuredPriority views shareCount createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
+  "title description offerType originalPrice value finalPrice currency isActive priority featuredPriority displayPriority views shareCount createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
 
 const STORE_POPULATE_SELECT =
   "name logo region subRegion category categoryId ratingAvg ratingCount regionId subRegionId isVerifiedStore owner";

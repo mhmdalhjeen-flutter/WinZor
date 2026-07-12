@@ -61,6 +61,12 @@ const offerSchema = new mongoose.Schema({
         default: null,
     },
 
+    /** أولوية عرض يدوية — null = نظام التوصيات الحالي (يُفضَّل على featuredPriority) */
+    displayPriority: {
+        type: Number,
+        default: null,
+    },
+
     shareCount: {
         type: Number,
         default: 0,

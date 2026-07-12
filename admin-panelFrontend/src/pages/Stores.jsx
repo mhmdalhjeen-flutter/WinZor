@@ -27,6 +27,7 @@ export default function AdminStores() {
   const [detailTab, setDetailTab]         = useState('products');
   const [detailLoading, setDetailLoading] = useState(false);
   const [priorityDrafts, setPriorityDrafts] = useState({});
+  const [storePriorityDrafts, setStorePriorityDrafts] = useState({});
 
   const { data: stores = [], isLoading } = useQuery({
     queryKey: queryKeys.adminStores,
@@ -74,15 +75,34 @@ export default function AdminStores() {
   const saveFeaturedPriority = async (offerId) => {
     const raw = priorityDrafts[offerId];
     try {
-      const res = await axios.patch(`/admin/offers/${offerId}/featured-priority`, {
-        featuredPriority: raw === '' || raw === undefined ? null : Number(raw),
+      const res = await axios.patch(`/admin/offers/${offerId}/display-priority`, {
+        displayPriority: raw === '' || raw === undefined ? null : Number(raw),
       });
       setStoreOffers((prev) =>
         prev.map((o) =>
-          o._id === offerId ? { ...o, featuredPriority: res.data.featuredPriority } : o
+          o._id === offerId
+            ? { ...o, displayPriority: res.data.displayPriority, featuredPriority: res.data.featuredPriority }
+            : o
         )
       );
-      showToast('تم تحديث أولوية التمييز');
+      showToast('تم تحديث أولوية عرض العرض');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'حدث خطأ');
+    }
+  };
+
+  const saveStoreDisplayPriority = async (storeId) => {
+    const raw = storePriorityDrafts[storeId];
+    try {
+      const res = await axios.patch(`/admin/stores/${storeId}/display-priority`, {
+        displayPriority: raw === '' || raw === undefined ? null : Number(raw),
+      });
+      queryClient.setQueryData(queryKeys.adminStores, (prev = []) =>
+        prev.map((s) =>
+          s._id === storeId ? { ...s, displayPriority: res.data.displayPriority } : s
+        )
+      );
+      showToast('تم تحديث أولوية عرض المتجر');
     } catch (err) {
       showToast(err.response?.data?.message || 'حدث خطأ');
     }
@@ -355,6 +375,34 @@ export default function AdminStores() {
                     }
                     <span>{store.isActive ? 'مفعّل ويظهر للعامة' : 'موقوف ومخفي'}</span>
                   </div>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <label className="text-xs font-bold text-muted">أولوية العرض:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="admin-input"
+                      style={{ width: '4.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                      placeholder="فارغ"
+                      value={
+                        storePriorityDrafts[store._id] !== undefined
+                          ? storePriorityDrafts[store._id]
+                          : (store.displayPriority ?? '')
+                      }
+                      onChange={(e) =>
+                        setStorePriorityDrafts((prev) => ({
+                          ...prev,
+                          [store._id]: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary py-1 px-2 text-xs"
+                      onClick={() => saveStoreDisplayPriority(store._id)}
+                    >
+                      حفظ
+                    </button>
+                  </div>
                 </div>
 
                 <div className="store-actions">
@@ -461,7 +509,7 @@ export default function AdminStores() {
                               )}
                               {detailTab === 'offers' && (
                                 <div className="flex items-center gap-2 mt-2">
-                                  <label className="text-xs font-bold text-muted">أولوية التمييز:</label>
+                                  <label className="text-xs font-bold text-muted">أولوية العرض:</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -471,7 +519,7 @@ export default function AdminStores() {
                                     value={
                                       priorityDrafts[item._id] !== undefined
                                         ? priorityDrafts[item._id]
-                                        : (item.featuredPriority ?? '')
+                                        : (item.displayPriority ?? item.featuredPriority ?? '')
                                     }
                                     onChange={(e) =>
                                       setPriorityDrafts((prev) => ({

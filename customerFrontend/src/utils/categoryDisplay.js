@@ -1,5 +1,17 @@
 const MISC_SECTION_NAMES = new Set(['عروض متنوعة', 'أخرى']);
 
+function compareCategoryNodes(a, b) {
+  const priA = a?.displayPriority;
+  const priB = b?.displayPriority;
+  const aHas = priA != null && priA !== '' && Number.isFinite(Number(priA));
+  const bHas = priB != null && priB !== '' && Number.isFinite(Number(priB));
+  if (aHas && bHas && Number(priA) !== Number(priB)) return Number(priA) - Number(priB);
+  if (aHas && !bHas) return -1;
+  if (!aHas && bHas) return 1;
+  return (a?.order || 0) - (b?.order || 0)
+    || String(a?.name || '').localeCompare(String(b?.name || ''), 'ar');
+}
+
 export function isMiscSectionName(name) {
   return MISC_SECTION_NAMES.has(String(name || '').trim());
 }
@@ -157,8 +169,8 @@ function orderSections(sectionList, maps) {
   const ordered = [];
   const used = new Set();
 
-  roots.forEach((root) => {
-    const children = childrenByRoot.get(String(root._id)) || [];
+  [...roots].sort(compareCategoryNodes).forEach((root) => {
+    const children = [...(childrenByRoot.get(String(root._id)) || [])].sort(compareCategoryNodes);
 
     if (!children.length) {
       const section = byKey.get(String(root._id));
@@ -297,8 +309,8 @@ export function normalizeStoreParentGroups(parentGroups, categoryTree) {
   const result = [];
   const { roots, childrenByRoot } = maps;
 
-  roots.forEach((root) => {
-    const children = childrenByRoot.get(String(root._id)) || [];
+  [...roots].sort(compareCategoryNodes).forEach((root) => {
+    const children = [...(childrenByRoot.get(String(root._id)) || [])].sort(compareCategoryNodes);
     const group = parentMap.get(String(root._id));
 
     if (!children.length) {

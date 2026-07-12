@@ -151,14 +151,32 @@ export default function ProgressiveCategoryReels({
   return (
     <>
       <div className="category-reels home-progressive-reels space-y-6">
-        {visibleReels.map((reel) => (
-          <CategoryCarousel
-            key={reel.categoryId || reel.categoryName}
-            reel={reel}
-            onOfferClick={openOfferViewer}
-            onProductClick={openProductViewer}
-          />
-        ))}
+        {visibleReels.map((reel, idx) => {
+          const prevReel = idx > 0 ? visibleReels[idx - 1] : null;
+          const showParentHeader =
+            reel.parentCategoryName
+            && reel.parentCategoryId
+            && (
+              !prevReel
+              || prevReel.parentCategoryId !== reel.parentCategoryId
+            );
+
+          return (
+            <React.Fragment key={reel.categoryId || reel.categoryName}>
+              {showParentHeader && (
+                <div className="category-reel-parent">
+                  <h2 className="category-reel-parent__title">{reel.parentCategoryName}</h2>
+                </div>
+              )}
+              <CategoryCarousel
+                reel={reel}
+                hideHeader={Boolean(reel.isParentFallback)}
+                onOfferClick={openOfferViewer}
+                onProductClick={openProductViewer}
+              />
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {hasMore && (

@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 import { getSlideScrollTarget } from '../../hooks/useCenterSnapCarousel';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 
 const SHOPPING_BADGE = '🛍️ للتسوق';
-const PRODUCTS_INTRO_MS = 850;
+const PRODUCTS_LABEL = '🛍️ منتجات للتسوق';
 
 export function mapProductForCard(product) {
   return {
@@ -19,39 +19,17 @@ export function mapProductForCard(product) {
   };
 }
 
-function ProductsSectionIntro({ categoryName, visible }) {
-  if (!visible) return null;
-  return (
-    <div className="category-reel__products-intro" role="status" aria-live="polite">
-      <span className="category-reel__products-intro-pill">منتجات {categoryName}</span>
-    </div>
-  );
-}
-
 export default function CategoryCarousel({
   reel,
   onOfferClick,
   onProductClick,
+  hideHeader = false,
 }) {
-  const trackRef = useRef(null);
-  const hadProductsRef = useRef(false);
-  const [showProductsIntro, setShowProductsIntro] = useState(false);
+  const trackRef = React.useRef(null);
 
   const offers = reel?.offers || [];
   const products = reel?.products || [];
-
-  useEffect(() => {
-    if (products.length > 0 && !hadProductsRef.current) {
-      hadProductsRef.current = true;
-      setShowProductsIntro(true);
-      const timer = setTimeout(() => setShowProductsIntro(false), PRODUCTS_INTRO_MS);
-      return () => clearTimeout(timer);
-    }
-    if (products.length === 0) {
-      hadProductsRef.current = false;
-    }
-    return undefined;
-  }, [products.length]);
+  const totalItems = offers.length + products.length;
 
   const scrollByDir = (dir) => {
     const el = trackRef.current;
@@ -81,25 +59,31 @@ export default function CategoryCarousel({
     });
   };
 
+  const countLabel = products.length
+    ? `${offers.length} عرض · ${products.length} منتج`
+    : `${offers.length} عرض`;
+
   return (
     <section className="category-reel">
-      <header className="category-reel__header">
-        <span className="category-reel__icon" aria-hidden>
-          {reel.categoryIcon || <Sparkles size={18} />}
-        </span>
-        <h3 className="category-reel__title">{reel.categoryName}</h3>
-        <span className="category-reel__count">{offers.length} عرض</span>
-        {offers.length > 2 && (
-          <button
-            type="button"
-            className="category-reel__scroll-hint"
-            onClick={() => scrollByDir(-1)}
-            aria-label="تمرير للخلف"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-      </header>
+      {!hideHeader && (
+        <header className="category-reel__header">
+          <span className="category-reel__icon" aria-hidden>
+            {reel.categoryIcon || <Sparkles size={18} />}
+          </span>
+          <h3 className="category-reel__title">{reel.categoryName}</h3>
+          <span className="category-reel__count">{countLabel}</span>
+          {totalItems > 2 && (
+            <button
+              type="button"
+              className="category-reel__scroll-hint"
+              onClick={() => scrollByDir(-1)}
+              aria-label="تمرير للخلف"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
+        </header>
+      )}
 
       <OfferRailTrack trackRef={trackRef}>
         {offers.map((offer, idx) => (
@@ -110,27 +94,28 @@ export default function CategoryCarousel({
             />
           </div>
         ))}
-      </OfferRailTrack>
 
-      {products.length > 0 && (
-        <div className="category-reel__products-wrap">
-          <ProductsSectionIntro
-            categoryName={reel.categoryName}
-            visible={showProductsIntro}
-          />
-          <OfferRailTrack className="category-reel__products-rail">
-            {products.map((product, idx) => (
-              <div key={product._id} className="home-offers-rail__slide">
-                <MarketplaceOfferCard
-                  offer={mapProductForCard(product)}
-                  topBadge={SHOPPING_BADGE}
-                  onClick={() => onProductClick?.(reel, idx)}
-                />
-              </div>
-            ))}
-          </OfferRailTrack>
-        </div>
-      )}
+        {products.length > 0 && (
+          <div
+            className="home-offers-rail__slide home-offers-rail__slide--products-label"
+            aria-hidden="true"
+          >
+            <div className="category-reel__products-divider">
+              <span>{PRODUCTS_LABEL}</span>
+            </div>
+          </div>
+        )}
+
+        {products.map((product, idx) => (
+          <div key={product._id} className="home-offers-rail__slide">
+            <MarketplaceOfferCard
+              offer={mapProductForCard(product)}
+              topBadge={SHOPPING_BADGE}
+              onClick={() => onProductClick?.(reel, idx)}
+            />
+          </div>
+        ))}
+      </OfferRailTrack>
     </section>
   );
 }

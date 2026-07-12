@@ -1,12 +1,12 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { MapPin, ChevronLeft, Store as StoreIcon } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronLeft, Store as StoreIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '../api/axios';
 import StoreCard from '../shared/StoreCard';
 import EmptyState from '../shared/EmptyState';
 import ErrorState from '../shared/ErrorState';
-import QuickSearchPanel from '../components/QuickSearchPanel';
+import QuickSearchDrawer from '../components/QuickSearchDrawer';
 import StoreRegionSuggestion from '../components/StoreRegionSuggestion';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { useCategoryTree } from '../hooks/useCategories';
@@ -23,6 +23,7 @@ const Explore = () => {
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [productQuery, setProductQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const debouncedQ = useDebouncedValue(productQuery.trim(), 400);
 
   const {
@@ -68,6 +69,7 @@ const Explore = () => {
       const { data: response } = await api.get('/stores/browse', { params });
       return {
         groups: response.groups || [],
+        parentGroups: response.parentGroups || [],
         total: response.total || 0,
         suggestion: response.suggestion || null,
       };
@@ -76,29 +78,73 @@ const Explore = () => {
     staleTime: 60 * 1000,
   });
 
-  const groups = data?.groups || [];
+  const parentGroups = data?.parentGroups?.length
+    ? data.parentGroups
+    : (data?.groups || []).reduce((acc, group) => {
+      const parentKey = group.parentCategoryId || group.parentCategory || group.category;
+      let parentGroup = acc.find((item) => item.parentCategoryId === parentKey);
+      if (!parentGroup) {
+        parentGroup = {
+          parentCategoryId: parentKey,
+          parentCategory: group.parentCategory || group.category,
+          sections: [],
+        };
+        acc.push(parentGroup);
+      }
+      parentGroup.sections.push({
+        category: group.category,
+        categoryId: group.categoryId,
+        isParentFallback: group.isParentFallback,
+        stores: group.stores || [],
+      });
+      return acc;
+    }, []);
   const total = data?.total || 0;
   const suggestion = data?.suggestion || null;
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');
+  const activeFilterCount = (regionPath?.length ? 1 : 0) + (categoryPath?.length ? 1 : 0);
 
   return (
-    <div className="space-y-6 pb-28 text-right" dir="rtl">
+    <div className="space-y-5 pb-28 text-right" dir="rtl">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-gray-900">المتاجر</h1>
           <p className="text-xs text-gray-400 font-bold">{total} متجر نشط</p>
         </div>
+      </div>
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search
+            size={18}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+          <input
+            type="search"
+            value={productQuery}
+            onChange={(e) => setProductQuery(e.target.value)}
+            placeholder="ابحث عن متجر..."
+            className="w-full border border-gray-200 bg-white rounded-2xl py-3.5 pr-10 pl-4 text-sm font-bold text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 shadow-sm"
+          />
+        </div>
         <button
           type="button"
-          onClick={() => navigate('/stores/search')}
-          className="text-xs font-black bg-primary/10 text-primary px-3 py-2 rounded-xl flex items-center gap-1"
+          onClick={() => setFiltersOpen(true)}
+          className="relative shrink-0 inline-flex items-center gap-2 px-4 rounded-2xl border border-gray-200 bg-white text-sm font-black text-gray-800 shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <MapPin size={14} /> البحث السريع
+          <SlidersHorizontal size={18} className="text-primary" />
+          <span className="hidden sm:inline">بحث سريع</span>
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
       </div>
 
-      <QuickSearchPanel
-        showCategories
+      <QuickSearchDrawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
         regionTree={regionTree}
         regionPath={regionPath}
         onRegionPathChange={setRegionPath}
@@ -111,12 +157,9 @@ const Explore = () => {
         categoriesLoading={categoriesLoading}
         categoriesError={categoriesError}
         onCategoriesRetry={refetchCategories}
-        productQuery={productQuery}
-        onProductQueryChange={setProductQuery}
-        productPlaceholder="ابحث عن متجر..."
       />
 
-      {isLoading && groups.length === 0 && !error && (
+      {isLoading && parentGroups.length === 0 && !error && (
         <LightLoadingHint label="جاري تحميل المتاجر..." />
       )}
 
@@ -132,31 +175,68 @@ const Explore = () => {
         <EmptyState title="لا متاجر مطابقة" description="جرّب تغيير المنطقة أو نوع المتجر" />
       )}
 
-      {!error && groups.length > 0 && (
-        <div className="space-y-6">
-          {groups.map((group) => (
-            <section key={group.category} className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="font-black text-gray-800 flex items-center gap-2">
-                  <StoreIcon size={18} className="text-primary" />
-                  {group.category}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => navigate('/stores/search')}
-                  className="text-[10px] font-black text-primary flex items-center gap-1"
-                >
-                  المزيد <ChevronLeft size={14} />
-                </button>
+      {!error && parentGroups.length > 0 && (
+        <div className="space-y-8">
+          {parentGroups.map((parentGroup) => (
+            <div key={parentGroup.parentCategoryId || parentGroup.parentCategory} className="space-y-5">
+              <h2 className="text-xl font-black text-gray-900 px-1 flex items-center gap-2">
+                <StoreIcon size={20} className="text-primary" />
+                {parentGroup.parentCategory}
+              </h2>
+
+              <div className="space-y-6">
+                {parentGroup.sections.map((section) => {
+                  const showChildTitle =
+                    !section.isParentFallback
+                    && section.category
+                    && section.category !== parentGroup.parentCategory;
+
+                  return (
+                    <section
+                      key={section.categoryId || section.category}
+                      className="space-y-3"
+                    >
+                      {showChildTitle && (
+                        <div className="flex items-center justify-between px-1">
+                          <h3 className="font-black text-gray-800">{section.category}</h3>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/stores/search')}
+                            className="text-[10px] font-black text-primary flex items-center gap-1"
+                          >
+                            المزيد <ChevronLeft size={14} />
+                          </button>
+                        </div>
+                      )}
+
+                      {!showChildTitle && (
+                        <div className="flex items-center justify-end px-1">
+                          <button
+                            type="button"
+                            onClick={() => navigate('/stores/search')}
+                            className="text-[10px] font-black text-primary flex items-center gap-1"
+                          >
+                            المزيد <ChevronLeft size={14} />
+                          </button>
+                        </div>
+                      )}
+
+                      <Suspense fallback={<div className="h-40 animate-pulse bg-gray-100 rounded-2xl" />}>
+                        <HorizontalSwipe spaceBetween={14} className="!px-1">
+                          {section.stores.map((store) => (
+                            <StoreCard
+                              key={store._id}
+                              store={store}
+                              membershipStatus={store.membershipStatus}
+                            />
+                          ))}
+                        </HorizontalSwipe>
+                      </Suspense>
+                    </section>
+                  );
+                })}
               </div>
-              <Suspense fallback={<div className="h-40 animate-pulse bg-gray-100 rounded-2xl" />}>
-                <HorizontalSwipe spaceBetween={12} className="!px-1">
-                  {group.stores.map((store) => (
-                    <StoreCard key={store._id} store={store} membershipStatus={store.membershipStatus} />
-                  ))}
-                </HorizontalSwipe>
-              </Suspense>
-            </section>
+            </div>
           ))}
         </div>
       )}

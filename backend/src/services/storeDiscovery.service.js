@@ -7,6 +7,14 @@ const { getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const { bayesianRating, freshnessBoost } = require("../utils/ranking.util");
 const { expandCategoryIds } = require("../utils/offerFeed.util");
 const { getCategoryAndDescendantNames } = require("../controllers/category.controller");
+const {
+  loadActiveStoreCategories,
+  buildCategoryIndex,
+  buildDisplaySections,
+  groupItemsBySection,
+  buildParentGroupsFromSections,
+  sectionKey,
+} = require("../utils/categoryHierarchy.util");
 
 const { resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
 
@@ -172,29 +180,82 @@ async function browseStores({ userId, region, regionId, category, categoryId, q 
   }
 
   const stores = (await Store.find(query)
-    .select("name logo region subRegion category description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address isVerifiedStore")
+    .select("name logo region subRegion category categoryId description customersCount ratingAvg ratingCount totalVisits codesEntered createdAt codePrefix regionId subRegionId whatsapp phone address isVerifiedStore")
     .lean()).map(stripBase64Logo);
 
   const interest = await getCategoryInterestScores(userId);
   const preferredRegion = await getUserPreferredRegion(userId);
   const ctx = { interest, preferredRegion };
 
-  const grouped = {};
-  for (const s of stores) {
-    const cat = s.category || "أخرى";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(s);
-  }
-
-  const categoryOrder = Object.keys(grouped).sort(
-    (a, b) => (interest[b] || 0) - (interest[a] || 0)
+  const categories = await loadActiveStoreCategories();
+  const index = buildCategoryIndex(categories);
+  const sections = buildDisplaySections(categories);
+  const groupedBySection = groupItemsBySection(
+    stores,
+    sections,
+    index,
+    (store) => store
   );
 
-  const groups = await Promise.all(
-    categoryOrder.map(async (cat) => ({
-      category: cat,
-      interestScore: interest[cat] || 0,
-      stores: await attachMembershipStatus(sortStoresList(grouped[cat], ctx), userId),
+  const sortedStoresBySection = new Map();
+  const assignedStoreIds = new Set();
+  for (const section of sections) {
+    const key = sectionKey(section);
+    const sectionStores = groupedBySection.get(key) || [];
+    if (!sectionStores.length) continue;
+    sectionStores.forEach((store) => assignedStoreIds.add(String(store._id)));
+    sortedStoresBySection.set(
+      key,
+      await attachMembershipStatus(sortStoresList(sectionStores, ctx), userId)
+    );
+  }
+
+  const uncategorizedStores = stores.filter(
+    (store) => !assignedStoreIds.has(String(store._id))
+  );
+  if (uncategorizedStores.length) {
+    sortedStoresBySection.set(
+      "uncategorized",
+      await attachMembershipStatus(sortStoresList(uncategorizedStores, ctx), userId)
+    );
+  }
+
+  const parentGroups = buildParentGroupsFromSections(
+    sections,
+    sortedStoresBySection,
+    interest
+  ).map((group) => ({
+    ...group,
+    sections: [...group.sections].sort(
+      (a, b) => (b.interestScore || 0) - (a.interestScore || 0)
+    ),
+  }));
+
+  if (uncategorizedStores.length) {
+    parentGroups.push({
+      parentCategoryId: null,
+      parentCategory: "أخرى",
+      parentCategoryIcon: "",
+      sections: [{
+        categoryId: null,
+        category: "أخرى",
+        categoryIcon: "",
+        isParentFallback: true,
+        interestScore: interest["أخرى"] || 0,
+        stores: sortedStoresBySection.get("uncategorized"),
+      }],
+    });
+  }
+
+  const groups = parentGroups.flatMap((group) =>
+    group.sections.map((section) => ({
+      category: section.category,
+      categoryId: section.categoryId,
+      parentCategory: group.parentCategory,
+      parentCategoryId: group.parentCategoryId,
+      isParentFallback: section.isParentFallback,
+      interestScore: section.interestScore,
+      stores: section.stores,
     }))
   );
 
@@ -203,7 +264,7 @@ async function browseStores({ userId, region, regionId, category, categoryId, q 
     suggestion = await findAlternateRegionForCategory({ categoryId, excludeRegionId: regionId, q });
   }
 
-  return { total: stores.length, groups, preferredRegion, suggestion };
+  return { total: stores.length, groups, parentGroups, preferredRegion, suggestion };
 }
 
 async function storesByRegions({ q, regionId, categoryId } = {}) {

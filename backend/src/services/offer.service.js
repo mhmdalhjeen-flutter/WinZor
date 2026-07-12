@@ -4,9 +4,15 @@ const Store = require("../models/store");
 const User = require("../models/user");
 const UserActivity = require("../models/userActivity");
 const OfferViewDedup = require("../models/offerViewDedup");
-const Category = require("../models/category");
 const pricingService = require("./pricing.service");
 const { getCategoryAndDescendantNames, resolveCategoryNamesForSearch } = require("../controllers/category.controller");
+const {
+  loadActiveStoreCategories,
+  buildCategoryIndex,
+  buildDisplaySections,
+  groupItemsBySection,
+  sectionKey,
+} = require("../utils/categoryHierarchy.util");
 const { restrictOfferQueryToCustomerStores, getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const { resolveNetworkStoreIds } = require("../utils/offerFeed.util");
 const { buildUserSignals, sortOffersPersonalized, sortOffersByRank } = require("../utils/personalizedRank.util");
@@ -16,7 +22,7 @@ const LIST_OFFER_SELECT =
   "title description offerType originalPrice value finalPrice currency isActive priority featuredPriority views shareCount createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
 
 const STORE_POPULATE_SELECT =
-  "name logo region subRegion category ratingAvg ratingCount regionId subRegionId isVerifiedStore owner";
+  "name logo region subRegion category categoryId ratingAvg ratingCount regionId subRegionId isVerifiedStore owner";
 
 const PRODUCT_LIST_SELECT =
   "name description price image stock freeDelivery ratingAvg ratingCount store createdAt";
@@ -260,9 +266,9 @@ async function listCategoryReels(query, userId) {
   const { region, subRegion } = query;
   const perReel = Math.min(parseInt(query.limit, 10) || 20, 40);
 
-  const roots = await Category.find({ type: "store", isActive: true, parent: null })
-    .sort({ order: 1, name: 1 })
-    .lean();
+  const categories = await loadActiveStoreCategories();
+  const index = buildCategoryIndex(categories);
+  const sections = buildDisplaySections(categories);
 
   const offerQuery = { isActive: true };
   const storeQuery = {};
@@ -297,33 +303,51 @@ async function listCategoryReels(query, userId) {
     .limit(400)
     .lean();
 
+  const offersBySection = groupItemsBySection(
+    ranked,
+    sections,
+    index,
+    (offer) => offer.store
+  );
+  const productsBySection = groupItemsBySection(
+    categoryProductsByStore,
+    sections,
+    index,
+    (product) => product.store
+  );
+
   const reels = [];
-  for (const root of roots) {
-    const names = await getCategoryAndDescendantNames(root._id);
-    const nameSet = new Set(names);
-    const categoryOffers = ranked.filter((o) => nameSet.has(o.store?.category));
-    const categoryProducts = categoryProductsByStore.filter((p) =>
-      nameSet.has(p.store?.category)
-    );
+  const assignedOfferIds = new Set();
+
+  for (const section of sections) {
+    const key = sectionKey(section);
+    const categoryOffers = offersBySection.get(key) || [];
+    const categoryProducts = productsBySection.get(key) || [];
     if (!categoryOffers.length && !categoryProducts.length) continue;
 
+    categoryOffers.forEach((o) => assignedOfferIds.add(String(o._id)));
+
     reels.push({
-      categoryId: root._id,
-      categoryName: root.name,
-      categoryIcon: root.icon || "",
+      categoryId: section.categoryId,
+      categoryName: section.categoryName,
+      categoryIcon: section.categoryIcon || "",
+      parentCategoryId: section.parentCategoryId,
+      parentCategoryName: section.parentCategoryName,
+      isParentFallback: section.isParentFallback,
       offers: categoryOffers.slice(0, perReel),
       products: categoryProducts.slice(0, perReel).map(stripProductHeavyFields),
     });
   }
 
-  const uncategorized = ranked.filter(
-    (o) => !reels.some((r) => r.offers.some((x) => String(x._id) === String(o._id)))
-  );
+  const uncategorized = ranked.filter((o) => !assignedOfferIds.has(String(o._id)));
   if (uncategorized.length) {
     reels.push({
       categoryId: null,
       categoryName: "عروض متنوعة",
       categoryIcon: "✨",
+      parentCategoryId: null,
+      parentCategoryName: null,
+      isParentFallback: false,
       offers: uncategorized.slice(0, perReel),
       products: [],
     });

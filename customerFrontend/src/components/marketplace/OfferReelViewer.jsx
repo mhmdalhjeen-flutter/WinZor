@@ -137,6 +137,55 @@ function ActionBtn({ icon: Icon, label, onClick, active, fill, busy }) {
   );
 }
 
+function DescriptionBlock({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || !text) {
+      setCanExpand(false);
+      return undefined;
+    }
+
+    const measure = () => {
+      setCanExpand(el.scrollHeight > el.clientHeight + 1 || text.length > 72);
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [text]);
+
+  if (!text) return null;
+
+  return (
+    <div className={`offer-reel-slide__desc-wrap ${expanded ? 'offer-reel-slide__desc-wrap--expanded' : ''}`}>
+      <p
+        ref={textRef}
+        className={`offer-reel-slide__desc ${expanded ? 'offer-reel-slide__desc--expanded' : 'offer-reel-slide__desc--clamped'}`}
+      >
+        {text}
+      </p>
+      {canExpand && (
+        <button
+          type="button"
+          className="offer-reel-slide__desc-toggle"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+        >
+          {expanded ? 'إخفاء التفاصيل' : 'اقرأ المزيد'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ViewerTopbar({ item, onClose, onStoreClick }) {
   const store = item?.store;
   const storeId = store?._id;
@@ -306,7 +355,7 @@ function ReelSlide({
             />
           )}
           {item.description && (
-            <p className="offer-reel-slide__desc">{item.description}</p>
+            <DescriptionBlock text={item.description} />
           )}
         </div>
 

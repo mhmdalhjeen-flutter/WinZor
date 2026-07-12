@@ -114,7 +114,7 @@ app.use(cors({
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "x-sensitive-token", "x-device-id"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "x-sensitive-token", "x-device-id", "x-client-id"],
     exposedHeaders: ["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     maxAge: 600,
     optionsSuccessStatus: 204,

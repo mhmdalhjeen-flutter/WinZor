@@ -6,8 +6,8 @@ import { getEffectiveCategoryId } from '../../utils/categoryTree';
 const SEARCH_MODES = [
   {
     id: 'region',
-    label: 'فلترة العروض',
-    labelMobile: 'فلترة العروض',
+    label: 'فلترة العروض (حسب المنطقة)',
+    labelMobile: 'فلترة العروض (حسب المنطقة)',
     icon: MapPin,
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
@@ -15,8 +15,8 @@ const SEARCH_MODES = [
   },
   {
     id: 'offer',
-    label: 'تصنيف العروض',
-    labelMobile: 'تصنيف العروض',
+    label: 'تصنيف العروض (حسب النوع)',
+    labelMobile: 'تصنيف العروض (حسب النوع)',
     icon: Tag,
     iconBg: 'bg-violet-100',
     iconColor: 'text-violet-600',

@@ -37,6 +37,7 @@ const TreasureChests = lazy(() => import('./pages/TreasureChests'));
 const HonorBoard = lazy(() => import('./pages/HonorBoard'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const Explore = lazy(() => import('./pages/Explore'));
+const PointsProgramStores = lazy(() => import('./pages/PointsProgramStores'));
 const LuckyWheel = lazy(() => import('./pages/LuckyWheel'));
 const Marketplace = lazy(() => import('./pages/Marketplace'));
 const BazaarDetail = lazy(() => import('./pages/BazaarDetail'));
@@ -110,6 +111,7 @@ function AppShell() {
             <Route path="/forgot-password" element={!isAuth ? <ForgotPassword /> : <Navigate to="/" />} />
             
             <Route path="/explore" element={<LazyPage><Explore /></LazyPage>} />
+            <Route path="/stores/points-program" element={<LazyPage><PointsProgramStores /></LazyPage>} />
             <Route path="/stores/search" element={<LazyPage><StoreQuickSearch /></LazyPage>} />
             <Route path="/product/:id" element={<LazyPage><ProductDetail /></LazyPage>} />
             <Route path="/marketplace" element={<LazyPage><Marketplace /></LazyPage>} />

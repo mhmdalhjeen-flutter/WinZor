@@ -47,8 +47,25 @@ const CompetitionDetail = () => {
   const userPoints = user?.points ?? 0;
 
   const handleJoin = async () => {
+    const cost = entries * (competition.pointsPerEntry || 1);
+    const prevPoints = userPoints;
+
     setJoining(true);
     setJoinError('');
+
+    updateUser({ points: Math.max(0, prevPoints - cost) });
+    if (competition) {
+      qc.setQueryData(queryKeys.competition(id), {
+        competition: {
+          ...competition,
+          joined: true,
+          hasJoined: true,
+          participantsCount: (competition.participantsCount || 0) + entries,
+          myEntries: (competition.myEntries || 0) + entries,
+        },
+      });
+    }
+
     try {
       const { data } = await api.post(`/competitions/${id}/join`, { entries });
       setSuccess(true);
@@ -60,6 +77,10 @@ const CompetitionDetail = () => {
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
       qc.invalidateQueries({ queryKey: queryKeys.me });
     } catch (err) {
+      updateUser({ points: prevPoints });
+      if (competition) {
+        qc.setQueryData(queryKeys.competition(id), { competition });
+      }
       if (handleApiVerificationError(err, handleJoin)) return;
       setJoinError(err.response?.data?.message || 'تعذّر الانضمام');
     } finally {

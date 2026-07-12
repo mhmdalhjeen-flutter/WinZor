@@ -14,7 +14,7 @@ export default function HomeHero() {
 
           <div className="relative z-10 home-hero__content py-3 sm:py-3.5 px-3 sm:px-4">
             <p className="home-hero__message text-xs sm:text-sm font-black text-gray-900 leading-snug text-center">
-              اطلب نقاطك من كل عملية شراء من هذه المتاجر
+              اطلب نقاطك من المتاجر التي هنا
             </p>
 
             <button

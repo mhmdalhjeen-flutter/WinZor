@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import CompetitionCardItem from './CompetitionCardItem';
 
 const CompetitionCard = () => {
+  const { user, updateUser } = useAuth();
   const [competition, setCompetition] = useState(null);
-  const [userPoints, setUserPoints] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchFeatured = async () => {
@@ -13,7 +14,7 @@ const CompetitionCard = () => {
       const { data } = await api.get('/competitions/featured');
       const featured = data.competitions?.[0] || data.competition || null;
       setCompetition(featured);
-      setUserPoints(data.userPoints || 0);
+      if (data.userPoints != null) updateUser({ points: data.userPoints });
     } catch {
       setCompetition(null);
     } finally {
@@ -34,7 +35,11 @@ const CompetitionCard = () => {
   return (
     <CompetitionCardItem
       competition={competition}
-      userPoints={userPoints}
+      userPoints={user?.points ?? 0}
+      onUpdate={(updated, pts) => {
+        if (updated) setCompetition(updated);
+        if (pts != null) updateUser({ points: pts });
+      }}
     />
   );
 };

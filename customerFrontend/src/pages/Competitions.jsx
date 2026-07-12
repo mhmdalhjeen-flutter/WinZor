@@ -35,8 +35,14 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
   const cost = entries * (competition.pointsPerEntry || 1);
 
   const handleJoin = async () => {
+    const cost = entries * (competition.pointsPerEntry || 1);
+    const prevPoints = userPoints;
+
     setJoining(true);
     setError('');
+
+    updateUser({ points: Math.max(0, prevPoints - cost) });
+
     try {
       const { data } = await api.post(`/competitions/${competition._id}/join`, { entries });
       setSuccess(true);
@@ -45,6 +51,7 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
       qc.invalidateQueries({ queryKey: queryKeys.me });
       onJoined?.(data.competition);
     } catch (err) {
+      updateUser({ points: prevPoints });
       if (handleApiVerificationError(err, handleJoin)) return;
       setError(err.response?.data?.message || 'تعذّر الانضمام');
     } finally {
@@ -237,7 +244,7 @@ const Competitions = () => {
             competition={selected}
             userPoints={userPoints}
             onClose={() => setSelected(null)}
-            onJoined={(updated) => setSelected((s) => (updated || (s && { ...s, joined: true })))}
+            onJoined={(updated) => setSelected(updated || null)}
           />
         )}
       </AnimatePresence>

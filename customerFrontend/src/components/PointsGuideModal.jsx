@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { BookOpen, X, Zap, Gift } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, X, Zap, Gift, Store } from 'lucide-react';
 import {
   ENTER_CARD_EVENT,
   REFERRAL_CARDS_EVENT,
@@ -51,6 +52,8 @@ const GUIDE_SECTIONS = [
 ];
 
 export default function PointsGuideModal({ open, onClose }) {
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (!open) return undefined;
     document.body.classList.add('points-guide-open');
@@ -65,6 +68,11 @@ export default function PointsGuideModal({ open, onClose }) {
   const handleFreeCard = () => {
     onClose();
     dispatchAfterGuideClose(REFERRAL_CARDS_EVENT);
+  };
+
+  const handleShowPointsStores = () => {
+    onClose();
+    navigate('/stores/points-program');
   };
 
   if (!open) return null;
@@ -115,6 +123,23 @@ export default function PointsGuideModal({ open, onClose }) {
         </div>
 
         <div className="space-y-4">
+          <article className="rounded-2xl border bg-gradient-to-br from-indigo-50 via-blue-50 to-sky-50 border-indigo-100 p-4 space-y-3">
+            <h3 className="text-sm font-black text-gray-900">
+              🏪 المتاجر التي تمنح نقاط
+            </h3>
+            <p className="text-xs font-bold text-gray-700 leading-relaxed">
+              اكتشف المتاجر المشاركة في برنامج النقاط واعرف أين يمكنك جمع المكافآت عند الشراء.
+            </p>
+            <button
+              type="button"
+              onClick={handleShowPointsStores}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-indigo-200 text-indigo-700 text-xs font-black py-3 active:scale-[0.98] transition-transform"
+            >
+              <Store size={16} />
+              عرض جميع المتاجر المشاركة
+            </button>
+          </article>
+
           {GUIDE_SECTIONS.map((section) => (
             <article
               key={section.title}

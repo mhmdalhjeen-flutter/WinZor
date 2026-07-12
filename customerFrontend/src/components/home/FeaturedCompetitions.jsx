@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { unwrapList } from '../../utils/unwrapList';
 import CompetitionCardItem from '../CompetitionCardItem';
+import { useAuth } from '../../context/AuthContext';
 
 export default function FeaturedCompetitions() {
+  const { user, updateUser } = useAuth();
   const [competitions, setCompetitions] = useState([]);
-  const [userPoints, setUserPoints] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +22,6 @@ export default function FeaturedCompetitions() {
 
         if (cancelled) return;
 
-        const points = featuredRes.data?.userPoints || 0;
         const fromFeatured = featuredRes.data?.competitions
           || (featuredRes.data?.competition ? [featuredRes.data.competition] : []);
         const list = unwrapList(listRes.data, ['competitions']);
@@ -45,11 +45,12 @@ export default function FeaturedCompetitions() {
         }
 
         setCompetitions(merged.slice(0, 2));
-        setUserPoints(points);
+        if (featuredRes.data?.userPoints != null) {
+          updateUser({ points: featuredRes.data.userPoints });
+        }
       } catch {
         if (!cancelled) {
           setCompetitions([]);
-          setUserPoints(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -58,7 +59,17 @@ export default function FeaturedCompetitions() {
 
     load();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleCompetitionUpdate = (updatedComp, userPoints) => {
+    if (updatedComp?._id) {
+      setCompetitions((prev) => prev.map((c) => (
+        String(c._id) === String(updatedComp._id) ? updatedComp : c
+      )));
+    }
+    if (userPoints != null) updateUser({ points: userPoints });
+  };
 
   if (loading) {
     return (
@@ -71,6 +82,8 @@ export default function FeaturedCompetitions() {
 
   if (!competitions.length) return null;
 
+  const userPoints = user?.points ?? 0;
+
   return (
     <section className="max-w-6xl mx-auto px-3 sm:px-4">
       <div className={`grid gap-2.5 sm:gap-3 items-stretch ${competitions.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
@@ -80,6 +93,7 @@ export default function FeaturedCompetitions() {
             competition={comp}
             userPoints={userPoints}
             embedded
+            onUpdate={handleCompetitionUpdate}
           />
         ))}
       </div>

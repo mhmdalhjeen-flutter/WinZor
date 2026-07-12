@@ -5,7 +5,10 @@ import {
   X, Minus, Plus, PartyPopper, AlertTriangle, Loader2, CheckCircle2,
   Sparkles, ExternalLink,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
+import { queryKeys } from '../lib/queryClient';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -22,6 +25,8 @@ export default function CompetitionCardItem({
   embedded = false,
   onUpdate,
 }) {
+  const { updateUser } = useAuth();
+  const qc = useQueryClient();
   const [competition, setCompetition] = useState(initialCompetition);
   const [userPoints, setUserPoints] = useState(initialUserPoints);
   const [showModal, setShowModal] = useState(false);
@@ -58,12 +63,31 @@ export default function CompetitionCardItem({
   };
 
   const handleJoin = async () => {
+    const cost = entries * (competition.pointsPerEntry || 1);
+    const prevCompetition = competition;
+    const prevPoints = userPoints;
+
     setJoining(true);
     setJoinError('');
+
+    setUserPoints((p) => p - cost);
+    setCompetition((c) => ({
+      ...c,
+      joined: true,
+      hasJoined: true,
+      participantsCount: (c.participantsCount || 0) + entries,
+      myEntries: (c.myEntries || 0) + entries,
+    }));
+    updateUser({ points: Math.max(0, prevPoints - cost) });
+
     try {
       const { data } = await api.post(`/competitions/${competition._id}/join`, { entries });
       setCompetition(data.competition);
       setUserPoints(data.userPoints);
+      updateUser({ points: data.userPoints });
+      qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
+      qc.invalidateQueries({ queryKey: queryKeys.competitions });
+      qc.invalidateQueries({ queryKey: queryKeys.me });
       onUpdate?.(data.competition, data.userPoints);
       setSuccess(true);
       setTimeout(() => {
@@ -71,6 +95,9 @@ export default function CompetitionCardItem({
         setSuccess(false);
       }, 2200);
     } catch (err) {
+      setCompetition(prevCompetition);
+      setUserPoints(prevPoints);
+      updateUser({ points: prevPoints });
       setJoinError(err.response?.data?.message || 'تعذّر إتمام المشاركة');
     } finally {
       setJoining(false);

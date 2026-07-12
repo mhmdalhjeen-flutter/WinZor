@@ -1,5 +1,6 @@
 const StoreMembership = require("../models/storeMembership");
 const Store = require("../models/store");
+const PromoCode = require("../models/promoCode");
 const UserActivity = require("../models/userActivity");
 const Region = require("../models/region");
 const { getDescendantIds } = require("../utils/region.util");
@@ -363,9 +364,132 @@ async function suggestNearestStore({ region, category, excludeIds = [] }) {
   return ranked[0];
 }
 
+const POINTS_STORE_SELECT =
+  "name logo coverImage region subRegion category categoryId description customersCount ratingAvg ratingCount regionId subRegionId isVerifiedStore codePrefix displayPriority createdAt";
+
+async function getPointsProgramStoreIds() {
+  const visibleIds = await getCustomerVisibleStoreIds();
+  if (!visibleIds.length) return [];
+
+  const [promoStoreIds, prefixStoreIds] = await Promise.all([
+    PromoCode.distinct("store", {
+      store: { $in: visibleIds },
+      isRegistrationCode: false,
+      isActive: true,
+      rewardPoints: { $gt: 0 },
+    }),
+    Store.find({
+      _id: { $in: visibleIds },
+      isActive: true,
+      codePrefix: { $exists: true, $nin: [null, ""] },
+    }).distinct("_id"),
+  ]);
+
+  const ids = new Set(
+    [...promoStoreIds, ...prefixStoreIds]
+      .filter(Boolean)
+      .map(String)
+  );
+
+  return visibleIds.map(String).filter((id) => ids.has(id));
+}
+
+async function buildCategoryParentGroupsForStores(stores) {
+  if (!stores.length) return [];
+
+  const categories = await loadActiveStoreCategories();
+  const index = buildCategoryIndex(categories);
+  const sections = buildDisplaySections(categories);
+  const groupedBySection = groupItemsBySection(stores, sections, index, (store) => store);
+  const sortedStoresBySection = new Map();
+
+  for (const section of sections) {
+    const key = sectionKey(section);
+    const sectionStores = groupedBySection.get(key) || [];
+    if (!sectionStores.length) continue;
+    sortedStoresBySection.set(key, sortStoresList(sectionStores, {}));
+  }
+
+  return buildParentGroupsFromSections(sections, sortedStoresBySection, {})
+    .map((group) => ({
+      parentCategoryId: group.parentCategoryId,
+      parentCategory: group.parentCategory,
+      sections: group.sections
+        .filter((section) => (section.stores || []).length > 0)
+        .map((section) => ({
+          categoryId: section.categoryId,
+          categoryName: section.category,
+          isParentFallback: section.isParentFallback,
+          stores: section.stores,
+        })),
+    }))
+    .filter((group) => group.sections.length > 0 && group.parentCategory !== "أخرى");
+}
+
+async function pointsProgramStores({ regionId, q } = {}) {
+  const participatingIds = await getPointsProgramStoreIds();
+  if (!participatingIds.length) {
+    return { total: 0, regions: [] };
+  }
+
+  const query = { _id: { $in: participatingIds }, isActive: true };
+
+  if (regionId) {
+    const ids = await getDescendantIds(regionId);
+    query.$and = query.$and || [];
+    query.$and.push({
+      $or: [
+        { regionId: { $in: ids } },
+        { subRegionId: { $in: ids } },
+      ],
+    });
+  }
+
+  if (q?.trim()) {
+    const rx = new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    query.$and = query.$and || [];
+    query.$and.push({
+      $or: [{ name: rx }, { category: rx }, { description: rx }],
+    });
+  }
+
+  const stores = (await Store.find(query)
+    .select(POINTS_STORE_SELECT)
+    .lean()).map(stripBase64Logo);
+
+  const rootRegions = await Region.find({ isActive: true, parent: null })
+    .sort({ sortOrder: 1, name: 1 })
+    .lean();
+
+  const regions = [];
+  for (const region of rootRegions) {
+    if (regionId) {
+      const filterIds = (await getDescendantIds(regionId)).map(String);
+      if (!filterIds.includes(String(region._id))) continue;
+    }
+
+    const regionStores = stores.filter(
+      (store) => String(store.regionId) === String(region._id) || store.region === region.name
+    );
+    if (!regionStores.length) continue;
+
+    const parentGroups = await buildCategoryParentGroupsForStores(regionStores);
+    if (!parentGroups.length) continue;
+
+    regions.push({
+      regionId: region._id,
+      regionName: region.name,
+      parentGroups,
+    });
+  }
+
+  return { total: stores.length, regions };
+}
+
 module.exports = {
   browseStores,
   storesByRegions,
+  pointsProgramStores,
   suggestNearestStore,
   findAlternateRegionForCategory,
   computeStoreScore,

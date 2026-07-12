@@ -11,6 +11,7 @@ const {
   getAllStores,
   browseStores,
   storesByRegions,
+  pointsProgramStores,
   joinStore,
   leaveStore,
   followStore,
@@ -31,6 +32,7 @@ router.post("/", authMiddleware, roleMiddleware.store, createStore);
 router.get("/", getAllStores);
 router.get("/browse", optionalAuth, browseStores);
 router.get("/by-regions", storesByRegions);
+router.get("/points-program", optionalAuth, pointsProgramStores);
 router.get("/suggest", optionalAuth, suggestStore);
 router.get("/settings/competitions-enabled", getStoreCompetitionsEnabled);
 router.post(

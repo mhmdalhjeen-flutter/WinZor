@@ -286,6 +286,18 @@ exports.storesByRegions = async (req, res) => {
     }
 };
 
+exports.pointsProgramStores = async (req, res) => {
+    try {
+        const data = await storeDiscovery.pointsProgramStores({
+            q: cleanString(req.query.q, { field: "q", max: 80 }),
+            regionId: req.query.regionId ? requireObjectId(req.query.regionId, "regionId") : undefined,
+        });
+        res.json(data);
+    } catch (error) {
+        res.status(error.status || 500).json({ message: error.message });
+    }
+};
+
 exports.suggestStore = async (req, res) => {
     try {
         const store = await storeDiscovery.suggestNearestStore({

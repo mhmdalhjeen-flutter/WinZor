@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Users, Clock, Coins,
@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { queryKeys } from '../lib/queryClient';
+import { commitPointsUpdate } from '../utils/pointsAnimation';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -34,6 +35,10 @@ export default function CompetitionCardItem({
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setUserPoints(initialUserPoints);
+  }, [initialUserPoints]);
 
   if (!competition) return null;
 
@@ -84,10 +89,9 @@ export default function CompetitionCardItem({
       const { data } = await api.post(`/competitions/${competition._id}/join`, { entries });
       setCompetition(data.competition);
       setUserPoints(data.userPoints);
-      updateUser({ points: data.userPoints });
+      commitPointsUpdate(updateUser, data.userPoints, { queryClient: qc });
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
       qc.invalidateQueries({ queryKey: queryKeys.competitions });
-      qc.invalidateQueries({ queryKey: queryKeys.me });
       onUpdate?.(data.competition, data.userPoints);
       setSuccess(true);
       setTimeout(() => {

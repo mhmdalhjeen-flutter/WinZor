@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Loader2, MapPin, ChevronRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, Loader2, MapPin, ChevronRight, Tag } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '../api/axios';
 import EmptyState from '../shared/EmptyState';
@@ -7,13 +7,20 @@ import ErrorState from '../shared/ErrorState';
 import PointsStoreCard from '../components/stores/PointsStoreCard';
 import HierarchySelect from '../components/HierarchySelect';
 import { useRegionTree } from '../hooks/useRegionTree';
+import { useCategoryTree } from '../hooks/useCategories';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
+import { pathStillValid as categoryPathStillValid } from '../utils/categoryTree';
+import {
+  filterPointsProgramRegions,
+  countPointsProgramStores,
+} from '../utils/pointsProgramFilters';
 import { queryKeys } from '../lib/queryClient';
 
 const PointsProgramStores = () => {
   const [search, setSearch] = useState('');
   const [regionPath, setRegionPath] = useState([]);
+  const [categoryPath, setCategoryPath] = useState([]);
   const debouncedQ = useDebouncedValue(search.trim(), 350);
   const regionId = getEffectiveRegionId(regionPath);
 
@@ -24,10 +31,22 @@ const PointsProgramStores = () => {
     refetch: refetchRegions,
   } = useRegionTree();
 
+  const {
+    data: categoryTree = [],
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+    refetch: refetchCategories,
+  } = useCategoryTree('store');
+
   useEffect(() => {
     if (!regionPath.length || !regionTree.length) return;
     if (!pathStillValid(regionTree, regionPath)) setRegionPath([]);
   }, [regionTree, regionPath]);
+
+  useEffect(() => {
+    if (!categoryPath.length || !categoryTree.length) return;
+    if (!categoryPathStillValid(categoryTree, categoryPath)) setCategoryPath([]);
+  }, [categoryTree, categoryPath]);
 
   const {
     data,
@@ -51,8 +70,20 @@ const PointsProgramStores = () => {
   });
 
   const regions = data?.regions || [];
-  const total = data?.total || 0;
+  const apiTotal = data?.total || 0;
+
+  const filteredRegions = useMemo(
+    () => filterPointsProgramRegions(regions, categoryPath, categoryTree),
+    [regions, categoryPath, categoryTree],
+  );
+
+  const visibleCount = useMemo(
+    () => countPointsProgramStores(filteredRegions),
+    [filteredRegions],
+  );
+
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');
+  const hasCategoryFilter = categoryPath.length > 0;
 
   return (
     <div className="pb-24 space-y-5 text-right" dir="rtl">
@@ -94,6 +125,25 @@ const PointsProgramStores = () => {
             showPath={false}
           />
         </div>
+
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-black text-gray-500 flex items-center gap-1">
+            <Tag size={13} /> فلترة حسب نوع المتجر
+          </p>
+          <HierarchySelect
+            tree={categoryTree}
+            pathIds={categoryPath}
+            onPathChange={setCategoryPath}
+            loading={categoriesLoading}
+            error={categoriesError}
+            onRetry={refetchCategories}
+            variant="light"
+            allowAllAtRoot
+            firstPlaceholder="كل التصنيفات"
+            optionalPlaceholder="تصنيف أدق (اختياري)"
+            showPath={false}
+          />
+        </div>
       </div>
 
       {isLoading && (
@@ -106,16 +156,27 @@ const PointsProgramStores = () => {
         <ErrorState message={error} onRetry={refetch} />
       )}
 
-      {!isLoading && !error && total === 0 && (
+      {!isLoading && !error && apiTotal === 0 && (
         <EmptyState
           title="لا متاجر مطابقة"
           description="جرّب تغيير البحث أو المنطقة"
         />
       )}
 
-      {!isLoading && !error && regions.length > 0 && (
+      {!isLoading && !error && apiTotal > 0 && visibleCount === 0 && (
+        <EmptyState
+          title="لا متاجر مطابقة"
+          description={
+            hasCategoryFilter
+              ? 'لا توجد متاجر في هذا التصنيف — جرّب تصنيفاً آخر أو أزل الفلتر'
+              : 'جرّب تغيير البحث أو المنطقة'
+          }
+        />
+      )}
+
+      {!isLoading && !error && filteredRegions.length > 0 && (
         <div className="space-y-8">
-          {regions.map((regionBlock) => (
+          {filteredRegions.map((regionBlock) => (
             <section key={regionBlock.regionId} className="space-y-4">
               <div className="flex items-center gap-2">
                 <ChevronRight size={18} className="text-primary rotate-180" />

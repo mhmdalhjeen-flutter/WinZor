@@ -132,8 +132,7 @@ const FloatingCodeButton = () => {
         const r = btn.getBoundingClientRect();
         setPointsFloatOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
       }
-      commitPointsUpdate(updateUser, data.userPoints, { energy: data.userEnergy });
-      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      commitPointsUpdate(updateUser, data.userPoints, { energy: data.userEnergy, queryClient });
       queryClient.invalidateQueries({ queryKey: queryKeys.cart });
       setSuccess(true);
 

@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
 import { queryKeys } from '../lib/queryClient';
+import { commitPointsUpdate } from '../utils/pointsAnimation';
 
 const timeLeft = (endDate) => {
   if (!endDate) return '—';
@@ -46,9 +47,10 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
     try {
       const { data } = await api.post(`/competitions/${competition._id}/join`, { entries });
       setSuccess(true);
-      if (data.userPoints != null) updateUser({ points: data.userPoints });
+      if (data.userPoints != null) {
+        commitPointsUpdate(updateUser, data.userPoints, { queryClient: qc });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
-      qc.invalidateQueries({ queryKey: queryKeys.me });
       onJoined?.(data.competition);
     } catch (err) {
       updateUser({ points: prevPoints });

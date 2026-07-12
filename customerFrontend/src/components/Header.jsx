@@ -99,8 +99,16 @@ const Header = () => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [pointsPulse, setPointsPulse] = useState(null);
   const lastMeSyncAt = useRef(0);
+  const hasSyncedPointsFromMe = useRef(false);
   const userRef = useRef(user);
   userRef.current = user;
+
+  useEffect(() => {
+    if (!isAuth) {
+      hasSyncedPointsFromMe.current = false;
+      lastMeSyncAt.current = 0;
+    }
+  }, [isAuth]);
 
   const { data: unreadData } = useQuery({
     queryKey: queryKeys.unreadChat,
@@ -145,7 +153,11 @@ const Header = () => {
     if (pts == null && energy == null) return;
 
     const patch = {};
-    if (pts != null && userRef.current?.points !== pts) patch.points = pts;
+    // Hydrate points once from /users/me — never overwrite action-driven updates (e.g. competition join).
+    if (pts != null && !hasSyncedPointsFromMe.current) {
+      patch.points = pts;
+      hasSyncedPointsFromMe.current = true;
+    }
     if (energy != null && userRef.current?.energy !== energy) patch.energy = energy;
     if (Object.keys(patch).length) updateUser(patch);
   }, [meData, meUpdatedAt, updateUser]);

@@ -45,9 +45,6 @@ export default function FeaturedCompetitions() {
         }
 
         setCompetitions(merged.slice(0, 2));
-        if (featuredRes.data?.userPoints != null) {
-          updateUser({ points: featuredRes.data.userPoints });
-        }
       } catch {
         if (!cancelled) {
           setCompetitions([]);

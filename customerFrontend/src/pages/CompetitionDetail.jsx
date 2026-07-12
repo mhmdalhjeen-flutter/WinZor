@@ -9,6 +9,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryKeys } from '../lib/queryClient';
+import { commitPointsUpdate } from '../utils/pointsAnimation';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -72,10 +73,11 @@ const CompetitionDetail = () => {
       if (data.competition) {
         qc.setQueryData(queryKeys.competition(id), { competition: data.competition });
       }
-      if (data.userPoints != null) updateUser({ points: data.userPoints });
+      if (data.userPoints != null) {
+        commitPointsUpdate(updateUser, data.userPoints, { queryClient: qc });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.competition(id) });
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
-      qc.invalidateQueries({ queryKey: queryKeys.me });
     } catch (err) {
       updateUser({ points: prevPoints });
       if (competition) {

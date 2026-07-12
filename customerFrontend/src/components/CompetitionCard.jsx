@@ -14,7 +14,6 @@ const CompetitionCard = () => {
       const { data } = await api.get('/competitions/featured');
       const featured = data.competitions?.[0] || data.competition || null;
       setCompetition(featured);
-      if (data.userPoints != null) updateUser({ points: data.userPoints });
     } catch {
       setCompetition(null);
     } finally {

@@ -40,7 +40,7 @@ const PointsProgramStores = () => {
       const params = {};
       if (debouncedQ) params.q = debouncedQ;
       if (regionId) params.regionId = regionId;
-      const { data: response } = await api.get('/stores/points-program', { params });
+      const { data: response } = await api.get('/stores/points', { params });
       return {
         total: response?.total || 0,
         regions: response?.regions || [],

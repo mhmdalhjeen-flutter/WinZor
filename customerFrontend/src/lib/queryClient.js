@@ -35,5 +35,5 @@ export const queryKeys = {
   bazaarFavorites: ['bazaar', 'favorites'],
   storesBrowse: (params) => ['stores', 'browse', params],
   storesByRegions: (params) => ['stores', 'byRegions', params],
-  pointsProgramStores: (params) => ['stores', 'points-program', params],
+  pointsProgramStores: (params) => ['stores', 'points', params],
 };

@@ -111,7 +111,8 @@ function AppShell() {
             <Route path="/forgot-password" element={!isAuth ? <ForgotPassword /> : <Navigate to="/" />} />
             
             <Route path="/explore" element={<LazyPage><Explore /></LazyPage>} />
-            <Route path="/stores/points-program" element={<LazyPage><PointsProgramStores /></LazyPage>} />
+            <Route path="/stores/points" element={<LazyPage><PointsProgramStores /></LazyPage>} />
+            <Route path="/stores/points-program" element={<Navigate to="/stores/points" replace />} />
             <Route path="/stores/search" element={<LazyPage><StoreQuickSearch /></LazyPage>} />
             <Route path="/product/:id" element={<LazyPage><ProductDetail /></LazyPage>} />
             <Route path="/marketplace" element={<LazyPage><Marketplace /></LazyPage>} />

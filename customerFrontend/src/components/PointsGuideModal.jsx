@@ -72,7 +72,7 @@ export default function PointsGuideModal({ open, onClose }) {
 
   const handleShowPointsStores = () => {
     onClose();
-    navigate('/stores/points-program');
+    navigate('/stores/points');
   };
 
   if (!open) return null;

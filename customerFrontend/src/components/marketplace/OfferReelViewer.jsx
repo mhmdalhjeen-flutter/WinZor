@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import {
   X, Heart, MessageCircle, ArrowUpRight, Eye,
   ImageOff, ChevronUp, ShoppingBag,
@@ -20,6 +21,50 @@ import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { resolveMediaSrc } from '../../utils/mediaUrl';
 
 const CATEGORY_TRANSITION_MS = 1000;
+const RESUME_STORAGE_KEY = 'offerReelViewerResume';
+
+let resumeRoot = null;
+let resumeContainer = null;
+
+function clearResumeState() {
+  try {
+    sessionStorage.removeItem(RESUME_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function saveResumeState(state) {
+  try {
+    sessionStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readResumeState() {
+  try {
+    const raw = sessionStorage.getItem(RESUME_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function dismissResumedViewer() {
+  clearResumeState();
+  resumeRoot?.unmount();
+  resumeRoot = null;
+  resumeContainer?.remove();
+  resumeContainer = null;
+}
+
+function getStoreLogoSrc(store) {
+  const resolved = resolveMediaSrc(store?.logo);
+  if (resolved) return resolved;
+  const name = encodeURIComponent(store?.name || 'S');
+  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff`;
+}
 
 function isProductItem(item) {
   return item?.__itemType === 'product';
@@ -94,8 +139,9 @@ function ActionBtn({ icon: Icon, label, onClick, active, fill, busy }) {
   );
 }
 
-function ViewerTopbar({ item, onClose }) {
+function ViewerTopbar({ item, onClose, onStoreClick }) {
   const store = item?.store;
+  const storeId = store?._id;
 
   return (
     <header className="offer-reel-viewer__topbar">
@@ -108,15 +154,25 @@ function ViewerTopbar({ item, onClose }) {
         <X size={24} />
       </button>
       <div className="offer-reel-viewer__topbar-info">
-        <div className="offer-reel-viewer__topbar-row">
-          {store?.logo && (
-            <img src={store.logo} alt="" className="offer-reel-slide__store-logo" />
-          )}
-          <div className="offer-reel-slide__store-text">
-            <p className="offer-reel-slide__store-name">{store?.name || 'متجر'}</p>
-            {store?.isVerifiedStore && <VerifiedBadge className="mt-0.5" />}
-          </div>
-        </div>
+        <button
+          type="button"
+          className="offer-reel-viewer__store-link"
+          onClick={() => storeId && onStoreClick?.(storeId)}
+          disabled={!storeId}
+          aria-label={store?.name ? `زيارة متجر ${store.name}` : 'زيارة المتجر'}
+        >
+          <span className="offer-reel-viewer__topbar-row">
+            <img
+              src={getStoreLogoSrc(store)}
+              alt=""
+              className="offer-reel-slide__store-logo"
+            />
+            <span className="offer-reel-slide__store-text">
+              <span className="offer-reel-slide__store-name">{store?.name || 'متجر'}</span>
+              {store?.isVerifiedStore && <VerifiedBadge className="mt-0.5" />}
+            </span>
+          </span>
+        </button>
         <h2 className="offer-reel-slide__offer-title">{getItemTitle(item)}</h2>
       </div>
     </header>
@@ -376,6 +432,7 @@ export default function OfferReelViewer({
   }, [navigate, closeViewer]);
 
   const handleCloseClick = useCallback(() => {
+    clearResumeState();
     if (historyPushedRef.current) {
       window.history.back();
     } else {
@@ -383,11 +440,29 @@ export default function OfferReelViewer({
     }
   }, [closeViewer]);
 
+  const handleStoreClick = useCallback((storeId) => {
+    saveResumeState({
+      offers,
+      boundaries,
+      initialIndex: activeIndex,
+      multiCategory,
+    });
+    navigate(`/store/${storeId}`);
+  }, [navigate, offers, boundaries, activeIndex, multiCategory]);
+
+  useEffect(() => {
+    if (!resumeContainer) {
+      clearResumeState();
+    }
+  }, []);
+
   useEffect(() => {
     scrollLockYRef.current = window.scrollY;
     document.body.classList.add('offer-viewer-open');
     document.body.style.top = `-${scrollLockYRef.current}px`;
-    window.history.pushState({ offerViewer: true }, '');
+    if (!window.history.state?.offerViewer) {
+      window.history.pushState({ offerViewer: true }, '');
+    }
     historyPushedRef.current = true;
 
     const onPopState = () => {
@@ -519,7 +594,11 @@ export default function OfferReelViewer({
   return createPortal(
     <div className="offer-reel-viewer" role="dialog" aria-modal="true" aria-label="عارض العروض">
       {activeItem && !isCategoryItem(activeItem) && (
-        <ViewerTopbar item={activeItem} onClose={handleCloseClick} />
+        <ViewerTopbar
+          item={activeItem}
+          onClose={handleCloseClick}
+          onStoreClick={handleStoreClick}
+        />
       )}
 
       {activeItem && isCategoryItem(activeItem) && (
@@ -551,4 +630,34 @@ export default function OfferReelViewer({
     </div>,
     document.body
   );
+}
+
+function tryResumeViewer() {
+  if (document.body.classList.contains('offer-viewer-open')) return;
+  if (window.location.pathname.startsWith('/store/')) return;
+
+  const state = readResumeState();
+  if (!state?.offers?.length) return;
+
+  dismissResumedViewer();
+  resumeContainer = document.createElement('div');
+  resumeContainer.id = 'offer-reel-viewer-resume-host';
+  document.body.appendChild(resumeContainer);
+  resumeRoot = createRoot(resumeContainer);
+  resumeRoot.render(
+    <OfferReelViewer
+      offers={state.offers}
+      boundaries={state.boundaries ?? []}
+      initialIndex={state.initialIndex ?? 0}
+      multiCategory={!!state.multiCategory}
+      onClose={dismissResumedViewer}
+    />
+  );
+}
+
+if (typeof window !== 'undefined' && !window.__offerReelResumeInit) {
+  window.__offerReelResumeInit = true;
+  window.addEventListener('popstate', () => {
+    window.setTimeout(tryResumeViewer, 0);
+  });
 }

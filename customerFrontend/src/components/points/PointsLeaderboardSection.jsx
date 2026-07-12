@@ -43,6 +43,7 @@ export default function PointsLeaderboardSection({
   myRank = null,
   currentUser = null,
   isLoading = false,
+  isError = false,
   currentUserId = null,
 }) {
   const meInTop = top.some((e) => String(e.id) === String(currentUserId));
@@ -61,11 +62,15 @@ export default function PointsLeaderboardSection({
         </div>
       )}
 
-      {!isLoading && top.length === 0 && (
+      {!isLoading && isError && (
         <p className="points-lb-section__empty">لا تتوفر بيانات المتصدرين حالياً</p>
       )}
 
-      {!isLoading && top.length > 0 && (
+      {!isLoading && !isError && top.length === 0 && (
+        <p className="points-lb-section__empty">لا تتوفر بيانات المتصدرين حالياً</p>
+      )}
+
+      {!isLoading && !isError && top.length > 0 && (
         <div className="points-lb-section__list">
           {top.map((entry, i) => (
             <LeaderboardRow

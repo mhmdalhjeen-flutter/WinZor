@@ -8,6 +8,7 @@ const { userMeCache } = require("../middleware/responseCache.middleware");
 
 router.use(authMiddleware);
 
+router.get("/points-leaderboard", userCenter.getPointsLeaderboard);
 router.get("/me", userMeCache, userController.getMe);
 router.get("/me/center", userCenter.getCenter);
 router.get("/me/legal", userCenter.getLegal);

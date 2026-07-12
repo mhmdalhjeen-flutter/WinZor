@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, X, Zap, Gift, Store } from 'lucide-react';
+import { BookOpen, X, Zap, Gift, Store, Info } from 'lucide-react';
 import {
   ENTER_CARD_EVENT,
   REFERRAL_CARDS_EVENT,
@@ -161,6 +161,15 @@ export default function PointsGuideModal({ open, onClose }) {
               )}
             </article>
           ))}
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50/90 px-4 py-3.5 flex gap-3 items-start">
+          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-sky-100 text-sky-600 shrink-0 mt-0.5">
+            <Info size={16} strokeWidth={2.25} />
+          </span>
+          <p className="text-[11px] sm:text-xs font-bold text-sky-900/90 leading-relaxed">
+            💡 إذا لاحظت أن عدد النقاط لم يتم تحديثه مباشرة بعد بعض العمليات، فما عليك سوى إعادة تحميل الصفحة مرة واحدة، وسيتم تحديث الرصيد تلقائياً.
+          </p>
         </div>
       </div>
     </div>

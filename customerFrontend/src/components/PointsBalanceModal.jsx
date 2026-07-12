@@ -9,7 +9,13 @@ import PointsLeaderboardSection from './points/PointsLeaderboardSection';
 
 export default function PointsBalanceModal({ open, onClose, points = 0, user = null }) {
   const displayPoints = useCountUpOnOpen(points, open, 1200);
-  const { data: leaderboard, isLoading: lbLoading } = usePointsLeaderboard(open);
+
+  const currentUserId = user?._id || user?.id;
+  const {
+    data: leaderboard,
+    isLoading: lbLoading,
+    isError: lbError,
+  } = usePointsLeaderboard(open, currentUserId);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -17,7 +23,6 @@ export default function PointsBalanceModal({ open, onClose, points = 0, user = n
     return () => document.body.classList.remove('points-balance-open');
   }, [open]);
 
-  const currentUserId = user?._id || user?.id;
   const currentUser = leaderboard?.me || (user ? {
     id: currentUserId,
     name: user.name,
@@ -94,6 +99,7 @@ export default function PointsBalanceModal({ open, onClose, points = 0, user = n
                 currentUser={currentUser}
                 currentUserId={currentUserId}
                 isLoading={lbLoading}
+                isError={lbError}
               />
             </div>
           </motion.div>

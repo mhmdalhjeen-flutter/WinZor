@@ -251,6 +251,54 @@ exports.updateSuggestionAdmin = async (req, res) => {
   }
 };
 
+exports.getPointsLeaderboard = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const leaderboardQuery = { role: "customer", status: "active" };
+
+    const [topUsers, me] = await Promise.all([
+      User.find(leaderboardQuery)
+        .select("name avatar points createdAt")
+        .sort({ points: -1, createdAt: 1 })
+        .limit(5)
+        .lean(),
+      User.findById(userId).select("name avatar points createdAt").lean(),
+    ]);
+
+    if (!me) return res.status(404).json({ message: "المستخدم غير موجود" });
+
+    const aheadCount = await User.countDocuments({
+      ...leaderboardQuery,
+      $or: [
+        { points: { $gt: me.points || 0 } },
+        { points: me.points || 0, createdAt: { $lt: me.createdAt } },
+      ],
+    });
+    const myRank = aheadCount + 1;
+
+    const top = topUsers.map((u, index) => ({
+      rank: index + 1,
+      user: { _id: u._id, name: u.name, avatar: u.avatar },
+      points: u.points || 0,
+    }));
+
+    res.json({
+      top,
+      myRank,
+      myPoints: me.points || 0,
+      me: {
+        _id: me._id,
+        name: me.name,
+        avatar: me.avatar,
+        points: me.points || 0,
+        rank: myRank,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getLegal = async (_req, res) => {
   res.json(await getLegalContent());
 };

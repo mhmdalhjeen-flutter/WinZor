@@ -10,64 +10,73 @@ function avatarFor(user, name = 'User') {
 function normalizeEntry(entry, index) {
   const user = entry?.user || entry;
   const name = user?.name || entry?.name || 'مستخدم';
+  const rank = entry?.rank ?? entry?.position ?? index + 1;
   return {
     id: String(user?._id || user?.id || entry?._id || entry?.id || index),
     name,
     avatar: avatarFor(user, name),
-    rank: entry?.rank ?? index + 1,
+    rank: Number(rank),
     points: entry?.points ?? user?.points ?? 0,
   };
 }
 
-function normalizeLeaderboard(data) {
-  if (!data) return null;
+function extractTopList(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
 
-  const topRaw = data.top
+  return data.top
     || data.topUsers
     || data.leaderboard
     || data.users
     || data.items
     || [];
-
-  const top = (Array.isArray(topRaw) ? topRaw : []).slice(0, 5).map(normalizeEntry);
-
-  const meRaw = data.me || data.currentUser || data.user;
-  const myRank = data.myRank
-    ?? data.currentUserRank
-    ?? data.rank
-    ?? meRaw?.rank
-    ?? null;
-
-  const me = meRaw
-    ? normalizeEntry({ ...meRaw, rank: myRank, points: meRaw.points ?? data.myPoints })
-    : null;
-
-  return { top, myRank: myRank != null ? Number(myRank) : null, me };
 }
 
-async function fetchLeaderboard() {
-  const paths = ['/users/points-leaderboard', '/users/leaderboard/points'];
+function resolveMyRank(data, top, currentUserId) {
+  const fromApi = data?.myRank ?? data?.currentUserRank ?? data?.me?.rank;
+  if (fromApi != null && !Number.isNaN(Number(fromApi))) {
+    return Number(fromApi);
+  }
 
-  for (const path of paths) {
-    try {
-      const { data } = await api.get(path);
-      const normalized = normalizeLeaderboard(data);
-      if (normalized?.top?.length) return normalized;
-    } catch {
-      /* try next */
-    }
+  if (currentUserId) {
+    const inTop = top.find((e) => String(e.id) === String(currentUserId));
+    if (inTop?.rank != null) return Number(inTop.rank);
   }
 
   return null;
 }
 
-export function usePointsLeaderboard(enabled = false) {
+export function normalizeLeaderboard(data, currentUserId = null) {
+  const topRaw = extractTopList(data);
+  const top = topRaw.slice(0, 5).map((entry, index) => normalizeEntry(entry, index));
+
+  const meRaw = data?.me || data?.currentUser || data?.user;
+  const myRank = resolveMyRank(data, top, currentUserId);
+
+  const me = meRaw
+    ? normalizeEntry({
+      ...meRaw,
+      user: meRaw.user || meRaw,
+      rank: myRank,
+      points: meRaw.points ?? data?.myPoints ?? meRaw.user?.points,
+    })
+    : null;
+
+  return { top, myRank, me };
+}
+
+async function fetchLeaderboard(currentUserId) {
+  const { data } = await api.get('/users/points-leaderboard');
+  return normalizeLeaderboard(data, currentUserId);
+}
+
+export function usePointsLeaderboard(enabled = false, currentUserId = null) {
   return useQuery({
-    queryKey: queryKeys.pointsLeaderboard,
-    queryFn: fetchLeaderboard,
+    queryKey: [...queryKeys.pointsLeaderboard, currentUserId],
+    queryFn: () => fetchLeaderboard(currentUserId),
     enabled,
     staleTime: 60 * 1000,
-    retry: false,
+    retry: 1,
     refetchOnWindowFocus: false,
   });
 }

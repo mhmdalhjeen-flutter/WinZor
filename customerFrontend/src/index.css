@@ -1212,6 +1212,10 @@ body.offer-viewer-open {
   }
 }
 
+.points-guide-modal {
+  background: linear-gradient(135deg, #fdf4ff 0%, #fef3c7 45%, #fce7f3 100%);
+}
+
 /* Home hero section */
 .home-hero__inner {
   position: relative;

@@ -9,6 +9,7 @@ import { useToast } from '../shared/Toast';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimation';
 import ReferralCardsModal from './ReferralCardsModal';
+import { ENTER_CARD_EVENT } from './PointsGuideModal';
 
 const FloatingCodeButton = () => {
   const [viewerOpen, setViewerOpen] = useState(
@@ -142,6 +143,12 @@ const FloatingCodeButton = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const openFromGuide = () => runWithVerification(() => setIsOpen(true));
+    window.addEventListener(ENTER_CARD_EVENT, openFromGuide);
+    return () => window.removeEventListener(ENTER_CARD_EVENT, openFromGuide);
+  }, [runWithVerification]);
 
   if (viewerOpen) return null;
 

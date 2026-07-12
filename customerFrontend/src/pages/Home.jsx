@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
 import { toggleFavorite } from '../utils/activity';
 import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
@@ -9,16 +9,11 @@ import LightLoadingHint from '../shared/LightLoadingHint';
 import HomeHero from '../components/home/HomeHero';
 import HomeSearchCards from '../components/home/HomeSearchCards';
 import ProgressiveCategoryReels from '../components/home/ProgressiveCategoryReels';
-import MarketplaceOfferCard from '../components/marketplace/MarketplaceOfferCard';
-import OfferRailTrack from '../components/marketplace/OfferRailTrack';
-import OfferReelViewer from '../components/marketplace/OfferReelViewer';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
-import { normalizeCategoryReels } from '../utils/categoryDisplay';
+import { normalizeCategoryReels, buildCategoryMaps } from '../utils/categoryDisplay';
 
 const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
-
-const PAGE_SIZE = 12;
 
 async function fetchFavoritesPayload() {
   const { data } = await api.get('/activity/favorites');
@@ -32,15 +27,28 @@ const Home = () => {
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
-  const [gridViewer, setGridViewer] = useState(null);
-  const sentinelRef = useRef(null);
 
   const effectiveCategoryId = categoryPath.length
     ? categoryPath[categoryPath.length - 1]
     : null;
   const selectedRegionId = getEffectiveRegionId(regionPath);
   const feedKey = { effectiveCategoryId, selectedRegionId };
-  const showCategoryReels = !effectiveCategoryId;
+
+  function reelMatchesCategory(reel, categoryId, maps) {
+    if (!reel || !categoryId) return false;
+    if (String(reel.categoryId) === String(categoryId)) return true;
+    if (String(reel.parentCategoryId) === String(categoryId)) return true;
+
+    const { byId } = maps;
+    let node = byId.get(String(reel.categoryId));
+    while (node) {
+      if (String(node._id) === String(categoryId)) return true;
+      const parentId = node.parent || node.parentId;
+      if (!parentId) break;
+      node = byId.get(String(parentId));
+    }
+    return false;
+  }
 
   const {
     data: categories = [],
@@ -90,7 +98,7 @@ const Home = () => {
       const { data } = await api.get('/offers/reels', { params });
       return data?.reels || [];
     },
-    enabled: showCategoryReels,
+    enabled: true,
     staleTime: 60 * 1000,
   });
 
@@ -99,40 +107,11 @@ const Home = () => {
     [reelsData, categories]
   );
 
-  const {
-    data: feedData,
-    isLoading: feedLoading,
-    isFetchingNextPage: loadingMore,
-    fetchNextPage,
-    hasNextPage,
-  } = useInfiniteQuery({
-    queryKey: queryKeys.offersFeed(feedKey),
-    queryFn: async ({ pageParam }) => {
-      const params = { limit: PAGE_SIZE };
-      if (effectiveCategoryId) params.category = effectiveCategoryId;
-      if (selectedRegionId) params.region = selectedRegionId;
-      if (pageParam) params.cursor = pageParam;
-      const { data } = await api.get('/offers/feed', { params });
-      return data;
-    },
-    getNextPageParam: (last) => last.nextCursor || undefined,
-    initialPageParam: null,
-    enabled: !showCategoryReels,
-    staleTime: 60 * 1000,
-  });
-
-  const items = feedData?.pages.flatMap((p) => p.items || []) ?? [];
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || showCategoryReels) return;
-    const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && hasNextPage && !loadingMore) fetchNextPage(); },
-      { rootMargin: '300px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [fetchNextPage, hasNextPage, loadingMore, showCategoryReels]);
+  const displayReels = useMemo(() => {
+    if (!effectiveCategoryId) return normalizedReels;
+    const maps = buildCategoryMaps(categories);
+    return normalizedReels.filter((reel) => reelMatchesCategory(reel, effectiveCategoryId, maps));
+  }, [normalizedReels, effectiveCategoryId, categories]);
 
   const handleToggleFavorite = async (offer) => {
     const id = String(offer._id);
@@ -150,8 +129,8 @@ const Home = () => {
     }
   };
 
-  const isLoadingOffers = showCategoryReels ? reelsLoading : feedLoading && items.length === 0;
-  const hasOffers = showCategoryReels ? (normalizedReels?.length > 0) : items.length > 0;
+  const isLoadingOffers = reelsLoading;
+  const hasOffers = displayReels?.length > 0;
   const hasActiveFilters = regionPath.length > 0 || categoryPath.length > 0;
 
   const resetFilters = () => {
@@ -214,46 +193,15 @@ const Home = () => {
             <div className="text-center py-12 text-gray-400 font-bold">لا توجد عروض مطابقة حالياً</div>
           )}
 
-          {showCategoryReels && hasOffers && (
+          {hasOffers && (
             <ProgressiveCategoryReels
-              reels={normalizedReels}
+              reels={displayReels}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
             />
           )}
-
-          {!showCategoryReels && items.length > 0 && (
-            <div className="home-progressive-reels">
-              <OfferRailTrack resetKey={`feed-${effectiveCategoryId || 'all'}-${selectedRegionId || 'all'}`}>
-                {items.map((offer, idx) => (
-                  <div key={offer._id} className="home-offers-rail__slide">
-                    <MarketplaceOfferCard
-                      offer={offer}
-                      onClick={() => setGridViewer({ offers: items, index: idx })}
-                    />
-                  </div>
-                ))}
-              </OfferRailTrack>
-              <div ref={sentinelRef} className="h-10 flex items-center justify-center">
-                {loadingMore && <span className="text-gray-400 text-xs font-bold">جاري التحميل...</span>}
-                {!hasNextPage && (
-                  <span className="text-gray-300 text-xs font-bold">— انتهت العروض —</span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
-
-      {gridViewer && (
-        <OfferReelViewer
-          offers={gridViewer.offers}
-          initialIndex={gridViewer.index}
-          onClose={() => setGridViewer(null)}
-          favoriteIds={favoriteIds}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      )}
     </div>
   );
 };

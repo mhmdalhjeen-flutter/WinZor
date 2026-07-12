@@ -66,16 +66,23 @@ function AppShell() {
   const [offerViewerOpen, setOfferViewerOpen] = useState(
     () => typeof document !== 'undefined' && document.body.classList.contains('offer-viewer-open')
   );
+  const [pointsGuideOpen, setPointsGuideOpen] = useState(
+    () => typeof document !== 'undefined' && document.body.classList.contains('points-guide-open')
+  );
 
   useEffect(() => {
-    const sync = () => setOfferViewerOpen(document.body.classList.contains('offer-viewer-open'));
+    const sync = () => {
+      setOfferViewerOpen(document.body.classList.contains('offer-viewer-open'));
+      setPointsGuideOpen(document.body.classList.contains('points-guide-open'));
+    };
     const obs = new MutationObserver(sync);
     obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     sync();
     return () => obs.disconnect();
   }, []);
 
-  const hideChrome = offerViewerOpen;
+  const hideChrome = offerViewerOpen || pointsGuideOpen;
+  const hideBottomChrome = hideChrome || location.pathname === '/stores/search';
 
   return (
     <>
@@ -135,10 +142,10 @@ function AppShell() {
         </main>
 
         {/* زر الكود العائم */}
-        {isAuth && !hideChrome && <FloatingCodeButton />}
+        {isAuth && !hideBottomChrome && <FloatingCodeButton />}
         
         {/* شريط التنقل السفلي */}
-        {isAuth && !hideChrome && <BottomNav />}
+        {isAuth && !hideBottomChrome && <BottomNav />}
       </div>
     </>
   );

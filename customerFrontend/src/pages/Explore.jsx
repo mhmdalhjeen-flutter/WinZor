@@ -110,7 +110,13 @@ const Explore = () => {
   const total = data?.total || 0;
   const suggestion = data?.suggestion || null;
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');
-  const activeFilterCount = (regionPath?.length ? 1 : 0) + (categoryPath?.length ? 1 : 0);
+  const hasActiveSearch = Boolean(debouncedQ || regionPath.length || categoryPath.length);
+
+  const clearSearch = () => {
+    setProductQuery('');
+    setRegionPath([]);
+    setCategoryPath([]);
+  };
 
   return (
     <div className="space-y-5 pb-28 text-right" dir="rtl">
@@ -135,19 +141,24 @@ const Explore = () => {
             className="w-full border border-gray-200 bg-white rounded-2xl py-3.5 pr-10 pl-4 text-sm font-bold text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 shadow-sm"
           />
         </div>
-        <button
-          type="button"
-          onClick={() => setFiltersOpen(true)}
-          className="relative shrink-0 inline-flex items-center gap-2 px-4 rounded-2xl border border-gray-200 bg-white text-sm font-black text-gray-800 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <SlidersHorizontal size={18} className="text-primary" />
-          <span className="hidden sm:inline">بحث سريع</span>
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-1.5 -left-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+        {hasActiveSearch ? (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="shrink-0 inline-flex items-center gap-2 px-4 rounded-2xl border border-violet-100 bg-violet-50 text-sm font-black text-violet-700 shadow-sm hover:bg-violet-100 transition-colors"
+          >
+            إلغاء البحث
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="relative shrink-0 inline-flex items-center gap-2 px-4 rounded-2xl border border-gray-200 bg-white text-sm font-black text-gray-800 shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            <SlidersHorizontal size={18} className="text-primary" />
+            <span className="hidden sm:inline">بحث سريع</span>
+          </button>
+        )}
       </div>
 
       <QuickSearchDrawer

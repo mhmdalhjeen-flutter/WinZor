@@ -66,6 +66,13 @@ const StoreQuickSearch = () => {
   });
 
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');
+  const hasActiveSearch = Boolean(debouncedQ || regionPath.length || categoryPath.length);
+
+  const clearSearch = () => {
+    setProductQuery('');
+    setRegionPath([]);
+    setCategoryPath([]);
+  };
 
   const hasVisibleStores = data?.regions?.some(
     (block) =>
@@ -75,11 +82,22 @@ const StoreQuickSearch = () => {
 
   return (
     <div className="space-y-4 pb-24 text-right" dir="rtl">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-xl bg-white border border-gray-100">
-          <ChevronRight size={20} />
-        </button>
-        <h1 className="text-lg font-black text-gray-900">البحث السريع عن متجر</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-xl bg-white border border-gray-100">
+            <ChevronRight size={20} />
+          </button>
+          <h1 className="text-lg font-black text-gray-900">البحث السريع عن متجر</h1>
+        </div>
+        {hasActiveSearch && (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-black text-violet-700 bg-violet-50 border border-violet-100 active:scale-[0.98] transition-transform"
+          >
+            إلغاء البحث
+          </button>
+        )}
       </div>
 
       <QuickSearchPanel

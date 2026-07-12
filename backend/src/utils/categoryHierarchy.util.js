@@ -94,7 +94,7 @@ function resolveStoreSectionKey(store, sections, index) {
   if (!rootId) return null;
 
   const rootSections = sections.filter((s) => String(s.rootCategoryId) === rootId);
-  const hasChildren = rootSections.some((s) => !s.isParentFallback);
+  const hasChildren = rootSections.some((s) => s.isParentFallback);
 
   if (String(storeCatId) === rootId && hasChildren) {
     const fallback = rootSections.find((s) => s.isParentFallback);

@@ -5,6 +5,7 @@ const authMiddleware = require("../middleware/auth.middleware");
 const Product = require("../models/product");
 const { requireOwnedStoreResource } = require("../middleware/ownership.middleware");
 const { requireObjectId } = require("../utils/inputSecurity.util");
+const { deliverStoredImage } = require("../utils/mediaDelivery.util");
 
 const {
     createProduct,
@@ -25,6 +26,22 @@ router.get("/store/:storeId", getStoreProducts);
 router.get("/wholesale", authMiddleware, roleMiddleware.businessOrAdmin, getWholesaleProducts);
 
 router.get("/search", searchProducts);
+
+router.get("/:id/image", async (req, res) => {
+    try {
+        const id = requireObjectId(req.params.id, "id");
+        const product = await Product.findById(id).select("image isActive").lean();
+        if (!product?.isActive) {
+            return res.status(404).end();
+        }
+        return deliverStoredImage(res, product.image);
+    } catch (err) {
+        if (err.name === "CastError") {
+            return res.status(400).json({ message: "معرّف المنتج غير صحيح" });
+        }
+        return res.status(500).end();
+    }
+});
 
 router.get("/:id", async (req, res) => {
     try {

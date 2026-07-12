@@ -1,6 +1,7 @@
 const Product = require("../models/product");
 const Store = require("../models/store");
 const { processDataUrlImage } = require("../utils/imageProcess.util");
+const { resolveListImageField } = require("../utils/mediaDelivery.util");
 const {
     assertNoMongoOperators,
     cleanString,
@@ -14,10 +15,7 @@ const PRODUCT_LIST_SELECT =
 
 function stripBase64Image(product) {
     if (!product || typeof product !== "object") return product;
-    if (typeof product.image === "string" && product.image.startsWith("data:")) {
-        return { ...product, hasImage: true, image: null };
-    }
-    return { ...product, hasImage: !!product.image };
+    return resolveListImageField(product, "products");
 }
 
 // ================= إنشاء منتج جديد =================

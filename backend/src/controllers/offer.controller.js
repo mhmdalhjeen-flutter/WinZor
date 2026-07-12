@@ -6,6 +6,7 @@ const notificationService = require("../services/notification.service");
 const { computeOfferFinalPrice, attachPricingToOffer } = require("../services/pricing.service");
 const { resolveNetworkStoreIds } = require("../utils/offerFeed.util");
 const { processDataUrlImage } = require("../utils/imageProcess.util");
+const { resolveListImageField } = require("../utils/mediaDelivery.util");
 const {
     assertNoMongoOperators,
     cleanString,
@@ -21,13 +22,7 @@ const OFFER_LIST_SELECT =
 
 function stripBase64Images(offer) {
     if (!offer || typeof offer !== "object") return offer;
-    const plain = { ...offer };
-    if (typeof plain.image === "string" && plain.image.startsWith("data:")) {
-        plain.hasImage = true;
-        plain.image = null;
-    } else {
-        plain.hasImage = !!plain.image;
-    }
+    const plain = resolveListImageField(offer, "offers");
     if (plain.store && typeof plain.store === "object" && typeof plain.store.logo === "string" && plain.store.logo.startsWith("data:")) {
         plain.store = { ...plain.store, logo: null, hasLogo: true };
     }

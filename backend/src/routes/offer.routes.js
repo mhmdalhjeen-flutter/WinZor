@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/auth.middleware");
 const optionalAuth = require("../middleware/optionalAuth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
 const Offer = require("../models/offer");
+const { deliverStoredImage } = require("../utils/mediaDelivery.util");
 const { requireOwnedStoreResource } = require("../middleware/ownership.middleware");
 const offerService = require("../services/offer.service");
 const {
@@ -90,6 +91,21 @@ router.get("/dashboard", authMiddleware, roleMiddleware.business, async (req, re
   } catch (err) {
     const status = err.status || 500;
     res.status(status).json({ message: err.message });
+  }
+});
+
+router.get("/:id/image", optionalAuth, async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id).select("image isActive").lean();
+    if (!offer?.isActive) {
+      return res.status(404).end();
+    }
+    return deliverStoredImage(res, offer.image);
+  } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(400).json({ message: "معرّف العرض غير صحيح" });
+    }
+    return res.status(500).end();
   }
 });
 

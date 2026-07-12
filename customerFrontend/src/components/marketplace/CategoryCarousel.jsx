@@ -6,7 +6,7 @@ import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 
 const SHOPPING_BADGE = '🛍️ للتسوق';
-const PRODUCTS_LABEL = '🛍️ منتجات للتسوق';
+const PRODUCTS_LABEL = '🛍️ للتسوق';
 
 export function mapProductForCard(product) {
   return {
@@ -86,7 +86,10 @@ export default function CategoryCarousel({
         </header>
       )}
 
-      <OfferRailTrack trackRef={trackRef}>
+      <OfferRailTrack
+        trackRef={trackRef}
+        resetKey={String(reel.categoryId || reel.categoryName || 'category')}
+      >
         {offers.map((offer, idx) => (
           <div key={offer._id} className="home-offers-rail__slide">
             <MarketplaceOfferCard

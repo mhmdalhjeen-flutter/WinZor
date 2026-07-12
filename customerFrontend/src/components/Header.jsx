@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import PointsModal from './PointsModal';
+import PointsBalanceModal from './PointsBalanceModal';
 import PointsBadge from './PointsBadge';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
@@ -290,7 +290,7 @@ const Header = () => {
         />
       )}
 
-      <PointsModal open={pointsOpen} onClose={() => setPointsOpen(false)} userName={user?.name} points={points} />
+      <PointsBalanceModal open={pointsOpen} onClose={() => setPointsOpen(false)} points={points} />
     </>
   );
 };

@@ -7,6 +7,15 @@ const OFFERS_BATCH = 4;
 const INITIAL_PRODUCTS = 3;
 const PRODUCTS_BATCH = 4;
 
+function getOffersGate(totalOffers) {
+  return Math.min(INITIAL_OFFERS, totalOffers);
+}
+
+function offersReadyForProducts(offerLimit, totalOffers) {
+  if (totalOffers === 0) return true;
+  return offerLimit >= getOffersGate(totalOffers);
+}
+
 export default function ProgressiveCategoryReels({
   reels = [],
   favoriteIds = new Set(),
@@ -24,6 +33,28 @@ export default function ProgressiveCategoryReels({
     setVisibleProductsByCategory({});
   }, [reels]);
 
+  useEffect(() => {
+    setVisibleProductsByCategory((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      for (let idx = 0; idx < visibleCategoryCount; idx += 1) {
+        const reel = reels[idx];
+        const totalOffers = reel?.offers?.length || 0;
+        const totalProducts = reel?.products?.length || 0;
+        if (!totalProducts || next[idx] > 0) continue;
+
+        const offerLimit = visibleOffersByCategory[idx] ?? INITIAL_OFFERS;
+        if (offersReadyForProducts(offerLimit, totalOffers)) {
+          next[idx] = Math.min(INITIAL_PRODUCTS, totalProducts);
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [reels, visibleCategoryCount, visibleOffersByCategory]);
+
   const revealMore = useCallback(() => {
     if (!reels.length) return;
 
@@ -33,6 +64,15 @@ export default function ProgressiveCategoryReels({
     const totalProducts = lastReel?.products?.length || 0;
     const currentlyVisibleOffers = visibleOffersByCategory[lastIdx] ?? INITIAL_OFFERS;
     const currentlyVisibleProducts = visibleProductsByCategory[lastIdx] ?? 0;
+    const productsUnlocked = offersReadyForProducts(currentlyVisibleOffers, totalOffers);
+
+    if (productsUnlocked && totalProducts > 0 && currentlyVisibleProducts === 0) {
+      setVisibleProductsByCategory((prev) => ({
+        ...prev,
+        [lastIdx]: Math.min(INITIAL_PRODUCTS, totalProducts),
+      }));
+      return;
+    }
 
     if (currentlyVisibleOffers < totalOffers) {
       setVisibleOffersByCategory((prev) => ({
@@ -42,22 +82,12 @@ export default function ProgressiveCategoryReels({
       return;
     }
 
-    if (totalProducts > 0) {
-      if (currentlyVisibleProducts === 0) {
-        setVisibleProductsByCategory((prev) => ({
-          ...prev,
-          [lastIdx]: Math.min(INITIAL_PRODUCTS, totalProducts),
-        }));
-        return;
-      }
-
-      if (currentlyVisibleProducts < totalProducts) {
-        setVisibleProductsByCategory((prev) => ({
-          ...prev,
-          [lastIdx]: Math.min(currentlyVisibleProducts + PRODUCTS_BATCH, totalProducts),
-        }));
-        return;
-      }
+    if (productsUnlocked && totalProducts > 0 && currentlyVisibleProducts < totalProducts) {
+      setVisibleProductsByCategory((prev) => ({
+        ...prev,
+        [lastIdx]: Math.min(currentlyVisibleProducts + PRODUCTS_BATCH, totalProducts),
+      }));
+      return;
     }
 
     if (visibleCategoryCount < reels.length) {
@@ -80,9 +110,9 @@ export default function ProgressiveCategoryReels({
     const totalProducts = lastReel?.products?.length || 0;
     const currentlyVisibleOffers = visibleOffersByCategory[lastIdx] ?? INITIAL_OFFERS;
     const currentlyVisibleProducts = visibleProductsByCategory[lastIdx] ?? 0;
-    const allOffersVisible = currentlyVisibleOffers >= totalOffers;
+    const productsUnlocked = offersReadyForProducts(currentlyVisibleOffers, totalOffers);
     const hasMoreOffers = currentlyVisibleOffers < totalOffers;
-    const hasMoreProducts = allOffersVisible && currentlyVisibleProducts < totalProducts;
+    const hasMoreProducts = productsUnlocked && currentlyVisibleProducts < totalProducts;
     const hasMoreCategories = visibleCategoryCount < reels.length;
 
     if (!hasMoreOffers && !hasMoreProducts && !hasMoreCategories) return undefined;
@@ -101,8 +131,9 @@ export default function ProgressiveCategoryReels({
   const visibleReels = reels.slice(0, visibleCategoryCount).map((reel, idx) => {
     const offerLimit = visibleOffersByCategory[idx] ?? INITIAL_OFFERS;
     const totalOffers = reel?.offers?.length || 0;
-    const allOffersVisible = offerLimit >= totalOffers;
-    const productLimit = allOffersVisible ? (visibleProductsByCategory[idx] ?? 0) : 0;
+    const totalProducts = reel?.products?.length || 0;
+    const productsUnlocked = offersReadyForProducts(offerLimit, totalOffers);
+    const productLimit = productsUnlocked ? (visibleProductsByCategory[idx] ?? 0) : 0;
 
     return {
       ...reel,
@@ -142,10 +173,10 @@ export default function ProgressiveCategoryReels({
   const totalProducts = lastReel?.products?.length || 0;
   const currentlyVisibleOffers = visibleOffersByCategory[lastIdx] ?? INITIAL_OFFERS;
   const currentlyVisibleProducts = visibleProductsByCategory[lastIdx] ?? 0;
-  const allOffersVisible = currentlyVisibleOffers >= totalOffers;
+  const productsUnlocked = offersReadyForProducts(currentlyVisibleOffers, totalOffers);
   const hasMore =
     currentlyVisibleOffers < totalOffers
-    || (allOffersVisible && currentlyVisibleProducts < totalProducts)
+    || (productsUnlocked && currentlyVisibleProducts < totalProducts)
     || visibleCategoryCount < reels.length;
 
   return (

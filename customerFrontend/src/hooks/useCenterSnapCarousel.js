@@ -46,6 +46,8 @@ export default function useCenterSnapCarousel() {
 
     if (!node) return;
 
+    node.scrollLeft = 0;
+
     const onScrollEnd = () => {
       snapToNearestSlide(node);
     };

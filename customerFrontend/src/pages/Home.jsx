@@ -224,7 +224,7 @@ const Home = () => {
 
           {!showCategoryReels && items.length > 0 && (
             <div className="home-progressive-reels">
-              <OfferRailTrack>
+              <OfferRailTrack resetKey={`feed-${effectiveCategoryId || 'all'}-${selectedRegionId || 'all'}`}>
                 {items.map((offer, idx) => (
                   <div key={offer._id} className="home-offers-rail__slide">
                     <MarketplaceOfferCard

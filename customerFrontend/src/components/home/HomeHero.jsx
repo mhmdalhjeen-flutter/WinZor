@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, X, BookOpen } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import PointsModal from '../PointsModal';
+import { BookOpen } from 'lucide-react';
+import PointsGuideModal from '../PointsGuideModal';
 
 export default function HomeHero() {
-  const { user } = useAuth();
-  const [pointsOpen, setPointsOpen] = useState(false);
-  const points = user?.points ?? 0;
+  const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <>
@@ -15,30 +12,24 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--violet" aria-hidden />
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
-          <div className="relative z-10 home-hero__row py-2.5 sm:py-3 px-3 sm:px-4">
-            <p className="home-hero__message text-xs sm:text-sm font-black text-gray-900 leading-snug">
+          <div className="relative z-10 home-hero__content py-3 sm:py-3.5 px-3 sm:px-4">
+            <p className="home-hero__message text-xs sm:text-sm font-black text-gray-900 leading-snug text-center">
               اطلب نقاطك من كل عملية شراء من هذه المتاجر
             </p>
 
             <button
               type="button"
-              onClick={() => setPointsOpen(true)}
-              className="home-hero__cta inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold text-white shadow-sm shadow-primary/20 active:scale-[0.98] transition-transform shrink-0"
+              onClick={() => setGuideOpen(true)}
+              className="home-hero__cta mx-auto mt-2.5 inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold text-white shadow-sm shadow-primary/20 active:scale-[0.98] transition-transform"
             >
-              <BookOpen size={11} className="sm:hidden" />
-              <BookOpen size={12} className="hidden sm:block" />
+              <BookOpen size={12} />
               دليل النقاط
             </button>
           </div>
         </div>
       </section>
 
-      <PointsModal
-        open={pointsOpen}
-        onClose={() => setPointsOpen(false)}
-        userName={user?.name}
-        points={points}
-      />
+      <PointsGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import { formatPrice } from '../../utils/currency';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
+import { useVerificationGate } from '../../context/VerificationGateContext';
 import { getOfferPricing } from '../OfferPriceDisplay';
 import { resolveOfferImage } from '../../utils/mediaUrl';
 

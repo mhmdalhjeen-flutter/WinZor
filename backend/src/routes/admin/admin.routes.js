@@ -22,6 +22,7 @@ const User    = require('../../models/user');
 const { createStoreActivationCode } = require("../../controllers/activation.controller");
 const bazaarAdmin = require("../../controllers/admin/bazaar-admin.controller");
 const achievementAdmin = require("../../controllers/admin/achievement-admin.controller");
+const displayPriorityAdmin = require("../../controllers/admin/display-priority-admin.controller");
 const userCenter = require("../../controllers/user-center.controller");
 const usersAdmin = require("../../controllers/admin/users-admin.controller");
 const auditController = require("../../controllers/admin/audit.controller");
@@ -29,8 +30,8 @@ const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
 const { requireObjectId } = require("../../utils/inputSecurity.util");
 
 const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore displayPriority owner cards bypassCards createdAt";
-const ADMIN_PRODUCT_LIST_SELECT = "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive createdAt";
-const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice image freeDelivery isActive priority featuredPriority displayPriority expiresAt createdAt";
+const ADMIN_PRODUCT_LIST_SELECT = "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive displayPriority createdAt";
+const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice currency image freeDelivery isActive priority featuredPriority displayPriority expiresAt createdAt";
 
 function stripBase64ListImage(row, field = "image") {
     if (!row || typeof row !== "object") return row;
@@ -353,6 +354,33 @@ router.patch('/products/:productId/toggle', async (req, res) => {
     }
 });
 
+// ─── PATCH /admin/products/:productId/display-priority ───────────────────────
+router.patch('/products/:productId/display-priority', async (req, res) => {
+    try {
+        const productId = requireObjectId(req.params.productId, "productId");
+        const product = await Product.findById(productId);
+        if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
+
+        const raw = req.body?.displayPriority;
+        if (raw === null || raw === '' || raw === undefined) {
+            product.displayPriority = null;
+        } else {
+            const num = parseInt(raw, 10);
+            if (!Number.isFinite(num) || num < 1) {
+                return res.status(400).json({ message: 'أولوية العرض يجب أن تكون رقماً موجباً أو فارغة' });
+            }
+            product.displayPriority = num;
+        }
+        await product.save();
+        res.json({
+            message: 'تم تحديث أولوية عرض المنتج',
+            displayPriority: product.displayPriority,
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
 // ─── DELETE /admin/products/:productId ───────────────────────────────────────
 router.delete('/products/:productId', async (req, res) => {
     try {
@@ -403,6 +431,16 @@ router.post("/achievements", achievementAdmin.create);
 router.put("/achievements/:id", achievementAdmin.update);
 router.delete("/achievements/:id", achievementAdmin.remove);
 router.patch("/achievements/reorder", achievementAdmin.reorder);
+
+// ─── إدارة أولويات العرض (سحب وإفلات) ───────────────────────────────────────
+router.get("/display-priority/main-categories", displayPriorityAdmin.listMainCategories);
+router.get("/display-priority/second-levels", displayPriorityAdmin.listSecondLevels);
+router.get("/display-priority/stores", displayPriorityAdmin.listStores);
+router.get("/display-priority/stores/:storeId/catalog", displayPriorityAdmin.listCatalog);
+router.patch("/display-priority/categories/reorder", displayPriorityAdmin.reorderCategories);
+router.patch("/display-priority/stores/reorder", displayPriorityAdmin.reorderStores);
+router.patch("/display-priority/offers/reorder", displayPriorityAdmin.reorderOffers);
+router.patch("/display-priority/products/reorder", displayPriorityAdmin.reorderProducts);
 
 router.get("/suggestions", userCenter.listSuggestionsAdmin);
 router.patch("/suggestions/:id", userCenter.updateSuggestionAdmin);

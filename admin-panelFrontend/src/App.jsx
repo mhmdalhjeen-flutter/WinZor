@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
 const Stores = lazy(() => import('./pages/Stores'));
 const Categories = lazy(() => import('./pages/Categories'));
+const PriorityManagement = lazy(() => import('./pages/PriorityManagement'));
 const Regions = lazy(() => import('./pages/Regions'));
 const Competitions = lazy(() => import('./pages/Competitions'));
 const CompetitionParticipants = lazy(() => import('./pages/CompetitionParticipants'));
@@ -68,6 +69,7 @@ function App() {
           <Route path="stores" element={<LazyPage><Stores /></LazyPage>} />
           <Route path="promo-codes" element={<PromoCodesProtected />} />
           <Route path="categories" element={<LazyPage><Categories /></LazyPage>} />
+          <Route path="display-priority" element={<LazyPage><PriorityManagement /></LazyPage>} />
           <Route path="regions" element={<LazyPage><Regions /></LazyPage>} />
           <Route path="competitions" element={<LazyPage><Competitions /></LazyPage>} />
           <Route path="competitions/:id/participants" element={<LazyPage><CompetitionParticipants /></LazyPage>} />

@@ -3,6 +3,7 @@ import axios from '../api/axios';
 import {
   ShoppingBag, CheckCircle, XCircle, Loader2, Eye, Trash2, MapPin, Phone, Tag,
 } from 'lucide-react';
+import { formatListingPrice } from '../utils/currency';
 
 const TYPE_LABELS = { sell: 'بيع', buy: 'شراء', exchange: 'بدل', custom: 'حسب الطلب' };
 const CONDITION_LABELS = { new: 'جديد', used: 'مستعمل' };
@@ -151,7 +152,7 @@ export default function BazaarApprovals() {
               <div className="flex-1 min-w-[200px]">
                 <h3 className="font-black text-white">{item.title}</h3>
                 <p className="text-primary font-black text-sm mt-1">
-                  {Number(item.price).toLocaleString('ar-IQ')} د.ع
+                  {formatListingPrice(item)}
                 </p>
                 <p className="text-xs text-muted mt-1">
                   {item.seller?.name} — {regionLabel(item)}
@@ -198,7 +199,7 @@ export default function BazaarApprovals() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-dark p-3 rounded-xl"><span className="text-muted block text-xs">السعر</span>{Number(selected.price).toLocaleString('ar-IQ')} د.ع</div>
+                  <div className="bg-dark p-3 rounded-xl"><span className="text-muted block text-xs">السعر</span>{formatListingPrice(selected)}</div>
                   <div className="bg-dark p-3 rounded-xl"><span className="text-muted block text-xs">الحالة</span>{CONDITION_LABELS[selected.condition]}</div>
                   <div className="bg-dark p-3 rounded-xl"><span className="text-muted block text-xs">النوع</span>{TYPE_LABELS[selected.transactionType]}</div>
                   <div className="bg-dark p-3 rounded-xl"><span className="text-muted block text-xs">التوصيل</span>{selected.freeDelivery ? 'مجاني' : 'لا'}</div>

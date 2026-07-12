@@ -9,9 +9,11 @@ const {
     requireObjectId,
     safeRegex,
 } = require("../utils/inputSecurity.util");
+const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
+const { normalizeCurrency } = require("../utils/currency.util");
 
 const PRODUCT_LIST_SELECT =
-    "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount store createdAt";
+    "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
 
 function stripBase64Image(product) {
     if (!product || typeof product !== "object") return product;
@@ -34,6 +36,7 @@ exports.createProduct = async (req, res) => {
             name,
             description,
             price,
+            currency,
             image,
             isWholesale,
             freeDelivery,
@@ -51,6 +54,7 @@ exports.createProduct = async (req, res) => {
             name: cleanString(name, { field: "name", max: 120, required: true }),
             description: cleanString(description, { field: "description", max: 1000 }),
             price: numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: true }),
+            currency: normalizeCurrency(currency),
             image: await processDataUrlImage(image.trim()),
             isWholesale: !!isWholesale,
             freeDelivery: !!freeDelivery,
@@ -75,7 +79,8 @@ exports.getStoreProducts = async (req, res) => {
         })
             .select(PRODUCT_LIST_SELECT)
             .lean();
-        res.json({ products: products.map(stripBase64Image) });
+        const sorted = applyProductDisplayPrioritySort(products);
+        res.json({ products: sorted.map(stripBase64Image) });
 
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message });
@@ -121,13 +126,14 @@ exports.searchProducts = async (req, res) => {
             isWholesale: false
         })
             .select(PRODUCT_LIST_SELECT)
-            .sort({ createdAt: -1 })
             .limit(50)
             .lean();
 
+        const sorted = applyProductDisplayPrioritySort(products);
+
         res.json({
-            count: products.length,
-            products: products.map(stripBase64Image)
+            count: sorted.length,
+            products: sorted.map(stripBase64Image)
         });
 
     } catch (error) {
@@ -180,13 +186,15 @@ exports.updateProduct = async (req, res) => {
         const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ message: "المنتج غير موجود" });
 
-        const allowed = ["name", "description", "price", "image", "isWholesale"];
+        const allowed = ["name", "description", "price", "currency", "image", "isWholesale"];
         for (const field of allowed) {
             if (req.body[field] === undefined) continue;
             if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
                 product.image = await processDataUrlImage(req.body.image.trim());
             } else if (field === "price") {
                 product.price = numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: true });
+            } else if (field === "currency") {
+                product.currency = normalizeCurrency(req.body.currency);
             } else if (field === "name") {
                 product.name = cleanString(req.body.name, { field: "name", max: 120, required: true });
             } else if (field === "description") {

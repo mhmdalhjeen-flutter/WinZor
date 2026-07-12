@@ -19,6 +19,7 @@ import { useVerificationGate } from '../../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { resolveOfferImage, resolveProductImage, resolveStoreLogo, storeLogoPlaceholder } from '../../utils/mediaUrl';
+import { formatPrice } from '../../utils/currency';
 
 const CATEGORY_TRANSITION_MS = 1000;
 const RESUME_STORAGE_KEY = 'offerReelViewerResume';
@@ -357,7 +358,7 @@ function ReelSlide({
             <span className="offer-reel-slide__discount-badge">{getOfferBadge(item)}</span>
           )}
           {isProduct ? (
-            <span className="offer-reel-slide__new-price">{item.price} ₪</span>
+            <span className="offer-reel-slide__new-price">{formatPrice(item.price, item.currency)}</span>
           ) : (
             <OfferPriceDisplay
               offer={item}

@@ -25,9 +25,10 @@ const STORE_POPULATE_SELECT =
   "name logo region subRegion category categoryId ratingAvg ratingCount regionId subRegionId isVerifiedStore owner";
 
 const PRODUCT_LIST_SELECT =
-  "name description price image stock freeDelivery ratingAvg ratingCount store createdAt";
+  "name description price currency image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
 
 const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
+const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 function stripHeavyFields(offer) {
   if (!offer || typeof offer !== "object") return offer;
@@ -299,9 +300,10 @@ async function listCategoryReels(query, userId) {
   })
     .select(PRODUCT_LIST_SELECT)
     .populate("store", STORE_POPULATE_SELECT)
-    .sort({ createdAt: -1 })
     .limit(400)
     .lean();
+
+  const sortedProducts = applyProductDisplayPrioritySort(categoryProductsByStore);
 
   const offersBySection = groupItemsBySection(
     ranked,
@@ -310,7 +312,7 @@ async function listCategoryReels(query, userId) {
     (offer) => offer.store
   );
   const productsBySection = groupItemsBySection(
-    categoryProductsByStore,
+    sortedProducts,
     sections,
     index,
     (product) => product.store
@@ -443,7 +445,7 @@ function previewPricing(body) {
     originalPrice,
     value,
     finalPrice: computed,
-    currency: "ILS",
+    currency: body?.currency,
   };
 
   return {

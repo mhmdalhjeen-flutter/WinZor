@@ -11,8 +11,9 @@ const TYPE_LABELS = {
   rent: 'إيجار',
 };
 
-const formatPrice = (price) =>
-  `${Number(price || 0).toLocaleString('ar-IQ')} د.ع`;
+import { formatListingPrice } from '../utils/currency';
+
+const formatPrice = (price, currency) => formatListingPrice({ price, currency });
 
 const regionLabel = (listing) => {
   const parts = [listing.regionId?.name, listing.subRegionId?.name].filter(Boolean);
@@ -85,7 +86,7 @@ const BazaarListingCard = ({
       <div className="p-4 space-y-2">
         <div className="flex justify-between items-start gap-2">
           <h3 className="font-black text-gray-900 text-base line-clamp-2">{listing.title}</h3>
-          <span className="text-primary font-black text-sm shrink-0">{formatPrice(listing.price)}</span>
+          <span className="text-primary font-black text-sm shrink-0">{formatListingPrice(listing)}</span>
         </div>
         <div className="flex items-center gap-1 text-gray-500 text-xs font-bold">
           <MapPin size={14} /> {regionLabel(listing)}

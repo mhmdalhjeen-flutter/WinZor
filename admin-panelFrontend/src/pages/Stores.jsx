@@ -11,6 +11,7 @@ import { queryKeys } from '../lib/queryClient';
 import { unwrapList } from '../utils/unwrapList';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { formatPrice } from '../utils/currency';
 
 export default function AdminStores() {
   const navigate = useNavigate();
@@ -501,7 +502,7 @@ export default function AdminStores() {
                               <p className="store-detail-item-name">{item.title || item.name}</p>
                               {item.price !== undefined && (
                                 <p className="store-detail-item-meta">
-                                  {item.price} ₪
+                                  {formatPrice(item.price ?? item.finalPrice, item.currency)}
                                   {detailTab === 'offers' && item.discountPercentage
                                     ? ` — خصم ${item.discountPercentage}%`
                                     : ''}

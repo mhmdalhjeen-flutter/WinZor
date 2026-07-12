@@ -1,4 +1,5 @@
 /** Display-only helpers — pricing calculations live in backend pricing.service.js */
+import { formatPrice, getCurrencySymbol } from './currency';
 
 export function formatOfferBadge(offer) {
   if (!offer) return '';
@@ -9,7 +10,7 @@ export function formatOfferBadge(offer) {
     case 'fixed_price':
       return '\u0633\u0639\u0631 \u062E\u0627\u0635';
     case 'fixed_discount':
-      return offer.value != null ? `\u062E\u0635\u0645 ${offer.value} \u20AA` : '\u062E\u0635\u0645 \u062B\u0627\u0628\u062A';
+      return offer.value != null ? `\u062E\u0635\u0645 ${offer.value} ${getCurrencySymbol(offer?.currency || offer?.pricing?.currency)}` : '\u062E\u0635\u0645 \u062B\u0627\u0628\u062A';
     case 'bogo':
       return '1+1';
     case 'free_item':

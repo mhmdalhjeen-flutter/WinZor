@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, Loader2, Send, CheckCircle2, ImageOff } from 'lucide-react';
 import api from '../../api/axios';
-import { useVerificationGate } from '../../context/VerificationGateContext';
+import { formatPrice } from '../../utils/currency';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { getOfferPricing } from '../OfferPriceDisplay';
@@ -127,7 +127,7 @@ export default function DirectOrderModal({ offer, open, onClose }) {
                     <h3 className="direct-order-modal__title">{offer.title}</h3>
                     <p className="direct-order-modal__store">{store?.name || 'متجر'}</p>
                     <p className="direct-order-modal__unit-price">
-                      {pricing?.displayNew || `${unitPrice} ₪`}
+                      {pricing?.displayNew || formatPrice(unitPrice, pricing?.currency || offer?.currency)}
                       <span className="direct-order-modal__unit-label"> / للوحدة</span>
                     </p>
                   </div>
@@ -169,7 +169,7 @@ export default function DirectOrderModal({ offer, open, onClose }) {
 
                 <div className="direct-order-modal__total">
                   <span className="direct-order-modal__total-label">الإجمالي</span>
-                  <span className="direct-order-modal__total-value">{totalPrice} ₪</span>
+                  <span className="direct-order-modal__total-value">{formatPrice(totalPrice, pricing?.currency || offer?.currency)}</span>
                 </div>
 
                 <div className="direct-order-modal__actions">

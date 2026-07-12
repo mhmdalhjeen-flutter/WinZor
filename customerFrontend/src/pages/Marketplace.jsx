@@ -9,7 +9,8 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
-import BazaarListingCard, { formatPrice, regionLabel } from '../shared/BazaarListingCard';
+import BazaarListingCard, { regionLabel } from '../shared/BazaarListingCard';
+import { formatListingPrice } from '../utils/currency';
 import ReferralCardsModal from '../components/ReferralCardsModal';
 import QuickSearchPanel from '../components/QuickSearchPanel';
 import RegionPickerBox from '../components/RegionPickerBox';
@@ -29,11 +30,14 @@ import {
   listingMatchesRegionFilter,
 } from '../utils/regionTree';
 import { fileToOptimizedDataUrl } from '../utils/imageUpload';
+import PriceCurrencyInput from '../components/PriceCurrencyInput';
+import { DEFAULT_CURRENCY } from '../utils/currency';
 
 const EMPTY_FORM = {
   title: '',
   condition: 'used',
   price: '',
+  currency: DEFAULT_CURRENCY,
   description: '',
   contactPhone: '',
   freeDelivery: false,
@@ -260,6 +264,7 @@ const Marketplace = () => {
       title: listing.title,
       condition: listing.condition,
       price: String(listing.price),
+      currency: listing.currency || DEFAULT_CURRENCY,
       description: listing.description || '',
       contactPhone: listing.contactPhone,
       freeDelivery: listing.freeDelivery,
@@ -320,6 +325,7 @@ const Marketplace = () => {
           ...form,
           title: form.title.trim(),
           price: form.price === '' ? 0 : Number(form.price),
+          currency: form.currency || DEFAULT_CURRENCY,
           images,
           mainImageIndex,
           contactPhone: form.contactPhone.trim()
@@ -519,15 +525,14 @@ const Marketplace = () => {
                     className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
                   />
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
+                  <div className="grid grid-cols-1 gap-3">
+                    <PriceCurrencyInput
+                      price={form.price}
+                      currency={form.currency}
+                      onPriceChange={(value) => setForm({ ...form, price: value })}
+                      onCurrencyChange={(value) => setForm({ ...form, currency: value })}
                       required={!isRequestListing(form.transactionType)}
-                      type="number"
-                      min="0"
-                      value={form.price}
-                      onChange={(e) => setForm({ ...form, price: e.target.value })}
-                      placeholder={isRequestListing(form.transactionType) ? 'السعر (اختياري)' : 'السعر (د.ع)'}
-                      className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
+                      pricePlaceholder={isRequestListing(form.transactionType) ? 'السعر (اختياري)' : 'السعر'}
                     />
                     <select
                       value={form.condition}
@@ -704,7 +709,7 @@ const Marketplace = () => {
                         <p className="text-primary font-black text-sm">
                           {isRequestListing(item.transactionType) && !item.price
                             ? 'بدون سعر'
-                            : formatPrice(item.price)}
+                            : formatListingPrice(item)}
                         </p>
                         <p className="text-[10px] text-gray-500 font-bold">{regionLabel(item)}</p>
                         {item.createdAt && (

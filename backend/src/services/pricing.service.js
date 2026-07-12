@@ -3,7 +3,7 @@
  * All price calculations and display DTOs must go through this module.
  */
 
-const CURRENCY_SYMBOL = "\u20AA";
+const { formatPrice, normalizeCurrency, getCurrencySymbol } = require("./currency.util");
 
 const OFFER_TYPE_LABELS = {
   discount: "\u062E\u0635\u0645 \u0628\u0627\u0644\u0646\u0633\u0628\u0629",
@@ -86,7 +86,7 @@ function formatOfferBadge(offer) {
       return "\u0633\u0639\u0631 \u062E\u0627\u0635";
     case "fixed_discount":
       return offer.value != null
-        ? `\u062E\u0635\u0645 ${offer.value} ${CURRENCY_SYMBOL}`
+        ? `\u062E\u0635\u0645 ${offer.value} ${getCurrencySymbol(offer.currency)}`
         : "\u062E\u0635\u0645 \u062B\u0627\u0628\u062A";
     case "bogo":
       return "1+1";
@@ -130,6 +130,7 @@ function buildOfferPricingDTO(offer) {
   const { oldPrice, newPrice, showCompare } = resolveOfferPrices(offer);
   const badge = formatOfferBadge(offer);
   const unitPrice = getOfferUnitPrice(offer);
+  const currency = normalizeCurrency(offer?.currency);
 
   return {
     originalPrice: oldPrice,
@@ -137,9 +138,9 @@ function buildOfferPricingDTO(offer) {
     unitPrice,
     showCompare,
     badge,
-    currency: offer?.currency || "ILS",
-    displayOld: oldPrice != null ? `${oldPrice} ${CURRENCY_SYMBOL}` : null,
-    displayNew: newPrice != null ? `${newPrice} ${CURRENCY_SYMBOL}` : null,
+    currency,
+    displayOld: oldPrice != null ? formatPrice(oldPrice, currency) : null,
+    displayNew: newPrice != null ? formatPrice(newPrice, currency) : null,
     offerType: offer?.offerType || null,
     offerTypeLabel: OFFER_TYPE_LABELS[offer?.offerType] || offer?.offerType || null,
   };
@@ -152,7 +153,6 @@ function attachPricingToOffer(offer) {
 }
 
 module.exports = {
-  CURRENCY_SYMBOL,
   OFFER_TYPE_LABELS,
   computeOfferFinalPrice,
   computeOfferLineTotal,

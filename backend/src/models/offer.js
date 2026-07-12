@@ -38,6 +38,7 @@ const offerSchema = new mongoose.Schema({
 
     currency: {
         type: String,
+        enum: ["ILS", "JOD", "USD"],
         default: "ILS",
     },
 

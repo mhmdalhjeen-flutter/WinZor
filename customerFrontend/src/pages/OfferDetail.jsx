@@ -14,11 +14,12 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveOfferImage, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
+import { formatPrice } from '../utils/currency';
 
 const badge = (offer) => {
   switch (offer?.offerType) {
     case 'discount': return offer.value ? `خصم ${offer.value}%` : 'خصم';
-    case 'fixed_price': return offer.value != null ? `${offer.value} ₪` : 'سعر خاص';
+    case 'fixed_price': return offer.value != null ? formatPrice(offer.value, offer.currency || offer.pricing?.currency) : 'سعر خاص';
     case 'free_item': return 'مجاني';
     case 'bogo': return '1+1';
     default: return 'عرض';

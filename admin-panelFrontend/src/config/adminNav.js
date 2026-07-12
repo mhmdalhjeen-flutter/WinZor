@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Ticket, Settings, Layers, Trophy, Activity, Users, ShieldAlert,
   Award, Medal, MapPin, CircleDot, ShoppingBag, Route, Lightbulb, BarChart3, Flame, KeyRound,
-  MessageCircle,
+  MessageCircle, ArrowUpDown,
 } from 'lucide-react';
 
 /** مصدر واحد لتنظيم صفحات لوحة الأدمن — Sidebar + Dashboard */
@@ -34,6 +34,7 @@ export const ADMIN_NAV_GROUPS = [
       { name: 'إدارة المتاجر', path: '/stores', icon: Store, desc: 'متاجر وتجار' },
       { name: 'موافقة «اعرض غراضك»', path: '/bazaar-approvals', icon: ShoppingBag, desc: 'إعلانات السوق' },
       { name: 'تصنيفات المتاجر', path: '/categories', icon: Layers, desc: 'شجرة التصنيفات' },
+      { name: 'أولويات العرض', path: '/display-priority', icon: ArrowUpDown, desc: 'ترتيب التصنيفات والمتاجر والعروض' },
       { name: 'المناطق', path: '/regions', icon: MapPin, desc: 'المناطق الجغرافية' },
     ],
   },

@@ -20,6 +20,12 @@ const productSchema = new mongoose.Schema({
         required: true,
     },
 
+    currency: {
+        type: String,
+        enum: ["ILS", "JOD", "USD"],
+        default: "ILS",
+    },
+
     wholesalePrice: { // سعر البيع بالجملة (يظهر لأصحاب المتاجر فقط)
         type: Number,
     },
@@ -52,6 +58,9 @@ const productSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+
+    /** أولوية عرض يدوية اختيارية — null = الترتيب التلقائي الحالي */
+    displayPriority: { type: Number, default: null },
 
     ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },

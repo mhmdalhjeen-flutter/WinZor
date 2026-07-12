@@ -8,7 +8,8 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import ErrorState from '../shared/ErrorState';
-import { CONDITION_LABELS, TYPE_LABELS, formatPrice, regionLabel } from '../shared/BazaarListingCard';
+import { CONDITION_LABELS, TYPE_LABELS, regionLabel } from '../shared/BazaarListingCard';
+import { formatListingPrice } from '../utils/currency';
 import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 import PhoneDisplay from '../components/PhoneDisplay';
 import { getPhoneCarrier } from '../utils/phoneValidation';
@@ -138,7 +139,7 @@ const BazaarDetail = () => {
             <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-1">اعرض غراضك</p>
             <h1 className="text-xl font-black text-gray-900">{listing.title}</h1>
           </div>
-          <span className="text-lg font-black text-primary shrink-0">{formatPrice(listing.price)}</span>
+          <span className="text-lg font-black text-primary shrink-0">{formatListingPrice(listing)}</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

@@ -27,11 +27,13 @@ const {
   WHATSAPP_MESSAGE,
 } = require("../utils/phone.util");
 const { getDefaultBrandingForCategory } = require("../utils/defaultStoreBranding.util");
+const offerService = require("../services/offer.service");
+const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const OFFER_LIST_SELECT =
-  "title description offerType value originalPrice finalPrice freeDelivery currency image priority isActive expiresAt store createdAt";
+  "title description offerType value originalPrice finalPrice freeDelivery currency image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";
 const PRODUCT_LIST_SELECT =
-  "name description price wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount store createdAt";
+  "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
 
 function stripBase64Images(offer) {
   if (!offer || typeof offer !== "object") return offer;
@@ -203,12 +205,17 @@ exports.getStoreById = async (req, res) => {
         store.todayVisits += 1;
         await store.save();
 
+        const storePlain = store.toObject();
         const offers = await Offer.find({ store: store._id, isActive: true })
             .select(OFFER_LIST_SELECT)
             .lean();
         const products = await Product.find({ store: store._id, isActive: true })
             .select(PRODUCT_LIST_SELECT)
             .lean();
+
+        const offersWithStore = offers.map((offer) => ({ ...offer, store: storePlain }));
+        const rankedOffers = await offerService.rankOffers(offersWithStore, req.user?.id, { forList: false });
+        const sortedProducts = applyProductDisplayPrioritySort(products);
 
         let membership = null;
         let isFollowingNetwork = false;
@@ -227,8 +234,8 @@ exports.getStoreById = async (req, res) => {
 
         res.json({
             store: resolveStoreMediaFields(store.toObject()),
-            offers: offers.map(stripBase64Images),
-            products: products.map(stripBase64Image),
+            offers: rankedOffers.map(stripBase64Images),
+            products: sortedProducts.map(stripBase64Image),
             isFollowing: isFollowingNetwork || membership?.status === "member" || membership?.status === "pending",
             membershipStatus: membership?.status || null,
             storeCompetitionsEnabled: competitionsEnabled,

@@ -67,6 +67,16 @@ function applyOfferDisplayPrioritySort(offers = [], autoSortFn) {
   return applyDisplayPrioritySort(offers, autoSortFn, OFFER_LEGACY_FIELD);
 }
 
+function sortProductsByDefault(products = []) {
+  return [...products].sort(
+    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
+}
+
+function applyProductDisplayPrioritySort(products = [], autoSortFn = sortProductsByDefault) {
+  return applyDisplayPrioritySort(products, autoSortFn);
+}
+
 module.exports = {
   OFFER_LEGACY_FIELD,
   getDisplayPriority,
@@ -76,4 +86,6 @@ module.exports = {
   sortWithDisplayPriorityThen,
   getOfferDisplayPriority,
   applyOfferDisplayPrioritySort,
+  sortProductsByDefault,
+  applyProductDisplayPrioritySort,
 };

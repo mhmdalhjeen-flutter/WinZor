@@ -11,6 +11,7 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveProductImage } from '../utils/mediaUrl';
+import { formatPrice } from '../utils/currency';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -98,7 +99,7 @@ const ProductDetail = () => {
 
       <div className="px-4 space-y-4">
         <h1 className="text-2xl font-black text-gray-900">{product.name}</h1>
-        <p className="text-2xl font-black text-primary">{product.price} ₪</p>
+        <p className="text-2xl font-black text-primary">{formatPrice(product.price, product.currency)}</p>
         <StarRating targetType="product" targetId={product._id} ratingAvg={product.ratingAvg} ratingCount={product.ratingCount} />
 
         {product.description && (

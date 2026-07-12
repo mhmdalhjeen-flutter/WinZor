@@ -18,5 +18,9 @@ export const queryKeys = {
   adminUserDetail: (id) => ['admin', 'users', 'detail', id],
   adminCompetitions: ['admin', 'competitions'],
   adminCategories: ['admin', 'categories'],
+  displayPriorityMain: ['admin', 'display-priority', 'main'],
+  displayPrioritySecond: (parentId) => ['admin', 'display-priority', 'second', parentId],
+  displayPriorityStores: (categoryId) => ['admin', 'display-priority', 'stores', categoryId],
+  displayPriorityCatalog: (storeId) => ['admin', 'display-priority', 'catalog', storeId],
   adminActivity: (params) => ['admin', 'activity', params],
 };

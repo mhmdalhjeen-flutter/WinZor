@@ -13,6 +13,7 @@ const {
   requireObjectId,
   safeRegex,
 } = require("../utils/inputSecurity.util");
+const { normalizeCurrency } = require("../utils/currency.util");
 
 const POINTS_COST = BazaarListing.POINTS_COST;
 const LISTING_DAYS = BazaarListing.LISTING_DAYS;
@@ -24,7 +25,7 @@ const POPULATE_PUBLIC = [
 ];
 
 const BAZAAR_LIST_SELECT =
-  "seller title condition price description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
+  "seller title condition price currency description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
 
 const TRANSACTION_TYPES = ["sell", "buy", "exchange", "custom", "rent"];
 
@@ -226,6 +227,7 @@ exports.create = async (req, res) => {
       title,
       condition,
       price,
+      currency,
       description,
       images,
       mainImageIndex,
@@ -272,6 +274,7 @@ exports.create = async (req, res) => {
         title: safeTitle,
         condition: safeCondition,
         price: safePrice,
+        currency: normalizeCurrency(currency),
         description: cleanString(description, { field: "description", max: 2000 }),
         images: processedImages,
         mainImageIndex: intInRange(mainImageIndex ?? 0, { field: "mainImageIndex", min: 0, max: 2 }),
@@ -339,6 +342,7 @@ exports.update = async (req, res) => {
       "title",
       "condition",
       "price",
+      "currency",
       "description",
       "images",
       "mainImageIndex",
@@ -361,6 +365,8 @@ exports.update = async (req, res) => {
         listing.price = (isRequest && (req.body.price === "" || req.body.price == null))
           ? 0
           : numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: !isRequest });
+      } else if (key === "currency") {
+        listing.currency = normalizeCurrency(req.body.currency);
       } else if (key === "mainImageIndex") {
         listing.mainImageIndex = intInRange(req.body.mainImageIndex, { field: "mainImageIndex", min: 0, max: 2, required: true });
       } else if (key === "freeDelivery") {

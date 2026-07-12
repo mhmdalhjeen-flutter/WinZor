@@ -9,6 +9,7 @@ import { queryKeys } from '../lib/queryClient';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveOfferImage, resolveProductImage } from '../utils/mediaUrl';
+import { formatPrice } from '../utils/currency';
 
 const getCartItemImage = (item, itemType) => (
   itemType === 'product' ? resolveProductImage(item) : resolveOfferImage(item)
@@ -24,6 +25,8 @@ const STATUS_LABELS = {
 };
 
 const getItemPrice = (row) => row?.unitPrice ?? row?.item?.price ?? row?.item?.pricing?.unitPrice ?? 0;
+
+const getItemCurrency = (row) => row?.item?.currency || row?.item?.pricing?.currency || 'ILS';
 
 const itemKey = (itemId, itemType) => `${itemType}:${itemId}`;
 
@@ -60,6 +63,7 @@ const Cart = () => {
 
   const items = data?.items || [];
   const total = data?.total ?? 0;
+  const cartCurrency = items[0] ? getItemCurrency(items[0]) : 'ILS';
 
   const patchCart = (updater) => {
     qc.setQueryData(queryKeys.cart, (old) => {
@@ -213,7 +217,7 @@ const Cart = () => {
                         {isSupplier && (
                           <p className="text-[10px] text-red-500 font-bold">غير متاح — عروض أصحاب المحلات فقط</p>
                         )}
-                        <p className="text-primary font-black mt-1">{getItemPrice({ item, unitPrice })} ₪</p>
+                        <p className="text-primary font-black mt-1">{formatPrice(getItemPrice({ item, unitPrice }), getItemCurrency({ item }))}</p>
                       </div>
                     </div>
                     {!isSupplier && (
@@ -248,7 +252,7 @@ const Cart = () => {
 
               <div className="bg-primary/5 rounded-2xl p-4 flex justify-between items-center">
                 <span className="font-black text-gray-700">الإجمالي</span>
-                <span className="text-xl font-black text-primary tabular-nums">{total} ₪</span>
+                <span className="text-xl font-black text-primary tabular-nums">{formatPrice(total, cartCurrency)}</span>
               </div>
 
               <button
@@ -299,7 +303,7 @@ const Cart = () => {
                   {(order.items || []).map((i) => `${i.name ?? '—'} ×${i.quantity ?? 0}`).join(' · ')}
                 </p>
               )}
-              <p className="text-primary font-black">{order.total} ₪</p>
+              <p className="text-primary font-black">{formatPrice(order.total, order.currency)}</p>
               {order.status === 'pending' && (
                 <button
                   type="button"

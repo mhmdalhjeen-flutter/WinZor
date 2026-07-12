@@ -4,6 +4,7 @@ const User = require("../models/user");
 const logActivity = require("../utils/logger");
 const notificationService = require("../services/notification.service");
 const { computeOfferFinalPrice, attachPricingToOffer } = require("../services/pricing.service");
+const { normalizeCurrency } = require("../utils/currency.util");
 const { resolveNetworkStoreIds } = require("../utils/offerFeed.util");
 const { processDataUrlImage } = require("../utils/imageProcess.util");
 const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
@@ -49,6 +50,7 @@ function buildOfferPayload(body, storeId, userId) {
         image,
         freeDelivery,
         expiresAt,
+        currency,
     } = body;
 
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
@@ -87,6 +89,7 @@ function buildOfferPayload(body, storeId, userId) {
         finalPrice: computedFinal,
         image: safeImage,
         freeDelivery: !!freeDelivery,
+        currency: normalizeCurrency(currency),
         expiresAt: expDate,
         autoDeleteAt: resolveAutoDeleteAt(expDate),
         store: storeId,
@@ -281,7 +284,7 @@ exports.updateOffer = async (req, res) => {
 
         const allowed = [
             "title", "description", "offerType", "value", "originalPrice",
-            "finalPrice", "image", "freeDelivery", "expiresAt",
+            "finalPrice", "image", "freeDelivery", "expiresAt", "currency",
         ];
         for (const field of allowed) {
             if (field === "image") {
@@ -299,6 +302,7 @@ exports.updateOffer = async (req, res) => {
             else if (field === "originalPrice") offer.originalPrice = numberInRange(patch.originalPrice, { field: "originalPrice", min: 0, max: 10_000_000 });
             else if (field === "finalPrice") offer.finalPrice = patch.finalPrice;
             else if (field === "freeDelivery") offer.freeDelivery = !!patch.freeDelivery;
+            else if (field === "currency") offer.currency = normalizeCurrency(patch.currency);
             else if (field === "expiresAt") {
                 const expDate = new Date(patch.expiresAt);
                 if (Number.isNaN(expDate.getTime())) return res.status(400).json({ message: "تاريخ انتهاء غير صالح" });

@@ -184,7 +184,7 @@ async function populateCartItems(items) {
   const [products, offers] = await Promise.all([
     productIds.length
       ? Product.find({ _id: { $in: productIds } })
-          .select("name price image images description isActive store stock")
+          .select("name price currency image images description isActive store stock")
           .lean()
       : [],
     offerIds.length

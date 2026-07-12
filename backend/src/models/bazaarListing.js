@@ -14,6 +14,7 @@ const bazaarListingSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 120 },
     condition: { type: String, enum: ["new", "used"], required: true },
     price: { type: Number, required: true, min: 0 },
+    currency: { type: String, enum: ["ILS", "JOD", "USD"], default: "ILS" },
     description: { type: String, trim: true, maxlength: 2000, default: "" },
     images: { type: [String], default: [], validate: [(v) => v.length <= 3, "3 صور كحد أقصى"] },
     mainImageIndex: { type: Number, default: 0, min: 0 },

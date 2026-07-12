@@ -1,3 +1,4 @@
+import { formatPrice } from '../utils/currency';
 import { formatOfferBadge, resolveOfferPrices } from '../utils/offerPricing';
 
 /** Reads pricing from API SSOT — no local price calculation. */
@@ -31,11 +32,11 @@ export default function OfferPriceDisplay({
     <div className={`flex items-center gap-2 flex-wrap ${className}`.trim()}>
       {showCompare && oldPrice != null && (
         <span className={oldClassName} aria-label="السعر القديم">
-          {pricing?.displayOld || `${oldPrice} ₪`}
+          {pricing?.displayOld || formatPrice(oldPrice, pricing?.currency || offer?.currency)}
         </span>
       )}
       {newPrice != null ? (
-        <span className={newClassName}>{pricing?.displayNew || `${newPrice} ₪`}</span>
+        <span className={newClassName}>{pricing?.displayNew || formatPrice(newPrice, pricing?.currency || offer?.currency)}</span>
       ) : (
         <span className={newClassName}>{badge}</span>
       )}

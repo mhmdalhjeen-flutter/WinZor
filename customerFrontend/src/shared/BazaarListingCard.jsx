@@ -3,7 +3,14 @@ import { motion } from 'framer-motion';
 import { MapPin, Tag, Heart } from 'lucide-react';
 
 const CONDITION_LABELS = { new: 'جديد', used: 'مستعمل' };
-const TYPE_LABELS = { sell: 'بيع', buy: 'شراء', exchange: 'بدل', custom: 'حسب الطلب' };
+const TYPE_LABELS = {
+  sell: 'بيع',
+  buy: 'شراء',
+  exchange: 'بدل',
+  custom: 'مطلوب',
+  rent: 'إيجار',
+  wanted: 'مطلوب',
+};
 
 const formatPrice = (price) =>
   `${Number(price || 0).toLocaleString('ar-IQ')} د.ع`;

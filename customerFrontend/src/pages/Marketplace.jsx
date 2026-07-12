@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Camera, Loader2, Gift, AlertCircle, Trash2, Edit3,
-  RefreshCw, Clock, CheckCircle2, XCircle,
+  RefreshCw, Clock, CheckCircle2, XCircle, Plus,
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ import { unwrapList } from '../utils/unwrapList';
 import EmptyState from '../shared/EmptyState';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import MarketplaceTabNav from '../components/marketplace/MarketplaceTabNav';
+import { BROWSE_TAB_IDS, listingMatchesTab } from '../utils/marketplaceTabs';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { getLocalPhoneError, normalizeLocalPhone } from '../utils/phoneValidation';
 import {
@@ -67,7 +68,8 @@ const Marketplace = () => {
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
 
-  const [activeTab, setActiveTab] = useState('browse');
+  const [activeTab, setActiveTab] = useState('buy');
+  const [showPublish, setShowPublish] = useState(false);
   const [favOverrides, setFavOverrides] = useState({});
   const [favPulseId, setFavPulseId] = useState(null);
   const [myListings, setMyListings] = useState([]);
@@ -77,7 +79,6 @@ const Marketplace = () => {
 
   const [regionPath, setRegionPath] = useState([]);
   const [filterCondition, setFilterCondition] = useState('');
-  const [filterTransaction, setFilterTransaction] = useState('');
 
   const {
     data: regionTree = [],
@@ -93,7 +94,7 @@ const Marketplace = () => {
 
   const filterRegionId = getEffectiveRegionId(regionPath);
   const formRegionPath = pathFromRegionIds(form.regionId, form.subRegionId, regionTree);
-  const browseFilters = { filterRegionId, filterCondition, filterTransaction };
+  const browseFilters = { filterRegionId, filterCondition };
 
   const {
     data: browseListings = [],
@@ -104,11 +105,10 @@ const Marketplace = () => {
       const params = {};
       if (filterRegionId) params.regionId = filterRegionId;
       if (filterCondition) params.condition = filterCondition;
-      if (filterTransaction) params.transactionType = filterTransaction;
       const { data } = await api.get('/bazaar', { params });
       return unwrapList(data, ['listings']);
     },
-    enabled: activeTab === 'browse',
+    enabled: BROWSE_TAB_IDS.includes(activeTab),
     placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
@@ -198,25 +198,33 @@ const Marketplace = () => {
   };
 
   const handleTabChange = (tab) => {
-    if (tab === 'sell') {
+    if (tab === 'mine' || tab === 'favorites') {
       if (!isAuth) {
         navigate('/login');
         return;
       }
-      runWithVerification(() => setActiveTab('sell'));
-      return;
     }
-    if ((tab === 'mine' || tab === 'favorites') && !isAuth) {
+    setShowPublish(false);
+    setActiveTab(tab);
+  };
+
+  const openPublish = () => {
+    if (!isAuth) {
       navigate('/login');
       return;
     }
-    setActiveTab(tab);
+    runWithVerification(() => {
+      setActiveTab('mine');
+      setShowPublish(true);
+      if (!editingId) resetForm();
+    });
   };
+
+  const tabListings = browseListings.filter((item) => listingMatchesTab(item, activeTab));
 
   const filteredMyListings = myListings.filter((item) => {
     if (!listingMatchesRegionFilter(item, filterRegionId, regionTree)) return false;
     if (filterCondition && item.condition !== filterCondition) return false;
-    if (filterTransaction && item.transactionType !== filterTransaction) return false;
     return true;
   });
 
@@ -252,7 +260,8 @@ const Marketplace = () => {
     });
     setImages(listing.images || []);
     setMainImageIndex(listing.mainImageIndex || 0);
-    setActiveTab('sell');
+    setActiveTab('mine');
+    setShowPublish(true);
   };
 
   const resetForm = () => {
@@ -309,6 +318,7 @@ const Marketplace = () => {
           if (data.pointsRemaining != null) updateUser({ points: data.pointsRemaining });
         }
         resetForm();
+        setShowPublish(false);
         setActiveTab('mine');
         loadMy();
         loadMeta();
@@ -399,7 +409,7 @@ const Marketplace = () => {
       <MarketplaceTabNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       <div className="p-4">
-        {activeTab === 'browse' && (
+        {BROWSE_TAB_IDS.includes(activeTab) && (
           <div className="space-y-4">
             <QuickSearchPanel
               regionTree={regionTree}
@@ -411,38 +421,31 @@ const Marketplace = () => {
               showProducts={false}
             />
 
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={filterCondition}
-                onChange={(e) => setFilterCondition(e.target.value)}
-                className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-              >
-                <option value="">كل الحالات</option>
-                <option value="new">جديد</option>
-                <option value="used">مستعمل</option>
-              </select>
-              <select
-                value={filterTransaction}
-                onChange={(e) => setFilterTransaction(e.target.value)}
-                className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-              >
-                <option value="">كل الأنواع</option>
-                <option value="sell">بيع</option>
-                <option value="buy">شراء</option>
-                <option value="exchange">بدل</option>
-                <option value="custom">حسب الطلب</option>
-              </select>
-            </div>
+            <select
+              value={filterCondition}
+              onChange={(e) => setFilterCondition(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
+            >
+              <option value="">كل الحالات</option>
+              <option value="new">جديد</option>
+              <option value="used">مستعمل</option>
+            </select>
 
-            {!browseLoading && browseListings.length === 0 && (
+            {browseLoading && (
+              <div className="flex justify-center py-12">
+                <Loader2 className="animate-spin text-amber-500" size={28} />
+              </div>
+            )}
+
+            {!browseLoading && tabListings.length === 0 && (
               <EmptyState title="لا إعلانات" description="جرّب تغيير المنطقة أو الفلاتر" />
             )}
 
-            {browseListings.length > 0 && renderListingGrid(browseListings)}
+            {!browseLoading && tabListings.length > 0 && renderListingGrid(tabListings)}
           </div>
         )}
 
-        {activeTab === 'sell' && isAuth && (
+        {activeTab === 'mine' && isAuth && showPublish && (
           <div className="space-y-4">
                 <div className={`rounded-2xl p-4 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
                   {pointsAvailable >= meta.pointsCost ? (
@@ -472,9 +475,18 @@ const Marketplace = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 space-y-4">
-                  <h2 className="text-lg font-black text-gray-900">
-                    {editingId ? 'تعديل الإعلان' : 'إعلان جديد'}
-                  </h2>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-lg font-black text-gray-900">
+                      {editingId ? 'تعديل الإعلان' : 'بيع / نشر'}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPublish(false); if (editingId) resetForm(); }}
+                      className="text-xs font-black text-gray-500 px-3 py-1.5 rounded-xl bg-gray-100"
+                    >
+                      رجوع
+                    </button>
+                  </div>
 
                   <input
                     required
@@ -607,9 +619,18 @@ const Marketplace = () => {
           </div>
         )}
 
-        {activeTab === 'mine' && isAuth && (
+        {activeTab === 'mine' && isAuth && !showPublish && (
               <div className="space-y-4">
-                <h2 className="text-lg font-black text-gray-900 sr-only">منشوراتي</h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-black text-gray-900">منشوراتي</h2>
+                  <button
+                    type="button"
+                    onClick={openPublish}
+                    className="flex items-center gap-1.5 bg-primary text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm"
+                  >
+                    <Plus size={16} /> بيع / نشر
+                  </button>
+                </div>
                 <QuickSearchPanel
                   regionTree={regionTree}
                   regionPath={regionPath}
@@ -621,31 +642,18 @@ const Marketplace = () => {
                   compact
                 />
 
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={filterCondition}
-                    onChange={(e) => setFilterCondition(e.target.value)}
-                    className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-                  >
-                    <option value="">كل الحالات</option>
-                    <option value="new">جديد</option>
-                    <option value="used">مستعمل</option>
-                  </select>
-                  <select
-                    value={filterTransaction}
-                    onChange={(e) => setFilterTransaction(e.target.value)}
-                    className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-                  >
-                    <option value="">كل الأنواع</option>
-                    <option value="sell">بيع</option>
-                    <option value="buy">شراء</option>
-                    <option value="exchange">بدل</option>
-                    <option value="custom">حسب الطلب</option>
-                  </select>
-                </div>
+                <select
+                  value={filterCondition}
+                  onChange={(e) => setFilterCondition(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
+                >
+                  <option value="">كل الحالات</option>
+                  <option value="new">جديد</option>
+                  <option value="used">مستعمل</option>
+                </select>
 
                 {myListings.length === 0 && (
-                  <EmptyState title="لا منشورات بعد" description="انشر إعلانك الأول من تبويب بيع" />
+                  <EmptyState title="لا منشورات بعد" description="اضغط «بيع / نشر» لنشر إعلانك الأول" />
                 )}
                 {myListings.length > 0 && filteredMyListings.length === 0 && (
                   <EmptyState title="لا نتائج" description="جرّب تغيير المنطقة أو الفلاتر" />
@@ -715,7 +723,7 @@ const Marketplace = () => {
               </div>
             )}
 
-            {!favoritesLoading && favoriteListings.length > 0 && visibleFavorites.length === 0 && (
+            {!favoritesLoading && visibleFavorites.length === 0 && (
               <EmptyState
                 title="لا مفضّلات بعد"
                 description="اضغط على القلب في أي إعلان لحفظه هنا"

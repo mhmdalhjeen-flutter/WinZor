@@ -12,7 +12,7 @@ const AuthLayout = ({ title, subtitle, children, footer }) => (
 
     <div className="relative z-10 min-h-screen flex flex-col px-4 py-8 max-w-md mx-auto">
       <Link to="/intro" className="flex items-center gap-2 text-white/60 text-xs font-bold mb-8">
-        <Sparkles size={14} className="text-amber-400" /> عروض تك
+        <Sparkles size={14} className="text-amber-400" /> Win GoldenStore
       </Link>
 
       <motion.div

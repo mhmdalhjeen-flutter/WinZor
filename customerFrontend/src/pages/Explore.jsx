@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { Search, SlidersHorizontal, ChevronLeft, Store as StoreIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
 import { getEffectiveCategoryId, pathStillValid as categoryPathStillValid } from '../utils/categoryTree';
 import { queryKeys } from '../lib/queryClient';
+import { normalizeStoreParentGroups } from '../utils/categoryDisplay';
 import LightLoadingHint from '../shared/LightLoadingHint';
 
 const HorizontalSwipe = lazy(() => import('../components/ui/HorizontalSwipe'));
@@ -78,27 +79,34 @@ const Explore = () => {
     staleTime: 60 * 1000,
   });
 
-  const parentGroups = data?.parentGroups?.length
-    ? data.parentGroups
-    : (data?.groups || []).reduce((acc, group) => {
-      const parentKey = group.parentCategoryId || group.parentCategory || group.category;
-      let parentGroup = acc.find((item) => item.parentCategoryId === parentKey);
-      if (!parentGroup) {
-        parentGroup = {
-          parentCategoryId: parentKey,
-          parentCategory: group.parentCategory || group.category,
-          sections: [],
-        };
-        acc.push(parentGroup);
-      }
-      parentGroup.sections.push({
-        category: group.category,
-        categoryId: group.categoryId,
-        isParentFallback: group.isParentFallback,
-        stores: group.stores || [],
-      });
-      return acc;
-    }, []);
+  const rawParentGroups = useMemo(() => (
+    data?.parentGroups?.length
+      ? data.parentGroups
+      : (data?.groups || []).reduce((acc, group) => {
+        const parentKey = group.parentCategoryId || group.parentCategory || group.category;
+        let parentGroup = acc.find((item) => item.parentCategoryId === parentKey);
+        if (!parentGroup) {
+          parentGroup = {
+            parentCategoryId: parentKey,
+            parentCategory: group.parentCategory || group.category,
+            sections: [],
+          };
+          acc.push(parentGroup);
+        }
+        parentGroup.sections.push({
+          category: group.category,
+          categoryId: group.categoryId,
+          isParentFallback: group.isParentFallback,
+          stores: group.stores || [],
+        });
+        return acc;
+      }, [])
+  ), [data?.parentGroups, data?.groups]);
+
+  const parentGroups = useMemo(
+    () => normalizeStoreParentGroups(rawParentGroups, categoryTree),
+    [rawParentGroups, categoryTree]
+  );
   const total = data?.total || 0;
   const suggestion = data?.suggestion || null;
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');

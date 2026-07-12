@@ -18,7 +18,7 @@ const ReferralCardsModal = ({ open, onClose }) => {
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Offers Tech', text: 'انضم عبر رابطي واحصل على مزايا!', url: link });
+        await navigator.share({ title: 'Win GoldenStore', text: 'انضم عبر رابطي واحصل على مزايا!', url: link });
       } catch { /* cancelled */ }
     } else {
       copy();

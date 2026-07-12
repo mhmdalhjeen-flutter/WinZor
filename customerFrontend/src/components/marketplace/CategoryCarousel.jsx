@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 import { getSlideScrollTarget } from '../../hooks/useCenterSnapCarousel';
+import { isMiscReel } from '../../utils/categoryDisplay';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 
@@ -122,10 +123,11 @@ export default function CategoryCarousel({
 
 /** Flatten reels: category intro → offers → products per category (strict order, no mixing) */
 export function buildMultiCategoryViewerState(reels, reelIndex, offerIndex, productIndex = null) {
+  const safeReels = (reels || []).filter((reel) => !isMiscReel(reel));
   const offers = [];
   const boundaries = [];
 
-  reels.forEach((reel) => {
+  safeReels.forEach((reel) => {
     const categoryIntroIndex = offers.length;
 
     offers.push({
@@ -172,11 +174,11 @@ export function buildMultiCategoryViewerState(reels, reelIndex, offerIndex, prod
 
   let initialIndex = 0;
   for (let i = 0; i < reelIndex; i++) {
-    initialIndex += 1 + (reels[i]?.offers?.length || 0) + (reels[i]?.products?.length || 0);
+    initialIndex += 1 + (safeReels[i]?.offers?.length || 0) + (safeReels[i]?.products?.length || 0);
   }
 
   if (productIndex != null) {
-    initialIndex += 1 + (reels[reelIndex]?.offers?.length || 0) + productIndex;
+    initialIndex += 1 + (safeReels[reelIndex]?.offers?.length || 0) + productIndex;
   } else {
     initialIndex += 1 + offerIndex;
   }

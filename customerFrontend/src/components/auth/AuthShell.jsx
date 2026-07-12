@@ -28,7 +28,7 @@ const AuthShell = ({
         </Link>
         <div className="inline-flex items-center gap-1.5 rounded-full bg-red-600/20 px-3 py-1.5 text-[10px] font-black text-red-200">
           <Sparkles size={12} className="text-amber-300" />
-          Offers Tech
+          Win GoldenStore
         </div>
       </div>
 

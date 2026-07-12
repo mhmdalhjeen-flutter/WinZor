@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
@@ -14,6 +14,7 @@ import OfferRailTrack from '../components/marketplace/OfferRailTrack';
 import OfferReelViewer from '../components/marketplace/OfferReelViewer';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
+import { normalizeCategoryReels } from '../utils/categoryDisplay';
 
 const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
 
@@ -93,6 +94,11 @@ const Home = () => {
     staleTime: 60 * 1000,
   });
 
+  const normalizedReels = useMemo(
+    () => normalizeCategoryReels(reelsData || [], categories),
+    [reelsData, categories]
+  );
+
   const {
     data: feedData,
     isLoading: feedLoading,
@@ -145,7 +151,7 @@ const Home = () => {
   };
 
   const isLoadingOffers = showCategoryReels ? reelsLoading : feedLoading && items.length === 0;
-  const hasOffers = showCategoryReels ? (reelsData?.length > 0) : items.length > 0;
+  const hasOffers = showCategoryReels ? (normalizedReels?.length > 0) : items.length > 0;
   const hasActiveFilters = regionPath.length > 0 || categoryPath.length > 0;
 
   const resetFilters = () => {
@@ -210,7 +216,7 @@ const Home = () => {
 
           {showCategoryReels && hasOffers && (
             <ProgressiveCategoryReels
-              reels={reelsData}
+              reels={normalizedReels}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
             />

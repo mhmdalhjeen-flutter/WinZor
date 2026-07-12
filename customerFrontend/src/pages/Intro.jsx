@@ -174,7 +174,7 @@ const Intro = () => {
       <div className="relative z-20 flex items-center justify-between px-4 pt-5 sm:px-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-md">
           <Sparkles size={14} className="text-amber-300" />
-          <span className="text-[11px] font-black">Offers Tech</span>
+          <span className="text-[11px] font-black">Win GoldenStore</span>
         </div>
         <button
           type="button"

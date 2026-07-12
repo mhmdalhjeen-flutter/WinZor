@@ -14,7 +14,7 @@ export default function Maintenance({ message }) {
 
         <div className="maintenance-badge">
           <Sparkles size={14} />
-          <span>عروض تك</span>
+          <span>Win GoldenStore</span>
         </div>
 
         <h1>الموقع تحت الصيانة حالياً</h1>

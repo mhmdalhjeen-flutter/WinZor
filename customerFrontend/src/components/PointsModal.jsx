@@ -1,12 +1,47 @@
-import React, { useState } from 'react';
-import { Star, Sparkles, X } from 'lucide-react';
+import React from 'react';
+import { Sparkles, X } from 'lucide-react';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
 import HorizontalSwipe from './ui/HorizontalSwipe';
+
 const STAGES = [
   { id: 'bronze', label: 'برونزي', min: 0, max: 99, color: '#cd7f32', stars: 1 },
   { id: 'silver', label: 'فضّي', min: 100, max: 299, color: '#94a3b8', stars: 2 },
   { id: 'gold', label: 'ذهبي', min: 300, max: 599, color: '#eab308', stars: 3 },
   { id: 'platinum', label: 'بلاتيني', min: 600, max: Infinity, color: '#a78bfa', stars: 4 },
+];
+
+const GUIDE_SECTIONS = [
+  {
+    emoji: '🎁',
+    title: 'ما هي النقاط؟',
+    body: 'هي مكافآت وبطاقات هدايا تحصل عليها مع كل عملية شراء من المتاجر المعتمدة لدينا، سواء تسوقت إلكترونياً عبر التطبيق أو قمت بزيارة المتجر على أرض الواقع!',
+    note: 'ملاحظة: شروط وقيمة الحصول على البطاقات يحددها صاحب كل متجر.',
+  },
+  {
+    emoji: '📱',
+    title: 'كيف تضيف البطاقة لمحفظتك؟',
+    body: 'الأمر أسهل مما تتخيل! بمجرد استلامك لبطاقة النقاط من المتجر، افتح التطبيق واضغط على "إدخال الكرت".',
+    bullets: [
+      'المسح السريع: اضغط على أيقونة الكاميرا وامسح رمز QR Code المطبوع على الكرت.',
+      'الإدخال اليدوي: قم بكتابة الكود أو الرقم الموجود على الكرت مباشرة في الخانة المخصصة.',
+    ],
+  },
+  {
+    emoji: '🎉',
+    title: 'ماذا تستفيد من النقاط؟ (وقت الجوائز!)',
+    body: 'كل نقطة تجمعها هي "تذكرة ذهبية" تتيح لك المشاركة في مسابقاتنا المتنوعة والدخول في سحوبات على جوائز قيمة ومفاجآت كبرى.',
+    note: 'ولأننا نهتم بالشفافية المطلقة، جميع عمليات السحب تتم في بث مباشر (Live) لتعيش لحظة إعلان الفائزين.',
+  },
+  {
+    emoji: '⚠️',
+    title: 'قاعدة ذهبية',
+    body: 'هذه النقاط صُممت لتكون هدية شكر وتقدير من أصحاب المتاجر لزبائنهم الأعزاء؛ لذا فهي مخصصة للمكافآت فقط وغير قابلة للبيع أو الشراء.',
+  },
+  {
+    emoji: '🚀',
+    title: 'ضاعف نقاطك.. تضاعف فرصتك!',
+    body: 'كلما زادت نقاطك، زادت فرصك في الربح. في كل سحب جديد.. الجوائز تكبر وتصبح أضخم!',
+  },
 ];
 
 const getStage = (points) =>
@@ -33,36 +68,23 @@ const PointsModal = ({ open, onClose, userName, points = 0 }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-gradient-to-b from-[#1a1033] to-[#0b1220] rounded-t-[32px] sm:rounded-[32px] p-6 text-right shadow-2xl border border-white/10" dir="rtl">
-        <button onClick={onClose} className="absolute top-4 left-4 text-white/50 hover:text-white">
+      <div
+        className="relative w-full max-w-md max-h-[92vh] overflow-y-auto bg-gradient-to-b from-[#1a1033] to-[#0b1220] rounded-t-[32px] sm:rounded-[32px] p-6 text-right shadow-2xl border border-white/10"
+        dir="rtl"
+      >
+        <button onClick={onClose} className="absolute top-4 left-4 text-white/50 hover:text-white z-10">
           <X size={22} />
         </button>
 
-        <div className="text-center space-y-2 mb-6">
+        <div className="text-center space-y-2 mb-5">
           <Sparkles className="mx-auto text-yellow-300" size={28} />
-          <h2 className="text-xl font-black text-white">{userName || 'مستخدم'}</h2>
+          <h2 className="text-xl font-black text-white">دليل النقاط</h2>
+          <p className="text-sm font-bold text-white/70">{userName || 'مستخدم'}</p>
           <p className="text-3xl font-black text-primary-light">{points} نقطة</p>
         </div>
 
-        {/* النجوم الملوّنة */}
-        <div className="flex justify-center gap-2 mb-2">
-          {STAGES.map((s) => (
-            <Star
-              key={s.id}
-              size={28}
-              fill={s.stars <= stage.stars ? s.color : 'transparent'}
-              stroke={s.color}
-              className={s.stars <= stage.stars ? 'drop-shadow-lg' : 'opacity-30'}
-            />
-          ))}
-        </div>
-        <p className="text-center text-sm font-bold mb-4" style={{ color: stage.color }}>
-          المستوى {stage.label}
-        </p>
-
-        {/* شريط التقدم */}
         {nextStage && (
-          <div className="mb-6">
+          <div className="mb-5">
             <div className="flex justify-between text-[10px] text-white/50 font-bold mb-1">
               <span>{stage.label}</span>
               <span>{nextStage.min - points} نقطة للمستوى {nextStage.label}</span>
@@ -76,7 +98,30 @@ const PointsModal = ({ open, onClose, userName, points = 0 }) => {
           </div>
         )}
 
-        {/* مسابقات مقترحة */}
+        <div className="space-y-4 mb-6">
+          {GUIDE_SECTIONS.map((section) => (
+            <article
+              key={section.title}
+              className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2"
+            >
+              <h3 className="text-sm font-black text-white">
+                {section.emoji} {section.title}
+              </h3>
+              <p className="text-xs font-bold text-white/85 leading-relaxed">{section.body}</p>
+              {section.bullets?.map((bullet) => (
+                <p key={bullet} className="text-xs font-bold text-white/75 leading-relaxed pr-2">
+                  • {bullet}
+                </p>
+              ))}
+              {section.note && (
+                <p className="text-[11px] font-bold text-amber-200/90 leading-relaxed">
+                  ({section.note})
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+
         {compsError && (
           <p className="text-xs text-white/40 text-center">تعذّر تحميل المسابقات</p>
         )}
@@ -96,10 +141,6 @@ const PointsModal = ({ open, onClose, userName, points = 0 }) => {
             </HorizontalSwipe>
           </div>
         )}
-
-        <p className="text-center text-[10px] text-white/30 mt-6 font-bold">
-          كل نقطة تقرّبك من جوائز أكبر — استمر! 🚀
-        </p>
       </div>
     </div>
   );

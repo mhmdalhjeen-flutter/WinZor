@@ -230,7 +230,7 @@ const Header = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-red-700 rounded-lg flex items-center justify-center shadow-md shrink-0">
                 <span className="text-white text-[11px] font-black tracking-tight">WZ</span>
               </div>
-              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Winzor</span>
+              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Win GoldenStore</span>
             </button>
           )}
 

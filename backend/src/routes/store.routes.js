@@ -4,6 +4,7 @@ const Store = require("../models/store");
 const authMiddleware = require("../middleware/auth.middleware");
 const optionalAuth = require("../middleware/optionalAuth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
+const { deliverStoredImage } = require("../utils/mediaDelivery.util");
 const {
   createStore,
   getStoreById,
@@ -72,6 +73,36 @@ router.post("/:storeId/join", authMiddleware, joinStore);
 router.post("/:storeId/leave", authMiddleware, leaveStore);
 router.post("/:storeId/follow", authMiddleware, followStore);
 router.get("/:storeId/member-prizes", optionalAuth, getStoreMemberPrizes);
+
+router.get("/:id/logo", optionalAuth, async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id).select("logo").lean();
+    if (!store) {
+      return res.status(404).end();
+    }
+    return deliverStoredImage(res, store.logo);
+  } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(400).json({ message: "معرّف المتجر غير صحيح" });
+    }
+    return res.status(500).end();
+  }
+});
+
+router.get("/:id/cover", optionalAuth, async (req, res) => {
+  try {
+    const store = await Store.findById(req.params.id).select("coverImage").lean();
+    if (!store) {
+      return res.status(404).end();
+    }
+    return deliverStoredImage(res, store.coverImage);
+  } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(400).json({ message: "معرّف المتجر غير صحيح" });
+    }
+    return res.status(500).end();
+  }
+});
 
 router.get("/:id", optionalAuth, getStoreById);
 

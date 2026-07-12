@@ -5,17 +5,46 @@ function parseDataUrl(value) {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
+function isDataUrl(value) {
+  return typeof value === "string" && value.startsWith("data:");
+}
+
 /** Replace stripped data URLs with a fetchable API path for list responses. */
 function resolveListImageField(row, resource) {
   if (!row || typeof row !== "object") return row;
   const copy = { ...row };
   const id = String(copy._id);
 
-  if (typeof copy.image === "string" && copy.image.startsWith("data:")) {
+  if (isDataUrl(copy.image)) {
     copy.hasImage = true;
     copy.image = `/${resource}/${id}/image`;
   } else {
     copy.hasImage = !!copy.image;
+  }
+
+  return copy;
+}
+
+/** Replace embedded store logo/cover data URLs with fetchable API paths. */
+function resolveStoreMediaFields(store) {
+  if (!store || typeof store !== "object") return store;
+  const copy = { ...store };
+  if (!copy._id) return copy;
+
+  const id = String(copy._id);
+
+  if (isDataUrl(copy.logo)) {
+    copy.hasLogo = true;
+    copy.logo = `/stores/${id}/logo`;
+  } else {
+    copy.hasLogo = !!copy.logo;
+  }
+
+  if (isDataUrl(copy.coverImage)) {
+    copy.hasCoverImage = true;
+    copy.coverImage = `/stores/${id}/cover`;
+  } else if ("coverImage" in copy) {
+    copy.hasCoverImage = !!copy.coverImage;
   }
 
   return copy;
@@ -26,7 +55,7 @@ async function deliverStoredImage(res, image) {
     return res.status(404).end();
   }
 
-  if (image.startsWith("https://")) {
+  if (image.startsWith("https://") || image.startsWith("http://")) {
     return res.redirect(302, image);
   }
 
@@ -41,6 +70,8 @@ async function deliverStoredImage(res, image) {
 
 module.exports = {
   parseDataUrl,
+  isDataUrl,
   resolveListImageField,
+  resolveStoreMediaFields,
   deliverStoredImage,
 };

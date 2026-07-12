@@ -6,6 +6,7 @@ import api from '../api/axios';
 import { useToast } from './Toast';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
+import { resolveProductImage } from '../utils/mediaUrl';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 
 const ProductCard = ({ product, storeId }) => {
@@ -37,6 +38,8 @@ const ProductCard = ({ product, storeId }) => {
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 
+  const imageSrc = resolveProductImage(product);
+
   return (
     <motion.div
       whileHover={{ y: -3 }}
@@ -44,8 +47,8 @@ const ProductCard = ({ product, storeId }) => {
       className="bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-sm cursor-pointer flex flex-col"
     >
       <div className="aspect-square bg-gray-50 relative">
-        {product.image ? (
-          <img src={product.image} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+        {imageSrc ? (
+          <img src={imageSrc} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold">بدون صورة</div>
         )}

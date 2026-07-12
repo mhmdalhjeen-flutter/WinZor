@@ -8,6 +8,11 @@ import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { resolveOfferImage, resolveProductImage } from '../utils/mediaUrl';
+
+const getCartItemImage = (item, itemType) => (
+  itemType === 'product' ? resolveProductImage(item) : resolveOfferImage(item)
+);
 
 const STATUS_LABELS = {
   pending: 'بانتظار التأكيد',
@@ -198,7 +203,7 @@ const Cart = () => {
                   <div key={rowKey} className={`bg-white rounded-2xl p-4 border shadow-sm ${isSupplier ? 'opacity-50 border-red-100' : 'border-gray-100'}`}>
                     <div className="flex gap-3">
                       <img
-                        src={item.image || item.images?.[0] || 'https://via.placeholder.com/80'}
+                        src={getCartItemImage(item, itemType) || 'https://via.placeholder.com/80'}
                         alt=""
                         className="w-16 h-16 rounded-xl object-cover bg-gray-100"
                       />

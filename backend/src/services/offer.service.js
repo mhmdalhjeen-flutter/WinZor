@@ -21,22 +21,13 @@ const STORE_POPULATE_SELECT =
 const PRODUCT_LIST_SELECT =
   "name description price image stock freeDelivery ratingAvg ratingCount store createdAt";
 
-const { resolveListImageField } = require("../utils/mediaDelivery.util");
+const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
 
-function isDataUrl(value) {
-  return typeof value === "string" && value.startsWith("data:");
-}
-
-/** قوائم العروض لا ترسل base64 — يُستبدل برابط جلب `/offers/:id/image` */
 function stripHeavyFields(offer) {
   if (!offer || typeof offer !== "object") return offer;
   const o = resolveListImageField(offer, "offers");
   if (o.store && typeof o.store === "object") {
-    o.store = { ...o.store };
-    if (isDataUrl(o.store.logo)) {
-      o.store.logo = null;
-      o.store.hasLogo = true;
-    }
+    o.store = resolveStoreMediaFields(o.store);
   }
   return o;
 }
@@ -45,11 +36,7 @@ function stripProductHeavyFields(product) {
   if (!product || typeof product !== "object") return product;
   const p = resolveListImageField(product, "products");
   if (p.store && typeof p.store === "object") {
-    p.store = { ...p.store };
-    if (isDataUrl(p.store.logo)) {
-      p.store.logo = null;
-      p.store.hasLogo = true;
-    }
+    p.store = resolveStoreMediaFields(p.store);
   }
   return p;
 }

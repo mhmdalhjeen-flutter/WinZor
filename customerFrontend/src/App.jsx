@@ -108,6 +108,7 @@ function AppShell() {
             <Route path="/marketplace" element={<LazyPage><Marketplace /></LazyPage>} />
             <Route path="/marketplace/:id" element={<LazyPage><BazaarDetail /></LazyPage>} />
             <Route path="/store/:id" element={<LazyPage><StoreDetail /></LazyPage>} />
+            <Route path="/stores/:id" element={<LazyPage><StoreDetail /></LazyPage>} />
             <Route path="/offer/:id" element={<LazyPage><OfferDetail /></LazyPage>} />
 
             {/* المسارات المحمية */}

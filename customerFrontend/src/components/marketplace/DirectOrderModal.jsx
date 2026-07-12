@@ -6,6 +6,7 @@ import { useVerificationGate } from '../../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { getOfferPricing } from '../OfferPriceDisplay';
+import { resolveOfferImage } from '../../utils/mediaUrl';
 
 export default function DirectOrderModal({ offer, open, onClose }) {
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
@@ -14,6 +15,7 @@ export default function DirectOrderModal({ offer, open, onClose }) {
   const [success, setSuccess] = useState(false);
 
   const store = offer?.store;
+  const offerImageSrc = resolveOfferImage(offer);
   const pricing = getOfferPricing(offer);
   const unitPrice = pricing?.finalPrice ?? 0;
   const totalPrice = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
@@ -113,8 +115,8 @@ export default function DirectOrderModal({ offer, open, onClose }) {
               <>
                 <div className="direct-order-modal__product">
                   <div className="direct-order-modal__image-wrap">
-                    {offer.image ? (
-                      <img src={offer.image} alt="" className="direct-order-modal__image" />
+                    {offerImageSrc ? (
+                      <img src={offerImageSrc} alt="" className="direct-order-modal__image" />
                     ) : (
                       <div className="direct-order-modal__image-placeholder">
                         <ImageOff size={32} />

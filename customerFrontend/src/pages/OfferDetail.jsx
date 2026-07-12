@@ -13,6 +13,7 @@ import OfferPriceDisplay from '../components/OfferPriceDisplay';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { resolveOfferImage, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 
 const badge = (offer) => {
   switch (offer?.offerType) {
@@ -133,7 +134,7 @@ const OfferDetail = () => {
         itemId: offer._id,
         itemType: 'Offer',
         itemName: offer.title,
-        itemImage: offer.image || '',
+        itemImage: resolveOfferImage(offer) || '',
         itemUrl: `/offer/${offer._id}`,
       },
     }));
@@ -147,12 +148,15 @@ const OfferDetail = () => {
     return <div className="p-10 text-center font-black text-red-500">{error || 'العرض غير موجود'}</div>;
   }
 
+  const offerImageSrc = resolveOfferImage(offer);
+  const storeLogoSrc = resolveStoreLogo(offer?.store) || storeLogoPlaceholder(offer?.store);
+
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">
       {/* رأس الصفحة مع صورة العرض */}
       <div className="relative h-72 w-full bg-gray-100">
-        {offer.image ? (
-          <img src={offer.image} className="w-full h-full object-cover rounded-b-[40px]" alt={offer.title} />
+        {offerImageSrc ? (
+          <img src={offerImageSrc} className="w-full h-full object-cover rounded-b-[40px]" alt={offer.title} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 rounded-b-[40px]">
             <ImageOff size={48} />
@@ -220,7 +224,7 @@ const OfferDetail = () => {
           >
             <div className="flex items-center gap-4">
               <img
-                src={offer.store?.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(offer.store?.name || 'S')}`}
+                src={storeLogoSrc}
                 className="w-14 h-14 rounded-2xl bg-gray-50 object-cover"
                 alt=""
               />

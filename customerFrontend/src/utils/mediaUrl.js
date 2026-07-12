@@ -1,25 +1,72 @@
 import { API_URL } from '../lib/apiUrl';
 
-/** Resolve offer/product image for <img src> — supports https, data URLs, and API image paths. */
-export function resolveMediaSrc(src) {
+const ABSOLUTE_SRC_RE = /^(https?:|data:|blob:)/i;
+
+/**
+ * Central image URL resolver for customer frontend.
+ * Absolute URLs (http/https/data/blob) pass through unchanged.
+ * Relative paths (e.g. /offers/:id/image, uploads/...) are prefixed with API base.
+ */
+export function resolveImageUrl(src) {
   if (!src || typeof src !== 'string') return null;
   const trimmed = src.trim();
   if (!trimmed) return null;
 
-  if (
-    trimmed.startsWith('https://')
-    || trimmed.startsWith('http://')
-    || trimmed.startsWith('data:')
-  ) {
+  if (ABSOLUTE_SRC_RE.test(trimmed)) {
     return trimmed;
   }
 
-  if (trimmed.startsWith('/')) {
-    const base = API_URL.replace(/\/+$/, '');
-    return `${base}${trimmed}`;
-  }
-
-  return trimmed;
+  const base = API_URL.replace(/\/+$/, '');
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${base}${path}`;
 }
 
-export default resolveMediaSrc;
+/** @alias resolveImageUrl */
+export const resolveMediaSrc = resolveImageUrl;
+
+export function resolveOfferImage(offer) {
+  if (!offer) return null;
+  const direct = resolveImageUrl(offer.image);
+  if (direct) return direct;
+  if (offer.hasImage && offer._id) {
+    return resolveImageUrl(`/offers/${offer._id}/image`);
+  }
+  return null;
+}
+
+export function resolveProductImage(product) {
+  if (!product) return null;
+  const direct = resolveImageUrl(product.image);
+  if (direct) return direct;
+  if (product.hasImage && product._id) {
+    return resolveImageUrl(`/products/${product._id}/image`);
+  }
+  return null;
+}
+
+export function resolveStoreLogo(store) {
+  if (!store) return null;
+  const direct = resolveImageUrl(store.logo);
+  if (direct) return direct;
+  if (store.hasLogo && store._id) {
+    return resolveImageUrl(`/stores/${store._id}/logo`);
+  }
+  return null;
+}
+
+export function resolveStoreCover(store) {
+  if (!store) return null;
+  const direct = resolveImageUrl(store.coverImage);
+  if (direct) return direct;
+  if (store.hasCoverImage && store._id) {
+    return resolveImageUrl(`/stores/${store._id}/cover`);
+  }
+  return null;
+}
+
+export function storeLogoPlaceholder(store) {
+  const name = encodeURIComponent(store?.name || 'S');
+  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff`;
+}
+
+export default resolveImageUrl;

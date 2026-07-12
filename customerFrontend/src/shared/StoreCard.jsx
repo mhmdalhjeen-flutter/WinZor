@@ -2,11 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 import VerifiedBadge from '../components/marketplace/VerifiedBadge';
 
 const StoreCard = ({ store, membershipStatus }) => {
   const navigate = useNavigate();
-  const logo = store.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(store.name || 'S')}&background=6366f1&color=fff`;
+  const logo = resolveStoreLogo(store) || storeLogoPlaceholder(store);
 
   return (
     <motion.button

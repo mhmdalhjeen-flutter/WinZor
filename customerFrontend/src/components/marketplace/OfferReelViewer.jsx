@@ -18,7 +18,7 @@ import { useToast } from '../../shared/Toast';
 import { useVerificationGate } from '../../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
-import { resolveMediaSrc } from '../../utils/mediaUrl';
+import { resolveOfferImage, resolveProductImage, resolveStoreLogo, storeLogoPlaceholder } from '../../utils/mediaUrl';
 
 const CATEGORY_TRANSITION_MS = 1000;
 const RESUME_STORAGE_KEY = 'offerReelViewerResume';
@@ -60,10 +60,7 @@ function dismissResumedViewer() {
 }
 
 function getStoreLogoSrc(store) {
-  const resolved = resolveMediaSrc(store?.logo);
-  if (resolved) return resolved;
-  const name = encodeURIComponent(store?.name || 'S');
-  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff`;
+  return resolveStoreLogo(store) || storeLogoPlaceholder(store);
 }
 
 function isProductItem(item) {
@@ -81,7 +78,8 @@ function getItemTitle(item) {
 
 function getItemImage(item) {
   if (isCategoryItem(item)) return null;
-  return resolveMediaSrc(item?.image);
+  if (isProductItem(item)) return resolveProductImage(item);
+  return resolveOfferImage(item);
 }
 
 function OfferSlideImage({ src, alt, isActive }) {
@@ -289,7 +287,7 @@ function ReelSlide({
       aria-hidden={!isActive}
     >
       <div className="offer-reel-slide__media">
-        <OfferSlideImage src={resolveMediaSrc(item.image)} alt={title} isActive={isActive} />
+        <OfferSlideImage src={isProduct ? resolveProductImage(item) : resolveOfferImage(item)} alt={title} isActive={isActive} />
       </div>
 
       <div className="offer-reel-slide__content">
@@ -447,7 +445,7 @@ export default function OfferReelViewer({
       initialIndex: activeIndex,
       multiCategory,
     });
-    navigate(`/store/${storeId}`);
+    navigate(`/stores/${storeId}`);
   }, [navigate, offers, boundaries, activeIndex, multiCategory]);
 
   useEffect(() => {
@@ -634,7 +632,7 @@ export default function OfferReelViewer({
 
 function tryResumeViewer() {
   if (document.body.classList.contains('offer-viewer-open')) return;
-  if (window.location.pathname.startsWith('/store/')) return;
+  if (window.location.pathname.match(/^\/stores?\//)) return;
 
   const state = readResumeState();
   if (!state?.offers?.length) return;

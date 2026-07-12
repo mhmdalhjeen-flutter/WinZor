@@ -11,6 +11,7 @@ const { getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const storeDiscovery = require("../services/storeDiscovery.service");
 const membershipService = require("../services/storeMembership.service");
 const { processDataUrlImage, processOptionalImage } = require("../utils/imageProcess.util");
+const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
 const {
   assertNoMongoOperators,
   cleanString,
@@ -34,34 +35,20 @@ const PRODUCT_LIST_SELECT =
 
 function stripBase64Images(offer) {
   if (!offer || typeof offer !== "object") return offer;
-  const plain = { ...offer };
-  if (typeof plain.image === "string" && plain.image.startsWith("data:")) {
-    plain.hasImage = true;
-    plain.image = null;
-  } else {
-    plain.hasImage = !!plain.image;
+  const plain = resolveListImageField(offer, "offers");
+  if (plain.store && typeof plain.store === "object") {
+    plain.store = resolveStoreMediaFields(plain.store);
   }
   return plain;
 }
 
 function stripBase64Image(product) {
   if (!product || typeof product !== "object") return product;
-  if (typeof product.image === "string" && product.image.startsWith("data:")) {
-    return { ...product, hasImage: true, image: null };
-  }
-  return { ...product, hasImage: !!product.image };
+  return resolveListImageField(product, "products");
 }
 
 function stripBase64Logo(store) {
-  if (!store || typeof store !== "object") return store;
-  const plain = { ...store };
-  if (typeof plain.logo === "string" && plain.logo.startsWith("data:")) {
-    plain.hasLogo = true;
-    plain.logo = null;
-  } else {
-    plain.hasLogo = !!plain.logo;
-  }
-  return plain;
+  return resolveStoreMediaFields(store);
 }
 
 // ================= إنشاء متجر جديد =================
@@ -239,7 +226,7 @@ exports.getStoreById = async (req, res) => {
         const competitionsEnabled = storeCompetitions?.value?.enabled !== false;
 
         res.json({
-            store,
+            store: resolveStoreMediaFields(store.toObject()),
             offers: offers.map(stripBase64Images),
             products: products.map(stripBase64Image),
             isFollowing: isFollowingNetwork || membership?.status === "member" || membership?.status === "pending",

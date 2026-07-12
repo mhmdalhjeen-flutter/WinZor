@@ -8,16 +8,10 @@ const { bayesianRating, freshnessBoost } = require("../utils/ranking.util");
 const { expandCategoryIds } = require("../utils/offerFeed.util");
 const { getCategoryAndDescendantNames } = require("../controllers/category.controller");
 
+const { resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
+
 function stripBase64Logo(store) {
-  if (!store || typeof store !== "object") return store;
-  const plain = { ...store };
-  if (typeof plain.logo === "string" && plain.logo.startsWith("data:")) {
-    plain.hasLogo = true;
-    plain.logo = null;
-  } else {
-    plain.hasLogo = !!plain.logo;
-  }
-  return plain;
+  return resolveStoreMediaFields(store);
 }
 
 async function applyCategoryIdFilter(query, categoryId) {

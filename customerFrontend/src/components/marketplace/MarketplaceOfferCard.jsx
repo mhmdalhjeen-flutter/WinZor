@@ -3,12 +3,13 @@ import { ImageOff } from 'lucide-react';
 import { getOfferBadge } from '../OfferCard';
 import OfferPriceDisplay from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
-import { resolveMediaSrc } from '../../utils/mediaUrl';
+import { resolveOfferImage, resolveStoreLogo } from '../../utils/mediaUrl';
 
 export default function MarketplaceOfferCard({ offer, onClick, topBadge }) {
   const store = offer?.store;
   const isVerified = store?.isVerifiedStore;
-  const imageSrc = resolveMediaSrc(offer?.image);
+  const imageSrc = resolveOfferImage(offer);
+  const storeLogoSrc = resolveStoreLogo(store);
 
   return (
     <button
@@ -38,9 +39,9 @@ export default function MarketplaceOfferCard({ offer, onClick, topBadge }) {
           {topBadge || getOfferBadge(offer)}
         </div>
 
-        {store?.logo && (
+        {storeLogoSrc && (
           <img
-            src={store.logo}
+            src={storeLogoSrc}
             alt=""
             className="marketplace-offer-card__logo"
             loading="lazy"

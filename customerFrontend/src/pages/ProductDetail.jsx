@@ -10,6 +10,7 @@ import { logActivity } from '../utils/activity';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { resolveProductImage } from '../utils/mediaUrl';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -70,7 +71,7 @@ const ProductDetail = () => {
         itemId: product._id,
         itemType: 'Product',
         itemName: product.name,
-        itemImage: product.image || product.images?.[0] || '',
+        itemImage: resolveProductImage(product) || '',
       },
     }));
     navigate('/chat');
@@ -80,12 +81,13 @@ const ProductDetail = () => {
   if (error || !product) return <ErrorState message={error || 'المنتج غير موجود'} />;
 
   const store = product.store;
+  const productImageSrc = resolveProductImage(product);
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">
       <div className="relative h-64 bg-gray-100 rounded-b-[32px] overflow-hidden">
-        {product.image ? (
-          <img src={product.image} alt="" className="w-full h-full object-cover" />
+        {productImageSrc ? (
+          <img src={productImageSrc} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold">بدون صورة</div>
         )}

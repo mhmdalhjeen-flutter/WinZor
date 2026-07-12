@@ -4,6 +4,7 @@ import { Tag, MapPin, ImageOff, ShoppingCart, Eye, Check, Loader2, Heart } from 
 import { useNavigate } from 'react-router-dom';
 import OfferPriceDisplay from './OfferPriceDisplay';
 import { formatOfferBadge } from '../utils/offerPricing';
+import { resolveOfferImage } from '../utils/mediaUrl';
 import api from '../api/axios';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
@@ -52,6 +53,8 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 
+  const imageSrc = resolveOfferImage(offer);
+
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -59,8 +62,8 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
       className="bg-white/5 border border-white/10 rounded-[28px] overflow-hidden backdrop-blur-md group cursor-pointer flex flex-col"
     >
       <div className="relative aspect-video bg-white/10">
-        {offer.image ? (
-          <img src={offer.image} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={offer.title} />
+        {imageSrc ? (
+          <img src={imageSrc} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={offer.title} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/30">
             <ImageOff size={28} />

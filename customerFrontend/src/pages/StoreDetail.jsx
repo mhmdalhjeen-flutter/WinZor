@@ -13,6 +13,7 @@ import LoadingSpinner from '../shared/LoadingSpinner';
 import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
+import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 
 const StoreDetail = () => {
   const { id } = useParams();
@@ -78,29 +79,51 @@ const StoreDetail = () => {
   if (error || !data?.store) return <ErrorState message={error || 'المتجر غير موجود'} />;
 
   const { store, offers = [], products = [], membershipStatus, storeCompetitionsEnabled } = data;
-  const logo = store.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(store.name)}&background=6366f1&color=fff`;
+  const coverSrc = resolveStoreCover(store);
+  const logoSrc = resolveStoreLogo(store) || storeLogoPlaceholder(store);
   const isMember = membershipStatus === 'member';
   const isPending = membershipStatus === 'pending';
 
   return (
     <div className="pb-28 -mt-4 text-right" dir="rtl">
-      <div className="relative h-36 w-full bg-gradient-to-br from-primary to-purple-700 rounded-b-[32px]">
-        <button type="button" onClick={() => navigate(-1)} className="absolute top-4 right-4 bg-white/20 backdrop-blur p-2 rounded-xl text-white">
-          <ChevronRight size={22} />
-        </button>
+      <div className="relative isolate">
+        <div className="relative h-40 w-full overflow-hidden rounded-b-[32px]">
+          {coverSrc ? (
+            <img
+              src={coverSrc}
+              alt=""
+              className="absolute inset-0 z-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary to-purple-700" />
+          )}
+          <div className="absolute inset-0 z-[1] bg-black/20" aria-hidden />
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="absolute top-4 right-4 z-[2] bg-white/20 backdrop-blur p-2 rounded-xl text-white"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </div>
+
+        <div className="relative z-20 -mt-10 flex justify-center">
+          <img
+            src={logoSrc}
+            alt=""
+            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg bg-white"
+          />
+        </div>
       </div>
 
-      <div className="px-4 -mt-12 space-y-4">
-        <div className="bg-white rounded-[28px] p-4 shadow-lg border border-gray-50 flex gap-4">
-          <img src={logo} alt="" className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow -mt-10" />
-          <div className="flex-1 min-w-0 pt-1">
-            <h1 className="text-lg font-black text-gray-900 truncate">{store.name}</h1>
-            {store.isVerifiedStore && <VerifiedBadge className="mt-1" />}
-            <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
-              <MapPin size={11} /> {store.region}{store.subRegion ? ` · ${store.subRegion}` : ''}
-            </p>
-            <StarRating targetType="store" targetId={store._id} ratingAvg={store.ratingAvg} ratingCount={store.ratingCount} compact className="mt-1" />
-          </div>
+      <div className="px-4 pt-6 space-y-4">
+        <div className="bg-white rounded-[28px] p-4 shadow-lg border border-gray-50 text-center">
+          <h1 className="text-lg font-black text-gray-900 truncate">{store.name}</h1>
+          {store.isVerifiedStore && <VerifiedBadge className="mt-1 justify-center" />}
+          <p className="text-[10px] text-gray-400 font-bold flex items-center justify-center gap-1 mt-1">
+            <MapPin size={11} /> {store.region}{store.subRegion ? ` · ${store.subRegion}` : ''}
+          </p>
+          <StarRating targetType="store" targetId={store._id} ratingAvg={store.ratingAvg} ratingCount={store.ratingCount} compact className="mt-1 justify-center" />
         </div>
 
         <div className="flex flex-wrap gap-2">

@@ -82,6 +82,18 @@ function getItemImage(item) {
   return resolveOfferImage(item);
 }
 
+function ViewerBackdrop({ src }) {
+  return (
+    <div
+      className={`offer-reel-viewer__backdrop${src ? '' : ' offer-reel-viewer__backdrop--empty'}`}
+      aria-hidden
+    >
+      {src && <img src={src} alt="" className="offer-reel-viewer__backdrop-img" />}
+      <div className="offer-reel-viewer__backdrop-shade" />
+    </div>
+  );
+}
+
 function OfferSlideImage({ src, alt, isActive }) {
   if (!src) {
     return (
@@ -430,6 +442,7 @@ export default function OfferReelViewer({
   const scrollLockYRef = useRef(0);
 
   const activeItem = offers[activeIndex];
+  const backdropSrc = activeItem && !isCategoryItem(activeItem) ? getItemImage(activeItem) : null;
   const firstCategoryIntroIndex = boundaries[0]?.startIndex ?? 0;
 
   const preloadRange = useCallback((index) => {
@@ -640,6 +653,8 @@ export default function OfferReelViewer({
 
   return createPortal(
     <div className="offer-reel-viewer" role="dialog" aria-modal="true" aria-label="عارض العروض">
+      <ViewerBackdrop src={backdropSrc} />
+
       {activeItem && !isCategoryItem(activeItem) && (
         <ViewerTopbar
           item={activeItem}

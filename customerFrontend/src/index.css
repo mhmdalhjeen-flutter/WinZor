@@ -624,7 +624,39 @@ body::before {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.88);
+  background: #000;
+  isolation: isolate;
+}
+
+.offer-reel-viewer__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.offer-reel-viewer__backdrop--empty {
+  background: linear-gradient(165deg, #1a1028 0%, #0d1117 48%, #1c1917 100%);
+}
+
+.offer-reel-viewer__backdrop-img {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  object-fit: cover;
+  object-position: center center;
+  transform: scale(1.15);
+  filter: blur(26px) saturate(1.12);
+  pointer-events: none;
+}
+
+.offer-reel-viewer__backdrop-shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.54);
+  pointer-events: none;
 }
 
 body.offer-viewer-open {
@@ -717,6 +749,8 @@ body.offer-viewer-open {
 }
 
 .offer-reel-viewer__scroll {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   overflow-y: scroll;
@@ -734,6 +768,12 @@ body.offer-viewer-open {
 @media (prefers-reduced-motion: reduce) {
   .offer-reel-viewer__scroll {
     scroll-behavior: auto;
+  }
+
+  .offer-reel-viewer__backdrop-img,
+  .offer-reel-slide__bg-blur {
+    filter: blur(12px) saturate(1.05);
+    transform: scale(1.08);
   }
 }
 
@@ -761,13 +801,13 @@ body.offer-viewer-open {
 
 .offer-reel-slide__bg-blur {
   position: absolute;
-  inset: -5%;
-  width: 110%;
-  height: 110%;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
   object-fit: cover;
   object-position: center center;
-  filter: blur(40px) brightness(0.38) saturate(1.1);
-  transform: scale(1.06);
+  filter: blur(26px) saturate(1.12);
+  transform: scale(1.15);
   pointer-events: none;
   z-index: 0;
 }
@@ -775,7 +815,7 @@ body.offer-viewer-open {
 .offer-reel-slide__bg-darken {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.58);
+  background: rgba(0, 0, 0, 0.54);
   pointer-events: none;
   z-index: 0;
 }
@@ -797,7 +837,7 @@ body.offer-viewer-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111;
+  background: linear-gradient(165deg, #1a1028 0%, #0d1117 48%, #1c1917 100%);
   color: rgba(255, 255, 255, 0.3);
 }
 
@@ -850,15 +890,15 @@ body.offer-viewer-open {
 }
 
 .offer-reel-slide--category {
-  background: #0a0a0a;
+  background: transparent;
 }
 
 .offer-reel-slide__media--category {
-  background: #111;
+  background: transparent;
 }
 
 .offer-reel-slide__bg-darken--category {
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 0, 0, 0.62);
 }
 
 .offer-reel-category-intro {

@@ -9,15 +9,24 @@ import { useToast } from '../shared/Toast';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimation';
 import ReferralCardsModal from './ReferralCardsModal';
-import { ENTER_CARD_EVENT } from './PointsGuideModal';
+import {
+  ENTER_CARD_EVENT,
+  REFERRAL_CARDS_EVENT,
+} from '../utils/pointsGuideEvents';
 
 const FloatingCodeButton = () => {
   const [viewerOpen, setViewerOpen] = useState(
     () => typeof document !== 'undefined' && document.body.classList.contains('offer-viewer-open')
   );
+  const [guideOpen, setGuideOpen] = useState(
+    () => typeof document !== 'undefined' && document.body.classList.contains('points-guide-open')
+  );
 
   useEffect(() => {
-    const sync = () => setViewerOpen(document.body.classList.contains('offer-viewer-open'));
+    const sync = () => {
+      setViewerOpen(document.body.classList.contains('offer-viewer-open'));
+      setGuideOpen(document.body.classList.contains('points-guide-open'));
+    };
     const obs = new MutationObserver(sync);
     obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     return () => obs.disconnect();
@@ -145,33 +154,42 @@ const FloatingCodeButton = () => {
   };
 
   useEffect(() => {
-    const openFromGuide = () => runWithVerification(() => setIsOpen(true));
-    window.addEventListener(ENTER_CARD_EVENT, openFromGuide);
-    return () => window.removeEventListener(ENTER_CARD_EVENT, openFromGuide);
+    const openCodeFromGuide = () => runWithVerification(() => setIsOpen(true));
+    const openReferralFromGuide = () => setReferralOpen(true);
+    window.addEventListener(ENTER_CARD_EVENT, openCodeFromGuide);
+    window.addEventListener(REFERRAL_CARDS_EVENT, openReferralFromGuide);
+    return () => {
+      window.removeEventListener(ENTER_CARD_EVENT, openCodeFromGuide);
+      window.removeEventListener(REFERRAL_CARDS_EVENT, openReferralFromGuide);
+    };
   }, [runWithVerification]);
 
   if (viewerOpen) return null;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setReferralOpen(true)}
-        className="fixed bottom-[8.5rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-lg border-2 border-white hover:scale-110 active:scale-95 transition-all text-[9px] font-black text-center leading-tight"
-      >
-        كروت<br />مجانية
-      </button>
+      {!guideOpen && (
+        <>
+          <button
+            type="button"
+            onClick={() => setReferralOpen(true)}
+            className="fixed bottom-[8.5rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-lg border-2 border-white hover:scale-110 active:scale-95 transition-all text-[9px] font-black text-center leading-tight"
+          >
+            كروت<br />مجانية
+          </button>
+
+          <button
+            ref={codeBtnRef}
+            type="button"
+            onClick={() => runWithVerification(() => setIsOpen(true))}
+            className="fixed bottom-[5.75rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_0_22px_rgba(99,102,241,0.6)] border-2 border-white hover:scale-110 active:scale-95 transition-all duration-300 text-[10px] font-black text-center leading-tight"
+          >
+            ادخل<br />الكود
+          </button>
+        </>
+      )}
 
       <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
-
-      <button
-        ref={codeBtnRef}
-        type="button"
-        onClick={() => runWithVerification(() => setIsOpen(true))}
-        className="fixed bottom-[5.75rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_0_22px_rgba(99,102,241,0.6)] border-2 border-white hover:scale-110 active:scale-95 transition-all duration-300 text-[10px] font-black text-center leading-tight"
-      >
-        ادخل<br />الكود
-      </button>
 
       <AnimatePresence>
         {isOpen && (

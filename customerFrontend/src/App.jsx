@@ -81,8 +81,8 @@ function AppShell() {
     return () => obs.disconnect();
   }, []);
 
-  const hideChrome = offerViewerOpen || pointsGuideOpen;
-  const hideBottomChrome = hideChrome || location.pathname === '/stores/search';
+  const hideOverlayChrome = offerViewerOpen || pointsGuideOpen;
+  const hideBottomNav = hideOverlayChrome || location.pathname === '/stores/search';
 
   return (
     <>
@@ -92,9 +92,9 @@ function AppShell() {
       <div className="flex flex-col min-h-screen bg-[#f7f5f2] text-right font-['Cairo']" dir="rtl">
         
         {/* الهيدر — يظهر للزوار على الصفحات العامة (استكشاف، متجر...) */}
-        {showAppChrome && !hideChrome && <Header />}
+        {showAppChrome && !hideOverlayChrome && <Header />}
 
-        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome && !hideChrome ? 'px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}>
+        <main className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome && !hideOverlayChrome ? 'px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}>
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}
@@ -142,10 +142,10 @@ function AppShell() {
         </main>
 
         {/* زر الكود العائم */}
-        {isAuth && !hideBottomChrome && <FloatingCodeButton />}
+        {isAuth && !offerViewerOpen && <FloatingCodeButton />}
         
         {/* شريط التنقل السفلي */}
-        {isAuth && !hideBottomChrome && <BottomNav />}
+        {isAuth && !hideBottomNav && <BottomNav />}
       </div>
     </>
   );

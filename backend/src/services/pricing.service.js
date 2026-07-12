@@ -3,7 +3,7 @@
  * All price calculations and display DTOs must go through this module.
  */
 
-const { formatPrice, normalizeCurrency, getCurrencySymbol } = require("./currency.util");
+const { formatPrice, normalizeCurrency, getCurrencySymbol } = require("../utils/currency.util");
 
 const OFFER_TYPE_LABELS = {
   discount: "\u062E\u0635\u0645 \u0628\u0627\u0644\u0646\u0633\u0628\u0629",

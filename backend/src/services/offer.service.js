@@ -1,4 +1,5 @@
 const Offer = require("../models/offer");
+const Product = require("../models/product");
 const Store = require("../models/store");
 const User = require("../models/user");
 const UserActivity = require("../models/userActivity");
@@ -6,7 +7,7 @@ const OfferViewDedup = require("../models/offerViewDedup");
 const Category = require("../models/category");
 const pricingService = require("./pricing.service");
 const { getCategoryAndDescendantNames, resolveCategoryNamesForSearch } = require("../controllers/category.controller");
-const { restrictOfferQueryToCustomerStores } = require("../utils/storeFilter");
+const { restrictOfferQueryToCustomerStores, getCustomerVisibleStoreIds } = require("../utils/storeFilter");
 const { resolveNetworkStoreIds } = require("../utils/offerFeed.util");
 const { buildUserSignals, sortOffersPersonalized, sortOffersByRank } = require("../utils/personalizedRank.util");
 const { getDescendantIds } = require("../utils/region.util");
@@ -15,7 +16,10 @@ const LIST_OFFER_SELECT =
   "title description offerType originalPrice value finalPrice currency isActive priority featuredPriority views shareCount createdAt expiresAt image bogoGetQuantity bogoBuyQuantity freeItemName customLabel store";
 
 const STORE_POPULATE_SELECT =
-  "name logo region subRegion category ratingAvg ratingCount regionId subRegionId isVerifiedStore";
+  "name logo region subRegion category ratingAvg ratingCount regionId subRegionId isVerifiedStore owner";
+
+const PRODUCT_LIST_SELECT =
+  "name description price image stock freeDelivery ratingAvg ratingCount store createdAt";
 
 const VIEW_DEDUP_MS = 30 * 60 * 1000;
 
@@ -38,6 +42,22 @@ function stripHeavyFields(offer) {
     if (isDataUrl(o.store.logo)) o.store.logo = null;
   }
   return o;
+}
+
+function stripProductHeavyFields(product) {
+  if (!product || typeof product !== "object") return product;
+  const p = { ...product };
+  if (isDataUrl(p.image)) {
+    p.hasImage = true;
+    p.image = null;
+  } else {
+    p.hasImage = !!p.image;
+  }
+  if (p.store && typeof p.store === "object") {
+    p.store = { ...p.store };
+    if (isDataUrl(p.store.logo)) p.store.logo = null;
+  }
+  return p;
 }
 
 function attachPricing(offer) {
@@ -282,18 +302,36 @@ async function listCategoryReels(query, userId) {
 
   const ranked = await rankOffers(docs, userId);
 
+  const visibleStoreIds = await getCustomerVisibleStoreIds(storeQuery);
+  const allowedStoreIds = visibleStoreIds.length ? visibleStoreIds : ["__none__"];
+
+  const categoryProductsByStore = await Product.find({
+    store: { $in: allowedStoreIds },
+    isActive: true,
+    isWholesale: false,
+  })
+    .select(PRODUCT_LIST_SELECT)
+    .populate("store", STORE_POPULATE_SELECT)
+    .sort({ createdAt: -1 })
+    .limit(400)
+    .lean();
+
   const reels = [];
   for (const root of roots) {
     const names = await getCategoryAndDescendantNames(root._id);
     const nameSet = new Set(names);
     const categoryOffers = ranked.filter((o) => nameSet.has(o.store?.category));
-    if (!categoryOffers.length) continue;
+    const categoryProducts = categoryProductsByStore.filter((p) =>
+      nameSet.has(p.store?.category)
+    );
+    if (!categoryOffers.length && !categoryProducts.length) continue;
 
     reels.push({
       categoryId: root._id,
       categoryName: root.name,
       categoryIcon: root.icon || "",
       offers: categoryOffers.slice(0, perReel),
+      products: categoryProducts.slice(0, perReel).map(stripProductHeavyFields),
     });
   }
 
@@ -306,6 +344,7 @@ async function listCategoryReels(query, userId) {
       categoryName: "عروض متنوعة",
       categoryIcon: "✨",
       offers: uncategorized.slice(0, perReel),
+      products: [],
     });
   }
 

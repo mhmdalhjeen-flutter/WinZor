@@ -1,11 +1,12 @@
 import React from 'react';
-import useSmartHorizontalScroll, { mergeRefs } from '../../hooks/useSmartHorizontalScroll';
+import useCenterSnapCarousel from '../../hooks/useCenterSnapCarousel';
+import { mergeRefs } from '../../hooks/useSmartHorizontalScroll';
 
 /**
- * Netflix-style horizontal offer rail with smart vertical/horizontal touch resolution.
+ * Centered snap horizontal offer rail with smart vertical/horizontal touch resolution.
  */
 export default function OfferRailTrack({ children, trackRef, className = '' }) {
-  const smartRef = useSmartHorizontalScroll();
+  const smartRef = useCenterSnapCarousel();
 
   return (
     <div className={`home-offers-rail ${className}`.trim()}>

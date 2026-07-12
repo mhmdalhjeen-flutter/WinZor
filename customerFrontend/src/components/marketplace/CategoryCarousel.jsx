@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
+import { getSlideScrollTarget } from '../../hooks/useCenterSnapCarousel';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 
@@ -12,7 +13,28 @@ export default function CategoryCarousel({
   const scrollByDir = (dir) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: 'smooth' });
+
+    const slides = [...el.querySelectorAll('.home-offers-rail__slide')];
+    if (!slides.length) return;
+
+    const viewportCenter = el.scrollLeft + el.clientWidth / 2;
+    let activeIdx = 0;
+    let bestDist = Infinity;
+
+    slides.forEach((slide, i) => {
+      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+      const dist = Math.abs(slideCenter - viewportCenter);
+      if (dist < bestDist) {
+        bestDist = dist;
+        activeIdx = i;
+      }
+    });
+
+    const nextIdx = Math.max(0, Math.min(slides.length - 1, activeIdx + dir));
+    el.scrollTo({
+      left: getSlideScrollTarget(el, slides[nextIdx]),
+      behavior: 'smooth',
+    });
   };
 
   const offers = reel?.offers || [];
@@ -51,30 +73,49 @@ export default function CategoryCarousel({
   );
 }
 
-/** Flatten reels into a single offer list with category metadata */
+/** Flatten reels into offers then products per category for vertical browsing */
 export function buildMultiCategoryViewerState(reels, reelIndex, offerIndex) {
   const offers = [];
   const boundaries = [];
 
   reels.forEach((reel) => {
-    boundaries.push({
-      startIndex: offers.length,
-      categoryName: reel.categoryName,
-      categoryIcon: reel.categoryIcon,
-      categoryId: reel.categoryId,
-    });
+    const offersStart = offers.length;
+
     (reel.offers || []).forEach((offer) => {
       offers.push({
         ...offer,
+        __itemType: 'offer',
         __categoryName: reel.categoryName,
         __categoryId: reel.categoryId,
       });
     });
+
+    const productsStart = offers.length;
+
+    (reel.products || []).forEach((product) => {
+      offers.push({
+        ...product,
+        __itemType: 'product',
+        __categoryName: reel.categoryName,
+        __categoryId: reel.categoryId,
+      });
+    });
+
+    if (offersStart < offers.length) {
+      boundaries.push({
+        startIndex: offersStart,
+        offersStart,
+        productsStart,
+        categoryName: reel.categoryName,
+        categoryIcon: reel.categoryIcon,
+        categoryId: reel.categoryId,
+      });
+    }
   });
 
   let initialIndex = 0;
   for (let i = 0; i < reelIndex; i++) {
-    initialIndex += reels[i]?.offers?.length || 0;
+    initialIndex += (reels[i]?.offers?.length || 0) + (reels[i]?.products?.length || 0);
   }
   initialIndex += offerIndex;
 

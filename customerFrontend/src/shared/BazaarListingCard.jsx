@@ -7,9 +7,8 @@ const TYPE_LABELS = {
   sell: 'بيع',
   buy: 'شراء',
   exchange: 'بدل',
-  custom: 'مطلوب',
+  custom: 'طلب',
   rent: 'إيجار',
-  wanted: 'مطلوب',
 };
 
 const formatPrice = (price) =>

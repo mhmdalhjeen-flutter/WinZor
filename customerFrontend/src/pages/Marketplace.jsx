@@ -68,7 +68,7 @@ const Marketplace = () => {
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
 
-  const [activeTab, setActiveTab] = useState('buy');
+  const [activeTab, setActiveTab] = useState('sellExchange');
   const [showPublish, setShowPublish] = useState(false);
   const [favOverrides, setFavOverrides] = useState({});
   const [favPulseId, setFavPulseId] = useState(null);
@@ -400,10 +400,13 @@ const Marketplace = () => {
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen text-right" dir="rtl">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-3 text-center">
         <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug">
-          السوق المفتوح للمستعمل والجديد
+          السوق المفتوح
         </h1>
+        <p className="mt-2 text-xs sm:text-sm text-gray-500 font-medium leading-relaxed line-clamp-2 max-w-md mx-auto">
+          بيع وبدّل واعرض ما لديك، وابحث عن ما تحتاجه من منتجات، طلبات أو إعلانات للإيجار في مكان واحد.
+        </p>
       </div>
 
       <MarketplaceTabNav activeTab={activeTab} onTabChange={handleTabChange} />
@@ -522,9 +525,9 @@ const Marketplace = () => {
                     className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
                   >
                     <option value="sell">بيع</option>
-                    <option value="buy">شراء</option>
                     <option value="exchange">بدل</option>
-                    <option value="custom">حسب الطلب</option>
+                    <option value="rent">إيجار</option>
+                    <option value="custom">طلب</option>
                   </select>
 
                   <textarea

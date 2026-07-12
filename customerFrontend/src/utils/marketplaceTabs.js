@@ -1,19 +1,10 @@
-import React from 'react';
-import {
-  ShoppingCart, RefreshCw, Home, Megaphone, Heart, ClipboardList,
-} from 'lucide-react';
+import { ShoppingCart, Home, Megaphone, Heart, ClipboardList } from 'lucide-react';
 
 export const MARKETPLACE_TAB_CONFIG = {
-  buy: {
-    id: 'buy',
-    icon: ShoppingCart,
-    label: 'شراء',
-    types: ['buy'],
-  },
   sellExchange: {
     id: 'sellExchange',
-    icon: RefreshCw,
-    label: 'بيع / بدل',
+    icon: ShoppingCart,
+    label: 'شراء / بدل',
     types: ['sell', 'exchange'],
   },
   rent: {
@@ -26,7 +17,7 @@ export const MARKETPLACE_TAB_CONFIG = {
     id: 'wanted',
     icon: Megaphone,
     label: 'مطلوب',
-    types: ['wanted', 'custom'],
+    types: ['custom'],
   },
   favorites: {
     id: 'favorites',
@@ -44,7 +35,7 @@ export const MARKETPLACE_TAB_CONFIG = {
 
 export const MARKETPLACE_TABS = Object.values(MARKETPLACE_TAB_CONFIG);
 
-export const BROWSE_TAB_IDS = ['buy', 'sellExchange', 'rent', 'wanted'];
+export const BROWSE_TAB_IDS = ['sellExchange', 'rent', 'wanted'];
 
 export const listingMatchesTab = (listing, tabId) => {
   const types = MARKETPLACE_TAB_CONFIG[tabId]?.types;

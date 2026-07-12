@@ -10,7 +10,7 @@ const BottomNav = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'الرئيسية', show: true },
     { to: '/explore', icon: Store, label: 'المتاجر', show: true },
-    { to: '/marketplace', icon: ShoppingBag, label: 'سوق الماهر', show: features.marketplace !== false },
+    { to: '/marketplace', icon: ShoppingBag, label: 'السوق المفتوح', show: features.marketplace !== false },
     { to: '/draws', icon: Gift, label: 'الجوائز', show: features.draws !== false },
     { to: '/center', icon: User, label: 'حسابي', show: true },
   ].filter((item) => item.show);

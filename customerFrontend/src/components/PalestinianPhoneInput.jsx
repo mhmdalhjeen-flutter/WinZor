@@ -27,6 +27,7 @@ export default function PalestinianPhoneInput({
   const carrier = getPhoneCarrier(value);
   const theme = getPhoneCarrierTheme(carrier, variant);
   const complete = isValidLocalPhone(value);
+  const showCarrierBadge = Boolean(carrier && theme.label);
 
   const emitChange = (next) => {
     if (onValueChange) onValueChange(next);
@@ -41,7 +42,14 @@ export default function PalestinianPhoneInput({
 
   const baseInput = variant === 'auth'
     ? `w-full rounded-2xl border py-4 text-sm font-bold outline-none transition placeholder:text-white/30 disabled:cursor-not-allowed disabled:opacity-50 focus:ring-2 ${theme.input}`
-    : `w-full rounded-2xl border px-4 py-3 text-sm font-bold outline-none transition disabled:opacity-50 focus:ring-2 ${theme.input}`;
+    : `w-full rounded-2xl border py-3 text-sm font-bold outline-none transition disabled:opacity-50 focus:ring-2 ${theme.input}`;
+
+  const inputPadding = (() => {
+    if (Icon && variant === 'auth') {
+      return showCarrierBadge ? 'pr-12 pl-[5.75rem]' : 'pr-12 pl-4';
+    }
+    return showCarrierBadge ? 'px-4 pl-[5.75rem]' : 'px-4';
+  })();
 
   return (
     <div className={`space-y-1.5 ${className}`}>
@@ -49,7 +57,7 @@ export default function PalestinianPhoneInput({
         {Icon && variant === 'auth' && (
           <Icon
             size={18}
-            className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 transition ${
+            className={`pointer-events-none absolute right-4 top-1/2 z-[1] -translate-y-1/2 transition ${
               carrier === 'jawwal' ? 'text-green-400' : carrier === 'wataniya' ? 'text-red-400' : 'text-white/35 group-focus-within:text-amber-300'
             }`}
           />
@@ -67,13 +75,13 @@ export default function PalestinianPhoneInput({
           pattern="05(6|9)[0-9]{7}"
           required={required}
           disabled={disabled}
-          className={`${baseInput} text-left ${Icon && variant === 'auth' ? 'pr-12 pl-4' : ''}`}
+          className={`${baseInput} text-left ${inputPadding}`}
         />
-        {carrier && theme.label && (
+        {showCarrierBadge && (
           <span
-            className={`absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black px-2 py-0.5 rounded-full hidden sm:inline ${theme.badge}`}
+            className={`pointer-events-none absolute left-3 top-1/2 z-[1] max-w-[5.25rem] -translate-y-1/2 truncate text-[10px] font-black px-2 py-0.5 rounded-full ${theme.badge}`}
           >
-            {theme.label}
+            {carrier === 'jawwal' ? 'جوال' : 'وطنية'}
           </span>
         )}
       </div>

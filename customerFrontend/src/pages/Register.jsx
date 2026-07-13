@@ -1,35 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowLeft, RotateCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, ArrowLeft, RotateCw, Phone, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import { registerCustomer, isGoogleAuthAvailable } from '../services/authService';
 import { getAuthErrorMessage } from '../utils/authValidation';
 import { getLocalPhoneError } from '../utils/phoneValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
-import AuthExperienceShell from '../components/auth/AuthExperienceShell';
-import AuthField from '../components/auth/AuthField';
-import AuthPrimaryButton from '../components/auth/AuthPrimaryButton';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
-import AuthOrDivider from '../components/auth/AuthOrDivider';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import api from '../api/axios';
+import logoImg from '../assets/win-goldenstore2222222.png';
+import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import {
   getReferralCode,
   saveReferralCode,
   hasSeenReferralIntro,
   clearReferralSession,
-  registerPathWithRef,
   loginPathWithRef,
 } from '../utils/referralStorage';
 
 const RESEND_COOLDOWN_SEC = 60;
 
-function PhoneVerificationStep({
-  phone,
-  onVerified,
-  onBack,
+function RegisterLightField({
+  icon: Icon,
+  type = 'text',
+  className = '',
+  ...props
 }) {
+  const isPassword = type === 'password';
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="group relative">
+      {Icon && (
+        <Icon
+          size={18}
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-blue-500"
+        />
+      )}
+      <input
+        {...props}
+        type={isPassword && show ? 'text' : type}
+        className={`w-full rounded-2xl border border-gray-200/90 bg-white/90 py-4 text-sm font-bold text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/15 disabled:cursor-not-allowed disabled:opacity-50 ${
+          Icon ? 'pr-12 pl-4' : 'px-4'
+        } ${isPassword ? 'pl-12' : ''} ${className}`}
+      />
+      {isPassword && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setShow((v) => !v)}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+          aria-label={show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function PhoneVerificationStep({ phone, onVerified, onBack }) {
   const { toast } = useToast();
   const { updateUser } = useAuth();
   const [code, setCode] = useState('');
@@ -115,17 +148,17 @@ function PhoneVerificationStep({
   return (
     <div className="space-y-5">
       <div className="text-center space-y-2">
-        <h2 className="text-xl font-black text-white">تفعيل الحساب</h2>
-        <p className="text-sm font-bold leading-relaxed text-white/60">
+        <h2 className="text-xl font-black text-gray-900">تفعيل الحساب</h2>
+        <p className="text-sm font-bold leading-relaxed text-gray-600">
           لقد أرسلنا رمز التحقق إلى رقم هاتفك
           {phone ? (
             <>
               <br />
-              <span className="text-amber-200/90 font-mono" dir="ltr">{phone}</span>
+              <span className="text-blue-600 font-mono" dir="ltr">{phone}</span>
             </>
           ) : null}
         </p>
-        <p className="text-xs font-bold text-white/45">
+        <p className="text-xs font-bold text-gray-500">
           Please enter the code to activate your account.
         </p>
       </div>
@@ -133,7 +166,7 @@ function PhoneVerificationStep({
       {error && (
         <div
           role="alert"
-          className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200"
+          className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700"
         >
           {error}
         </div>
@@ -150,20 +183,25 @@ function PhoneVerificationStep({
           if (error) setError('');
         }}
         disabled={loading}
-        className="w-full rounded-2xl border border-white/12 bg-white/[0.08] py-4 text-center text-2xl font-black tracking-[0.35em] text-white outline-none transition placeholder:text-sm placeholder:tracking-normal placeholder:font-bold placeholder:text-white/30 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 disabled:opacity-50"
+        className="w-full rounded-2xl border border-gray-200 bg-white py-4 text-center text-2xl font-black tracking-[0.35em] text-gray-900 shadow-sm outline-none transition placeholder:text-sm placeholder:tracking-normal placeholder:font-bold placeholder:text-gray-400 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/15 disabled:opacity-50"
         dir="ltr"
       />
 
-      <AuthPrimaryButton type="button" onClick={confirmCode} loading={loading} disabled={loading || !code.trim()}>
-        {!loading && 'تأكيد وتفعيل الحساب'}
-      </AuthPrimaryButton>
+      <button
+        type="button"
+        onClick={confirmCode}
+        disabled={loading || !code.trim()}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-red-600 via-red-500 to-amber-500 py-4 text-sm font-black text-white shadow-[0_12px_32px_rgba(220,38,38,0.28)] transition hover:brightness-105 disabled:opacity-60"
+      >
+        {loading ? <Loader2 className="animate-spin" size={20} /> : 'تأكيد وتفعيل الحساب'}
+      </button>
 
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={onBack}
           disabled={loading}
-          className="text-xs font-bold text-white/50 hover:text-white/80 transition disabled:opacity-50"
+          className="text-xs font-bold text-gray-500 hover:text-gray-800 transition disabled:opacity-50"
         >
           تعديل البيانات
         </button>
@@ -171,7 +209,7 @@ function PhoneVerificationStep({
           type="button"
           onClick={resendCode}
           disabled={loading || resendSeconds > 0}
-          className="inline-flex items-center gap-1.5 text-xs font-black text-amber-300/90 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 text-xs font-black text-blue-600 disabled:opacity-40"
         >
           <RotateCw size={14} />
           {resendSeconds > 0 ? `إعادة الإرسال (${resendSeconds})` : 'إعادة إرسال الرمز'}
@@ -183,6 +221,7 @@ function PhoneVerificationStep({
 
 const Register = () => {
   const [step, setStep] = useState('form');
+  const [phoneOpen, setPhoneOpen] = useState(false);
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -267,119 +306,196 @@ const Register = () => {
   const busy = loading || socialLoading;
 
   return (
-    <AuthExperienceShell
-      footer={
-        step === 'form' ? (
-          <>
+    <div className="relative min-h-screen overflow-x-hidden bg-[#fff9f5] font-['Cairo'] text-gray-900" dir="rtl">
+      <AuthWelcomeBackground />
+
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-6 pb-8 sm:max-w-xl sm:px-6">
+        <div className="mb-5 flex items-center justify-start">
+          <Link
+            to="/intro"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-3 py-2 text-[11px] font-bold text-gray-700 shadow-sm backdrop-blur-md transition hover:bg-white"
+          >
+            <ArrowLeft size={14} />
+            العودة للترحيب
+          </Link>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6 flex justify-center"
+        >
+          <div className="relative flex items-center justify-center">
+            <div
+              className="absolute inset-0 scale-110 rounded-[2rem] bg-gradient-to-br from-red-200/40 via-blue-200/35 to-emerald-200/40 blur-2xl"
+              aria-hidden
+            />
+            <img
+              src={logoImg}
+              alt="WinGoldenStore"
+              className="relative z-[1] h-[7.5rem] w-[7.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[9rem] sm:w-[9rem]"
+              width={144}
+              height={144}
+              decoding="async"
+              style={{ imageRendering: '-webkit-optimize-contrast' }}
+            />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.08 }}
+          className="rounded-[28px] border border-white/80 bg-white/75 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-7"
+        >
+          {step === 'verify' ? (
+            <PhoneVerificationStep
+              phone={formData.phone}
+              onVerified={() => navigate('/')}
+              onBack={() => setStep('form')}
+            />
+          ) : (
+            <div className="space-y-4">
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700"
+                >
+                  {error}
+                </div>
+              )}
+
+              {refCode && (
+                <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-2.5 text-center text-[11px] font-black text-amber-800">
+                  مرحباً بك عبر دعوة صديق — ستبدأ بمزايا إضافية
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {showGoogle && (
+                  <div className="relative register-premium-google [&_button]:relative [&_button]:z-[1] [&_button]:min-h-[4.35rem] [&_button]:rounded-[1.35rem] [&_button]:border-2 [&_button]:border-white [&_button]:px-5 [&_button]:py-5 [&_button]:text-base [&_button]:font-black [&_button]:shadow-[0_14px_36px_rgba(66,133,244,0.22),0_6px_18px_rgba(15,23,42,0.08)] [&_button]:ring-2 [&_button]:ring-blue-100 [&_svg]:h-9 [&_svg]:w-9 [&_p]:hidden">
+                    <div className="pointer-events-none absolute -inset-0.5 rounded-[1.4rem] bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#34A853] opacity-25 blur-[2px]" aria-hidden />
+                    <GoogleSignInButton
+                      label="المتابعة باستخدام Google"
+                      onSuccess={handleSocialSuccess}
+                      onStart={startSocialLoading}
+                      onError={(msg) => {
+                        setError(msg);
+                        handleSocialError(msg);
+                      }}
+                      disabled={busy}
+                      loading={socialLoading}
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPhoneOpen((open) => !open)}
+                  disabled={busy}
+                  className={`group flex w-full items-center justify-center gap-3 rounded-[1.35rem] border-2 px-5 py-5 text-base font-black transition-all duration-300 disabled:opacity-60 ${
+                    phoneOpen
+                      ? 'border-blue-300 bg-blue-50 text-blue-800 shadow-inner'
+                      : 'border-gray-200 bg-white text-gray-800 shadow-[0_10px_28px_rgba(15,23,42,0.07)] hover:border-blue-200 hover:shadow-[0_14px_32px_rgba(59,130,246,0.12)]'
+                  }`}
+                >
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+                    phoneOpen ? 'bg-blue-500 text-white' : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md'
+                  }`}>
+                    <Phone size={22} strokeWidth={2.25} />
+                  </span>
+                  <span>المتابعة برقم الهاتف</span>
+                </button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {phoneOpen && (
+                  <motion.div
+                    key="phone-form"
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: 'auto', opacity: 1, marginTop: 4 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <form onSubmit={handleRegister} className="space-y-4 border-t border-gray-100 pt-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-black text-gray-600">رقم الهاتف</label>
+                        <PalestinianPhoneInput
+                          name="phone"
+                          variant="light"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          disabled={busy}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-black text-gray-600">كلمة المرور</label>
+                        <RegisterLightField
+                          icon={Lock}
+                          name="password"
+                          type="password"
+                          placeholder="كلمة المرور (6 أحرف على الأقل)"
+                          value={formData.password}
+                          onChange={handleChange}
+                          minLength={6}
+                          autoComplete="new-password"
+                          disabled={busy}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-black text-gray-600">تأكيد كلمة المرور</label>
+                        <RegisterLightField
+                          icon={Lock}
+                          name="confirmPassword"
+                          type="password"
+                          placeholder="أعد إدخال كلمة المرور"
+                          value={formData.confirmPassword}
+                          onChange={handleChange}
+                          minLength={6}
+                          autoComplete="new-password"
+                          disabled={busy}
+                          required
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={busy || formData.password.length < 6}
+                        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-red-600 via-red-500 to-amber-500 py-4 text-sm font-black text-white shadow-[0_12px_32px_rgba(220,38,38,0.28)] transition hover:brightness-105 disabled:opacity-60"
+                      >
+                        {loading ? (
+                          <Loader2 className="animate-spin" size={20} />
+                        ) : (
+                          <>
+                            إنشاء حساب
+                            <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+
+        {step === 'form' && (
+          <div className="mt-6 text-center text-sm font-bold text-gray-600">
             لديك حساب؟{' '}
-            <Link to={loginPathWithRef(refCode)} className="font-black text-amber-300 underline-offset-4 hover:underline">
+            <Link to={loginPathWithRef(refCode)} className="font-black text-blue-600 underline-offset-4 hover:underline">
               سجّل دخولك
             </Link>
-          </>
-        ) : null
-      }
-    >
-      {step === 'verify' ? (
-        <PhoneVerificationStep
-          phone={formData.phone}
-          onVerified={() => navigate('/')}
-          onBack={() => setStep('form')}
-        />
-      ) : (
-        <div className="space-y-5">
-          {error && (
-            <div
-              role="alert"
-              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200"
-            >
-              {error}
-            </div>
-          )}
-
-          {refCode && (
-            <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-2.5 text-center text-[11px] font-black text-amber-100">
-              مرحباً بك عبر دعوة صديق — ستبدأ بمزايا إضافية
-            </div>
-          )}
-
-          {showGoogle && (
-            <>
-              <GoogleSignInButton
-                label="المتابعة باستخدام Google"
-                onSuccess={handleSocialSuccess}
-                onStart={startSocialLoading}
-                onError={(msg) => {
-                  setError(msg);
-                  handleSocialError(msg);
-                }}
-                disabled={busy}
-                loading={socialLoading}
-              />
-              <AuthOrDivider />
-            </>
-          )}
-
-          <form onSubmit={handleRegister} className="space-y-4" noValidate>
-            <div className="space-y-1">
-              <label className="text-xs font-black text-white/70">رقم الهاتف</label>
-              <PalestinianPhoneInput
-                name="phone"
-                variant="auth"
-                value={formData.phone}
-                onChange={handleChange}
-                disabled={busy}
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-black text-white/70">كلمة المرور</label>
-              <AuthField
-                icon={Lock}
-                name="password"
-                type="password"
-                placeholder="كلمة المرور (6 أحرف على الأقل)"
-                value={formData.password}
-                onChange={handleChange}
-                minLength={6}
-                autoComplete="new-password"
-                disabled={busy}
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-black text-white/70">تأكيد كلمة المرور</label>
-              <AuthField
-                icon={Lock}
-                name="confirmPassword"
-                type="password"
-                placeholder="أعد إدخال كلمة المرور"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                minLength={6}
-                autoComplete="new-password"
-                disabled={busy}
-                required
-              />
-            </div>
-
-            <AuthPrimaryButton
-              type="submit"
-              loading={loading}
-              disabled={busy || formData.password.length < 6}
-            >
-              {!loading && (
-                <>
-                  إنشاء حساب
-                  <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
-                </>
-              )}
-            </AuthPrimaryButton>
-          </form>
-        </div>
-      )}
-    </AuthExperienceShell>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

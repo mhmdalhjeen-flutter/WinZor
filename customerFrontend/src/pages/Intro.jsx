@@ -13,9 +13,9 @@ import {
   loginPathWithRef,
   registerPathWithRef,
 } from '../utils/referralStorage';
-import AuthExperienceBackground from '../components/auth/AuthExperienceBackground';
-import AuthExperienceBranding from '../components/auth/AuthExperienceBranding';
+import logoImg from '../assets/win-goldenstore2222222.png';
 import HorizontalSwipe from '../components/ui/HorizontalSwipe';
+import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 
 const INTRO_VIDEO =
   import.meta.env.VITE_INTRO_VIDEO_URL ||
@@ -29,6 +29,31 @@ const fadeUp = {
     transition: { duration: 0.5, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] },
   }),
 };
+
+const IntroHeroLogo = () => (
+  <motion.div
+    variants={fadeUp}
+    initial="hidden"
+    animate="show"
+    className="mb-6 flex justify-center"
+  >
+    <div className="relative flex items-center justify-center">
+      <div
+        className="absolute inset-0 scale-110 rounded-[2rem] bg-gradient-to-br from-red-200/40 via-blue-200/35 to-emerald-200/40 blur-2xl"
+        aria-hidden
+      />
+      <img
+        src={logoImg}
+        alt="WinGoldenStore"
+        className="relative z-[1] h-[8.5rem] w-[8.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[10.5rem] sm:w-[10.5rem] md:h-[12rem] md:w-[12rem]"
+        width={192}
+        height={192}
+        decoding="async"
+        style={{ imageRendering: '-webkit-optimize-contrast' }}
+      />
+    </div>
+  </motion.div>
+);
 
 const Section = ({ children, className = '' }) => {
   const ref = React.useRef(null);
@@ -100,9 +125,9 @@ const StoreTypesHighlight = () => (
     initial="hidden"
     animate="show"
     custom={2}
-    className="mb-8 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm sm:p-5"
+    className="mb-8 rounded-[24px] border border-gray-200/80 bg-white/75 p-4 shadow-sm backdrop-blur-sm sm:p-5"
   >
-    <ul className="space-y-2.5 text-sm font-bold text-white/75">
+    <ul className="space-y-2.5 text-sm font-bold text-gray-700">
       <li className="flex items-start gap-2">
         <span className="text-emerald-400 shrink-0" aria-hidden>✅</span>
         <span>الحصول على نقاط من المتاجر المعتمدة داخل التطبيق</span>
@@ -112,9 +137,9 @@ const StoreTypesHighlight = () => (
         <span>أكثر من 30 نوع متجر</span>
       </li>
     </ul>
-    <p className="mt-3 text-xs font-bold leading-relaxed text-white/50">
+    <p className="mt-3 text-xs font-bold leading-relaxed text-gray-500">
       مجوهرات · ملابس · أحذية · أجهزة كهربائية · ماركتات · مطاعم
-      <span className="text-amber-300/80"> …والمزيد</span>
+      <span className="text-amber-600/90"> …والمزيد</span>
     </p>
   </motion.div>
 );
@@ -134,11 +159,11 @@ const HeroStats = () => (
     ].map((s) => (
       <div
         key={s.label}
-        className="rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-3 text-center backdrop-blur-sm sm:px-3"
+        className="rounded-2xl border border-gray-200/80 bg-white/80 px-2 py-3 text-center shadow-sm backdrop-blur-sm sm:px-3"
       >
-        <s.icon size={16} className="mx-auto mb-1 text-amber-300" />
-        <p className="text-sm font-black text-white sm:text-base">{s.val}</p>
-        <p className="text-[9px] font-bold text-white/45 sm:text-[10px]">{s.label}</p>
+        <s.icon size={16} className="mx-auto mb-1 text-amber-500" />
+        <p className="text-sm font-black text-gray-900 sm:text-base">{s.val}</p>
+        <p className="text-[9px] font-bold text-gray-500 sm:text-[10px]">{s.label}</p>
       </div>
     ))}
   </motion.div>
@@ -194,39 +219,39 @@ const Intro = () => {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#07070f] pb-36 font-['Cairo'] text-white" dir="rtl">
-      <AuthExperienceBackground />
+    <div className="relative min-h-screen overflow-x-hidden bg-[#fff9f5] pb-36 font-['Cairo'] text-gray-900" dir="rtl">
+      <AuthWelcomeBackground />
 
       <div className="relative z-20 flex items-center justify-between px-4 pt-5 sm:px-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-md">
-          <Sparkles size={14} className="text-amber-300" />
-          <span className="text-[11px] font-black">Win GoldenStore</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 shadow-sm backdrop-blur-md">
+          <Sparkles size={14} className="text-amber-500" />
+          <span className="text-[11px] font-black text-gray-800">Win GoldenStore</span>
         </div>
         <button
           type="button"
           onClick={goToLogin}
-          className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-black text-white/80 backdrop-blur-md transition hover:bg-white/10"
+          className="rounded-full border border-gray-200/80 bg-white/80 px-4 py-2 text-xs font-black text-gray-700 shadow-sm backdrop-blur-md transition hover:bg-white"
         >
           لدي حساب
         </button>
       </div>
 
       <div className="relative z-10 mx-auto max-w-2xl px-4 pt-2 sm:px-6">
-        <AuthExperienceBranding size="large" className="mb-5" />
+        <IntroHeroLogo />
 
         <IntroVideo />
 
         <motion.div variants={fadeUp} initial="hidden" animate="show" custom={1} className="mb-6 text-center">
           {refCode && (
-            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-4 py-1.5 text-[10px] font-black text-amber-200 border border-amber-400/30">
+            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-4 py-1.5 text-[10px] font-black text-amber-800 border border-amber-200/80">
               <Gift size={12} />
               دعوة من صديق — اكتشف المنصة ثم أنشئ حسابك
             </span>
           )}
-          <h1 className="text-2xl font-black leading-snug sm:text-3xl md:text-[2rem]">
+          <h1 className="text-[1.65rem] font-black leading-tight tracking-tight text-gray-900 sm:text-3xl md:text-[2.15rem]">
             كل ما تحتاجه موجود هنا
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-base font-black leading-relaxed sm:text-lg bg-gradient-to-l from-amber-200 via-white to-red-300 bg-clip-text text-transparent">
+          <p className="mx-auto mt-3 max-w-md text-lg font-black leading-relaxed sm:text-xl bg-gradient-to-l from-red-600 via-violet-700 to-blue-600 bg-clip-text text-transparent">
             حوّل كل عملية شراء إلى فرصة ربح
           </p>
         </motion.div>
@@ -238,10 +263,10 @@ const Intro = () => {
         <Section className="mb-12">
           <motion.div variants={fadeUp} custom={0} className="mb-3 flex items-end justify-between gap-2">
             <div>
-              <h2 className="text-xl font-black sm:text-2xl">مناسبة لك — مهما كان هدفك</h2>
-              <p className="text-xs font-bold text-white/45 sm:text-sm">اختر مسارك… المنصة تخدم الجميع.</p>
+              <h2 className="text-xl font-black text-gray-900 sm:text-2xl">مناسبة لك — مهما كان هدفك</h2>
+              <p className="text-xs font-bold text-gray-500 sm:text-sm">اختر مسارك… المنصة تخدم الجميع.</p>
             </div>
-            <span className="hidden shrink-0 items-center gap-1 text-[10px] font-bold text-white/35 sm:inline-flex">
+            <span className="hidden shrink-0 items-center gap-1 text-[10px] font-bold text-gray-400 sm:inline-flex">
               مرّر <ChevronRight size={12} className="animate-pulse" />
             </span>
           </motion.div>
@@ -252,25 +277,25 @@ const Intro = () => {
                 variants={fadeUp}
                 custom={i + 1}
                 whileHover={{ y: -4 }}
-                className="w-[72vw] max-w-[260px] shrink-0 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition-shadow hover:border-white/20 hover:shadow-lg hover:shadow-red-500/10"
+                className="w-[72vw] max-w-[260px] shrink-0 rounded-[24px] border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:border-gray-300 hover:shadow-lg hover:shadow-red-500/10"
               >
-                <div className={`mb-3 inline-flex rounded-2xl bg-gradient-to-br ${p.color} p-3 shadow-lg`}>
+                <div className={`mb-3 inline-flex rounded-2xl bg-gradient-to-br ${p.color} p-3 text-white shadow-lg`}>
                   <p.icon size={22} />
                 </div>
-                <h3 className="font-black text-base">{p.title}</h3>
-                <p className="mt-2 text-xs font-bold leading-relaxed text-white/50">{p.desc}</p>
+                <h3 className="font-black text-base text-gray-900">{p.title}</h3>
+                <p className="mt-2 text-xs font-bold leading-relaxed text-gray-600">{p.desc}</p>
               </motion.div>
             ))}
           </HorizontalSwipe>
-          <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-white/30 sm:hidden">
+          <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-gray-400 sm:hidden">
             <ChevronRight size={12} className="animate-pulse" /> اسحب لرؤية المزيد
           </p>
         </Section>
 
         <Section className="mb-12 space-y-3">
           <motion.div variants={fadeUp} custom={0} className="mb-2">
-            <h2 className="text-xl font-black sm:text-2xl">ماذا ستجد هنا؟</h2>
-            <p className="text-xs font-bold text-white/45 sm:text-sm">كل ما تحتاجه — بأسلوب سريع ومحفّز.</p>
+            <h2 className="text-xl font-black text-gray-900 sm:text-2xl">ماذا ستجد هنا؟</h2>
+            <p className="text-xs font-bold text-gray-500 sm:text-sm">كل ما تحتاجه — بأسلوب سريع ومحفّز.</p>
           </motion.div>
           {pillars.map((item, i) => (
             <motion.div
@@ -278,7 +303,7 @@ const Intro = () => {
               variants={fadeUp}
               custom={i + 1}
               whileHover={{ scale: 1.01 }}
-              className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
+              className="relative overflow-hidden rounded-[24px] border border-gray-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-sm"
             >
               <div className={`absolute right-0 top-0 h-full w-1 ${item.bar}`} />
               <div className="flex items-start gap-4 pr-2">
@@ -286,9 +311,9 @@ const Intro = () => {
                   <item.icon size={22} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-black tracking-wider text-white/35">{item.title}</span>
-                  <h3 className="mt-1 font-black text-lg">{item.headline}</h3>
-                  <p className="mt-2 text-xs font-bold leading-relaxed text-white/50 sm:text-sm">{item.desc}</p>
+                  <span className="text-[10px] font-black tracking-wider text-gray-400">{item.title}</span>
+                  <h3 className="mt-1 font-black text-lg text-gray-900">{item.headline}</h3>
+                  <p className="mt-2 text-xs font-bold leading-relaxed text-gray-600 sm:text-sm">{item.desc}</p>
                 </div>
               </div>
             </motion.div>
@@ -299,15 +324,15 @@ const Intro = () => {
           <motion.div
             variants={fadeUp}
             custom={0}
-            className="overflow-hidden rounded-[28px] border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-red-600/10 to-violet-600/10 p-6"
+            className="overflow-hidden rounded-[28px] border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-red-50/70 to-violet-50/80 p-6 shadow-sm"
           >
             <div className="mb-5 flex items-center gap-3">
-              <div className="rounded-2xl bg-amber-400/20 p-3 text-amber-300">
+              <div className="rounded-2xl bg-amber-100 p-3 text-amber-600">
                 <Gift size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-black">جوائز تستحق المشاركة</h2>
-                <p className="text-xs font-bold text-white/50">مسابقات · عجلة حظ · مسار إنجازات</p>
+                <h2 className="text-xl font-black text-gray-900">جوائز تستحق المشاركة</h2>
+                <p className="text-xs font-bold text-gray-600">مسابقات · عجلة حظ · مسار إنجازات</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
@@ -315,14 +340,14 @@ const Intro = () => {
                 <motion.div
                   key={p.label}
                   whileHover={{ scale: 1.05 }}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-2 py-4 text-center"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-white/80 bg-white/70 px-2 py-4 text-center shadow-sm"
                 >
                   <span className="text-2xl">{p.icon}</span>
-                  <span className="text-[10px] font-black text-white/70">{p.label}</span>
+                  <span className="text-[10px] font-black text-gray-700">{p.label}</span>
                 </motion.div>
               ))}
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-[10px] font-black text-amber-200/80">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-[10px] font-black text-amber-700/90">
               <span className="inline-flex items-center gap-1"><Star size={12} fill="currentColor" /> نقاط تتراكم</span>
               <span className="inline-flex items-center gap-1"><CircleDot size={12} /> عجلة يومية</span>
               <span className="inline-flex items-center gap-1"><Sparkles size={12} /> مسار إنجازات</span>
@@ -331,13 +356,13 @@ const Intro = () => {
         </Section>
 
         <Section className="mb-8 text-center">
-          <motion.p variants={fadeUp} custom={0} className="text-xs font-bold text-white/40">
+          <motion.p variants={fadeUp} custom={0} className="text-xs font-bold text-gray-500">
             انضم الآن — مجاني · بدون التزام · جوائز داخل البلد
           </motion.p>
         </Section>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#07070f]/90 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200/80 bg-white/90 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg flex-col gap-2 sm:max-w-xl">
           <motion.button
             type="button"
@@ -353,7 +378,7 @@ const Intro = () => {
           <button
             type="button"
             onClick={goToLogin}
-            className="w-full py-2 text-center text-xs font-bold text-white/50 transition hover:text-white/80"
+            className="w-full py-2 text-center text-xs font-bold text-gray-500 transition hover:text-gray-800"
           >
             لدي حساب بالفعل — تسجيل الدخول
           </button>

@@ -5,6 +5,46 @@ import { getAuthErrorMessage } from '../../utils/authValidation';
 
 const GOOGLE_SDK_TIMEOUT_MS = 8000;
 const HIDDEN_BTN_ID = 'google-hidden-signin';
+const HIDDEN_BTN_READY_MS = 3000;
+
+const waitForHiddenGoogleButton = (root, timeoutMs = HIDDEN_BTN_READY_MS) =>
+  new Promise((resolve) => {
+    const find = () => root?.querySelector('div[role="button"]') || null;
+
+    const existing = find();
+    if (existing) {
+      resolve(existing);
+      return undefined;
+    }
+
+    let settled = false;
+    const finish = (btn) => {
+      if (settled) return;
+      settled = true;
+      observer.disconnect();
+      clearInterval(poll);
+      clearTimeout(timer);
+      resolve(btn);
+    };
+
+    const observer = new MutationObserver(() => {
+      const btn = find();
+      if (btn) finish(btn);
+    });
+
+    if (root) {
+      observer.observe(root, { childList: true, subtree: true });
+    }
+
+    const poll = setInterval(() => {
+      const btn = find();
+      if (btn) finish(btn);
+    }, 50);
+
+    const timer = setTimeout(() => finish(find()), timeoutMs);
+
+    return () => finish(null);
+  });
 
 const GoogleLogo = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -89,6 +129,7 @@ const GoogleSignInButton = ({
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const hiddenHostRef = useRef(null);
+  const hiddenBtnRef = useRef(null);
 
   const handleGoogleCredential = useCallback(async (response) => {
     try {
@@ -112,7 +153,7 @@ const GoogleSignInButton = ({
     const clientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 
     loadGoogleSdk()
-      .then(() => {
+      .then(async () => {
         if (cancelled || !window.google?.accounts?.id || !clientId) return;
 
         window.google.accounts.id.initialize({
@@ -123,6 +164,7 @@ const GoogleSignInButton = ({
         });
 
         const host = hiddenHostRef.current;
+        hiddenBtnRef.current = null;
         if (host) {
           host.innerHTML = '';
           const mount = document.createElement('div');
@@ -135,9 +177,12 @@ const GoogleSignInButton = ({
             text: 'signin_with',
             width: 320,
           });
-        }
 
-        if (!cancelled) setReady(true);
+          const hiddenBtn = await waitForHiddenGoogleButton(mount);
+          if (cancelled) return;
+          hiddenBtnRef.current = hiddenBtn;
+          if (hiddenBtn) setReady(true);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -148,6 +193,8 @@ const GoogleSignInButton = ({
 
     return () => {
       cancelled = true;
+      hiddenBtnRef.current = null;
+      setReady(false);
     };
   }, [disabled, handleGoogleCredential]);
 
@@ -155,9 +202,8 @@ const GoogleSignInButton = ({
     if (disabled || loading || !ready) return;
     onStartRef.current?.();
 
-    const hiddenBtn = document
-      .getElementById(HIDDEN_BTN_ID)
-      ?.querySelector('div[role="button"]');
+    const hiddenBtn = hiddenBtnRef.current
+      || document.getElementById(HIDDEN_BTN_ID)?.querySelector('div[role="button"]');
 
     if (hiddenBtn) {
       hiddenBtn.click();
@@ -193,7 +239,7 @@ const GoogleSignInButton = ({
 
       <div
         ref={hiddenHostRef}
-        className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+        className="pointer-events-none absolute -left-[9999px] top-0 h-12 w-[320px] overflow-hidden opacity-0"
         aria-hidden="true"
       />
     </div>

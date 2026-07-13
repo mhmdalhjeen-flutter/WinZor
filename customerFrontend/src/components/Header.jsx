@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Bell, MessageCircle, ShoppingCart, LayoutGrid, CircleDot, Medal,
+  Bell, MessageCircle, ShoppingCart, CircleDot, Medal,
   BarChart3, Settings, LogOut, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,21 +13,55 @@ import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
+import logoImg from '../assets/logo/win-goldenstore-logo.png';
 
-const HeaderIconBtn = ({ icon: Icon, label, onClick, badge }) => (
+const HEADER_ICON_THEMES = {
+  bell: {
+    wrap: 'bg-gradient-to-br from-rose-50 to-red-100/80',
+    icon: 'text-red-600',
+  },
+  cart: {
+    wrap: 'bg-gradient-to-br from-amber-50 to-orange-100/80',
+    icon: 'text-amber-600',
+  },
+  message: {
+    wrap: 'bg-gradient-to-br from-sky-50 to-blue-100/80',
+    icon: 'text-blue-600',
+  },
+};
+
+const HeaderIconBtn = ({ icon: Icon, label, onClick, badge, theme }) => {
+  const t = HEADER_ICON_THEMES[theme];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl active:scale-95 transition-transform shrink-0"
+      aria-label={label}
+    >
+      <span className={`absolute inset-1 rounded-lg ${t.wrap} border border-white/60 shadow-sm`} aria-hidden />
+      <Icon size={22} className={`relative z-[1] ${t.icon} sm:hidden`} strokeWidth={2.2} fill="currentColor" fillOpacity={0.2} />
+      <Icon size={26} className={`relative z-[1] ${t.icon} hidden sm:block`} strokeWidth={2.2} fill="currentColor" fillOpacity={0.2} />
+      {badge > 0 && (
+        <span className="absolute top-0 left-0 z-[2] min-w-[17px] h-[17px] px-1 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none ring-2 ring-white">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
+  );
+};
+
+const MoreMenuBtn = ({ onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="relative flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl active:scale-95 transition-transform shrink-0"
-    aria-label={label}
+    className="relative flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl active:scale-95 transition-transform shrink-0 bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200/70 shadow-sm"
+    aria-label="المزيد"
   >
-    <Icon size={20} className="text-gray-800 sm:hidden" strokeWidth={2.1} />
-    <Icon size={24} className="text-gray-800 hidden sm:block" strokeWidth={2.1} />
-    {badge > 0 && (
-      <span className="absolute top-0.5 left-0.5 min-w-[16px] h-[16px] px-1 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
-        {badge > 9 ? '9+' : badge}
-      </span>
-    )}
+    <span className="text-[11px] sm:text-xs font-black text-gray-800 tracking-tight">المزيد</span>
+    <span className="flex items-center justify-center w-[18px] h-[18px] sm:w-5 sm:h-5 rounded-[5px] sm:rounded-md bg-gradient-to-br from-gray-800 to-gray-950 text-white shadow-sm">
+      <span className="text-[13px] sm:text-sm font-bold leading-none">+</span>
+    </span>
   </button>
 );
 
@@ -225,7 +259,7 @@ const Header = () => {
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
+        <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
           {isAuth ? (
             <PointsBadge
               points={points}
@@ -239,9 +273,11 @@ const Header = () => {
               onClick={() => navigate('/')}
               aria-label="الرئيسية"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-red-700 rounded-lg flex items-center justify-center shadow-md shrink-0">
-                <span className="text-white text-[11px] font-black tracking-tight">WZ</span>
-              </div>
+              <img
+                src={logoImg}
+                alt=""
+                className="w-9 h-9 rounded-lg object-contain shadow-md shrink-0"
+              />
               <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Win GoldenStore</span>
             </button>
           )}
@@ -251,25 +287,24 @@ const Header = () => {
               <HeaderIconBtn
                 icon={Bell}
                 label="إشعارات"
+                theme="bell"
                 badge={notifCount}
                 onClick={() => navigate('/notifications')}
               />
               <HeaderIconBtn
                 icon={ShoppingCart}
                 label="طلباتي"
+                theme="cart"
                 onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
               />
               <HeaderIconBtn
                 icon={MessageCircle}
                 label="رسائل"
+                theme="message"
                 badge={unreadCount}
                 onClick={() => navigate('/chat')}
               />
-              <HeaderIconBtn
-                icon={LayoutGrid}
-                label="المزيد"
-                onClick={() => setMoreOpen(true)}
-              />
+              <MoreMenuBtn onClick={() => setMoreOpen(true)} />
             </div>
           )}
 

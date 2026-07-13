@@ -30,6 +30,9 @@ const PRODUCT_LIST_SELECT =
 const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
+/** Matches OfferViewDedup TTL (30 min) — dedupe window for anonymous view counts */
+const VIEW_DEDUP_MS = 30 * 60 * 1000;
+
 function stripHeavyFields(offer) {
   if (!offer || typeof offer !== "object") return offer;
   const o = resolveListImageField(offer, "offers");

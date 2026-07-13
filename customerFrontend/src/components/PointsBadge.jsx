@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import logoImg from '../assets/logo/win-goldenstore-logo.png';
 
 function useAnimatedCounter(target, duration = 650) {
   const [display, setDisplay] = useState(target);
@@ -56,7 +57,7 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       }
       transition={{ duration: 0.5 }}
       whileTap={{ scale: 0.96 }}
-      className="relative flex items-center gap-1.5 sm:gap-2 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/40 shadow-sm home-rewards-badge"
+      className="relative flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/50 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem]"
     >
       <span
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400"
@@ -67,12 +68,12 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
         aria-hidden
       />
 
-      <span className="relative flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 shrink-0">
-        <span className="text-white text-[8px] sm:text-[9px] font-black tracking-tight">WZ</span>
+      <span className="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 overflow-hidden">
+        <img src={logoImg} alt="" className="w-full h-full object-contain p-0.5" />
       </span>
 
       <div className="relative flex flex-col items-start leading-none min-w-0">
-        <span className="text-[9px] sm:text-[10px] font-bold text-white/95 tracking-tight">
+        <span className="text-[9px] sm:text-[10px] font-bold text-white tracking-tight">
           نقاطك
         </span>
         <AnimatePresence mode="popLayout">
@@ -82,8 +83,10 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: isUp ? -4 : 4, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className={`text-[13px] sm:text-[15px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
-              isDown ? 'text-red-100' : 'text-white'
+            className={`text-[14px] sm:text-[16px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
+              isDown
+                ? 'text-red-100'
+                : 'text-white [text-shadow:0_0_12px_rgba(255,255,255,0.65),0_1px_0_rgba(255,255,255,0.9),0_0_24px_rgba(251,191,36,0.35)]'
             }`}
           >
             {displayPoints.toLocaleString('en-US')}

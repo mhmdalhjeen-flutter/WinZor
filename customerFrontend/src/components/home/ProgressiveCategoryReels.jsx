@@ -194,6 +194,7 @@ export default function ProgressiveCategoryReels({
 
           return (
             <React.Fragment key={reel.categoryId || reel.categoryName}>
+              {idx > 0 && <div className="category-reel-divider" aria-hidden />}
               {showParentHeader && (
                 <div className="category-reel-parent">
                   <h2 className="category-reel-parent__title">{reel.parentCategoryName}</h2>

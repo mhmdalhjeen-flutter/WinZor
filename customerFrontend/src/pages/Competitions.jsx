@@ -254,4 +254,6 @@ const Competitions = () => {
   );
 };
 
+export { CompetitionModal, timeLeft };
+
 export default Competitions;

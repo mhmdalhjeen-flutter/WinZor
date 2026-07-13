@@ -25,6 +25,7 @@ export default {
       },
       fontFamily: {
         cairo: ["Cairo", "sans-serif"],
+        body: ["Tajawal", "sans-serif"],
       },
       boxShadow: {
         'glass': '0 8px 32px 0 rgba(185, 28, 28, 0.1)',

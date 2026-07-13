@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera, Star, Trophy, Users, Store, Ticket, Gift, LogOut, Copy, Check,
-  MessageCircle, Lightbulb, Shield, Sliders, Pencil, Phone, Mail, X,
-  ChevronLeft, Sparkles, Medal, Image as ImageIcon, Lock
+  Lightbulb, Pencil, Phone, Mail, X, Headphones, ScrollText, Tags,
+  Medal, Image as ImageIcon, Lock, ChevronLeft, CircleDot,
+  Coins, Clock, CheckCircle2, Loader2,
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -16,13 +17,49 @@ import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import PhoneDisplay from '../components/PhoneDisplay';
 import { flattenCategoryTree } from '../utils/categoryTree';
 import AchievementRoad from '../components/AchievementRoad';
+import ReferralCardsModal from '../components/ReferralCardsModal';
 import { getProgress } from '../shared/levels';
 import usePlatformSettings from '../hooks/usePlatformSettings';
+import { useCompetitionsList } from '../hooks/useCompetitionsList';
+import { useRecentPointSources } from '../hooks/useRecentPointSources';
+import { CompetitionModal, timeLeft } from './Competitions';
 import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import { fileToOptimizedDataUrl } from '../utils/imageUpload';
 
 const toBase64 = (file) => fileToOptimizedDataUrl(file, { maxWidth: 400 });
+
+function useAnimatedCounter(target, duration = 700) {
+  const [display, setDisplay] = useState(target);
+  const fromRef = useRef(target);
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    if (target === fromRef.current) return undefined;
+
+    const from = fromRef.current;
+    const to = target;
+    const start = performance.now();
+
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (t < 1) {
+        frameRef.current = requestAnimationFrame(step);
+      } else {
+        fromRef.current = to;
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, duration]);
+
+  return display;
+}
 
 const UserCenter = () => {
   const navigate = useNavigate();
@@ -56,11 +93,26 @@ const UserCenter = () => {
   const [showSuggest, setShowSuggest] = useState(false);
   const [suggestion, setSuggestion] = useState('');
   const [toast, setToast] = useState('');
+  const [referralOpen, setReferralOpen] = useState(false);
+  const [selectedCompetition, setSelectedCompetition] = useState(null);
 
   const { data: platformSettings } = usePlatformSettings();
   const showWheelBtn = platformSettings?.features?.wheel !== false
     && platformSettings?.wheel?.placements?.userCenter !== false;
   const showCompetitionsBtn = platformSettings?.features?.storeCompetitions !== false;
+  const showReferralEarn = platformSettings?.features?.referralProgram !== false;
+
+  const {
+    data: competitionsList = [],
+    isLoading: competitionsLoading,
+    isError: competitionsError,
+    refetch: refetchCompetitions,
+  } = useCompetitionsList({ enabled: showCompetitionsBtn });
+
+  const {
+    data: recentPointSources = [],
+    isLoading: pointSourcesLoading,
+  } = useRecentPointSources(3);
 
   const {
     data: center,
@@ -94,6 +146,7 @@ const UserCenter = () => {
 
   const refreshCenter = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.userCenter });
+    queryClient.invalidateQueries({ queryKey: ['pointSources'] });
   }, [queryClient]);
 
   const { data: regions = [] } = useQuery({
@@ -111,6 +164,7 @@ const UserCenter = () => {
   };
 
   const points = center?.stats?.points ?? user?.points ?? 0;
+  const displayPoints = useAnimatedCounter(points);
   const progress = center?.level || getProgress(points) || { stage: { label: '—', color: '#94a3b8', stars: 1 }, progress: 0, next: null, pointsToNext: 0 };
   const stats = center?.stats || {};
   const legal = center?.legal || {};
@@ -234,10 +288,15 @@ const UserCenter = () => {
     });
   };
 
+  const activeCompetitions = competitionsList.filter((comp) => {
+    const ended = comp.hasEnded || (comp.endDate && new Date(comp.endDate) <= Date.now());
+    return !ended;
+  });
+
   if (isLoading && !center) {
     return (
       <div className="pb-28 text-right" dir="rtl">
-        <LightLoadingHint label="جاري تحميل مركزك..." />
+        <LightLoadingHint label="جاري تحميل نقاطك..." />
       </div>
     );
   }
@@ -255,100 +314,352 @@ const UserCenter = () => {
 
   return (
     <div className="space-y-5 pb-28 text-right" dir="rtl">
-      {/* Hero */}
+      {/* Profile & points hero */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#1e1b4b] via-primary to-orange-500 p-5 text-white shadow-2xl"
+        className="user-points-hero relative overflow-hidden rounded-[2rem] border border-white/20 p-5 text-white shadow-[0_20px_50px_-12px_rgba(88,28,135,0.45),0_8px_24px_-8px_rgba(220,38,38,0.35)]"
       >
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white,transparent_40%)]" />
-        <div className="relative flex items-start gap-4">
-          <button type="button" onClick={() => setShowAvatar(true)} className="relative shrink-0">
-            <div className="w-20 h-20 rounded-[24px] p-0.5 bg-white/30 backdrop-blur">
-              <img
-                src={center?.user?.avatar || user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
-                alt=""
-                className="w-full h-full rounded-[22px] object-cover bg-white"
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1e0a3c] via-[#6d28d9] via-40% to-[#c41f1f]" aria-hidden />
+        <div className="absolute -top-10 -right-8 h-36 w-36 rounded-full bg-amber-400/25 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-12 -left-6 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" aria-hidden />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.22),transparent_42%)]" aria-hidden />
+
+        <div className="relative">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-black backdrop-blur-sm">
+              <Trophy size={13} className="text-amber-300" />
+              نقاطي
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/85">
+              <Mail size={10} />
+              {center?.user?.email || '—'}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-4">
+            <button type="button" onClick={() => setShowAvatar(true)} className="relative shrink-0">
+              <div className="h-20 w-20 rounded-[1.35rem] bg-gradient-to-br from-amber-300 via-white to-violet-200 p-[3px] shadow-lg shadow-black/20">
+                <img
+                  src={center?.user?.avatar || user?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'}
+                  alt=""
+                  className="h-full w-full rounded-[1.2rem] bg-white object-cover"
+                />
+              </div>
+              <span className="absolute -bottom-1 -right-1 rounded-xl bg-white p-1.5 text-primary shadow-md">
+                <Camera size={14} />
+              </span>
+            </button>
+
+            <div className="min-w-0 flex-1">
+              {editName ? (
+                <div className="mt-1 flex gap-2">
+                  <input
+                    value={nameVal}
+                    onChange={(e) => setNameVal(e.target.value)}
+                    className="flex-1 rounded-xl px-3 py-1.5 text-sm font-bold text-gray-900"
+                  />
+                  <button type="button" onClick={saveName} className="rounded-xl bg-white/20 px-3 text-xs font-black">حفظ</button>
+                  <button type="button" onClick={() => setEditName(false)} className="p-1"><X size={16} /></button>
+                </div>
+              ) : (
+                <div className="mt-0.5 flex items-center gap-2">
+                  <h1 className="truncate text-xl font-black">{center?.user?.name || user?.name}</h1>
+                  <button type="button" onClick={() => setEditName(true)} className="opacity-85 hover:opacity-100">
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[11px] font-black"
+                  style={{ color: progress.stage?.color }}
+                >
+                  <Medal size={12} className="text-amber-300" />
+                  {progress.stage?.label}
+                  <span className="text-white/85">
+                    {'★'.repeat(progress.stage?.stars || 1)}
+                  </span>
+                </span>
+                {center?.user?.phone && (
+                  <button
+                    type="button"
+                    onClick={() => setPhoneStep('request')}
+                    className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-bold hover:bg-white/20"
+                  >
+                    <Phone size={10} />
+                    <PhoneDisplay phone={center.user.phone} className="text-[10px]" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="user-points-hero__focus relative mt-5 rounded-[1.35rem] border border-white/20 bg-black/20 px-4 py-5 text-center backdrop-blur-md">
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" aria-hidden />
+            <p className="text-sm font-bold text-amber-100/95">عدد النقاط</p>
+            <motion.p
+              key={displayPoints}
+              initial={{ scale: 0.96, opacity: 0.7 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.35 }}
+              className="user-points-hero__value mt-1 font-cairo text-5xl font-black tabular-nums tracking-tight sm:text-[3.25rem]"
+            >
+              {displayPoints.toLocaleString('en-US')}
+            </motion.p>
+            <p className="mt-1 text-[11px] font-bold text-white/70">نقطة مكافأة جاهزة للاستخدام</p>
+          </div>
+
+          {!center?.user?.phone && phoneStep === 'idle' && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setPhoneStep('request')}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-amber-300 via-amber-200 to-yellow-100 px-4 py-3.5 text-sm font-black text-amber-950 shadow-[0_10px_28px_-8px_rgba(251,191,36,0.65)] ring-2 ring-white/50 transition-transform active:scale-[0.98]"
+            >
+              <Phone size={18} strokeWidth={2.4} />
+              إضافة رقم الهاتف
+            </motion.button>
+          )}
+
+          <div className="relative mt-5 rounded-2xl border border-white/15 bg-black/15 p-4 backdrop-blur-sm">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold text-white/80">تقدّم المستوى</p>
+              {progress.next && (
+                <p className="text-[10px] font-bold text-white/65">
+                  {progress.pointsToNext} نقطة → {progress.next.label}
+                </p>
+              )}
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-white/15">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, Math.max(0, progress.progress ?? 0))}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className="h-full rounded-full bg-gradient-to-l from-amber-300 via-yellow-300 to-orange-400 shadow-[0_0_12px_rgba(251,191,36,0.45)]"
               />
             </div>
-            <span className="absolute -bottom-1 -right-1 bg-white text-primary p-1.5 rounded-xl shadow">
-              <Camera size={14} />
-            </span>
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold opacity-80 flex items-center gap-1">
-              <Sparkles size={12} /> مركز المستخدم
-            </p>
-            {editName ? (
-              <div className="flex gap-2 mt-1">
-                <input
-                  value={nameVal}
-                  onChange={(e) => setNameVal(e.target.value)}
-                  className="flex-1 rounded-xl px-3 py-1.5 text-gray-900 text-sm font-bold"
-                />
-                <button type="button" onClick={saveName} className="bg-white/20 px-3 rounded-xl text-xs font-black">حفظ</button>
-                <button type="button" onClick={() => setEditName(false)} className="p-1"><X size={16} /></button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 mt-0.5">
-                <h1 className="text-xl font-black truncate">{center?.user?.name || user?.name}</h1>
-                <button type="button" onClick={() => setEditName(true)} className="opacity-80 hover:opacity-100">
-                  <Pencil size={14} />
-                </button>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2 mt-2 text-[10px]">
-              <span className="flex items-center gap-1 bg-white/15 px-2 py-1 rounded-full">
-                <Mail size={10} /> {center?.user?.email || '—'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPhoneStep('request')}
-                className="flex items-center gap-1 bg-white/15 px-2 py-1 rounded-full hover:bg-white/25"
-              >
-                <Phone size={10} />{' '}
-                {center?.user?.phone ? (
-                  <PhoneDisplay phone={center.user.phone} className="text-[10px]" />
-                ) : (
-                  'أضف هاتف'
-                )}
-              </button>
-            </div>
           </div>
-        </div>
-
-        {/* Level progress */}
-        <div className="relative mt-5 bg-black/20 rounded-2xl p-4 backdrop-blur-sm">
-          <div className="flex justify-between items-center mb-2">
-            <div>
-              <p className="text-[10px] opacity-80">المستوى</p>
-              <p className="font-black text-lg" style={{ color: progress.stage?.color }}>
-                {progress.stage?.label}
-                <span className="text-white/80 text-xs mr-2">
-                  {'★'.repeat(progress.stage?.stars || 1)}
-                </span>
-              </p>
-            </div>
-            <div className="text-left">
-              <p className="text-2xl font-black">{points}</p>
-              <p className="text-[9px] opacity-70">نقطة</p>
-            </div>
-          </div>
-          <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(100, Math.max(0, progress.progress ?? 0))}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              className="h-full rounded-full bg-gradient-to-l from-amber-300 to-yellow-400"
-            />
-          </div>
-          {progress.next && (
-            <p className="text-[9px] mt-2 opacity-80">
-              {progress.pointsToNext} نقطة للمستوى {progress.next.label}
-            </p>
-          )}
         </div>
       </motion.div>
+
+      {/* Ways to earn points */}
+      {(showWheelBtn || showReferralEarn) && (
+        <section className={`grid gap-3 ${showWheelBtn && showReferralEarn ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+          {showWheelBtn && (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate('/wheel')}
+              className="user-earn-card group relative overflow-hidden rounded-[1.35rem] border border-white/50 p-4 text-right text-white shadow-[0_12px_32px_-10px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_16px_40px_-10px_rgba(124,58,237,0.65)]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-primary" aria-hidden />
+              <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-white/15 blur-2xl" aria-hidden />
+              <div className="relative flex items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl ring-1 ring-white/25 backdrop-blur-sm">
+                  🎡
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-cairo text-sm font-black leading-snug">احصل على نقاط من عجلة الحظ</p>
+                  <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-white/75">
+                    <CircleDot size={12} className="text-amber-200" />
+                    لف واربح نقاطاً فورية
+                  </p>
+                </div>
+                <ChevronLeft size={18} className="shrink-0 text-white/70 transition-transform group-hover:-translate-x-0.5" />
+              </div>
+            </motion.button>
+          )}
+
+          {showReferralEarn && (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setReferralOpen(true)}
+              className="user-earn-card group relative overflow-hidden rounded-[1.35rem] border border-white/50 p-4 text-right text-white shadow-[0_12px_32px_-10px_rgba(37,99,235,0.45)] transition-shadow hover:shadow-[0_16px_40px_-10px_rgba(37,99,235,0.55)]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-sky-500 to-cyan-500" aria-hidden />
+              <div className="absolute -right-4 -bottom-6 h-24 w-24 rounded-full bg-amber-300/20 blur-2xl" aria-hidden />
+              <div className="relative flex items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl ring-1 ring-white/25 backdrop-blur-sm">
+                  👥
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-cairo text-sm font-black leading-snug">اكسب نقاط مجانية من دعوة أصدقائك</p>
+                  <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-white/75">
+                    <Users size={12} className="text-amber-200" />
+                    شارك كودك واكسب مكافآت
+                  </p>
+                </div>
+                <ChevronLeft size={18} className="shrink-0 text-white/70 transition-transform group-hover:-translate-x-0.5" />
+              </div>
+            </motion.button>
+          )}
+        </section>
+      )}
+
+      {/* Latest point sources */}
+      <section className="space-y-3">
+        <h2 className="px-0.5 font-cairo text-base font-black text-gray-900">آخر مصادر حصولك على النقاط</h2>
+
+        {pointSourcesLoading && (
+          <div className="flex justify-center py-6">
+            <Loader2 className="animate-spin text-primary" size={20} />
+          </div>
+        )}
+
+        {!pointSourcesLoading && recentPointSources.length === 0 && (
+          <p className="rounded-2xl border border-gray-100 bg-white px-4 py-6 text-center text-sm font-bold text-gray-400">
+            لم تحصل على نقاط بعد — جرّب عجلة الحظ أو تسوّق من المتاجر المعتمدة
+          </p>
+        )}
+
+        {!pointSourcesLoading && recentPointSources.length > 0 && (
+          <div className="point-sources-list overflow-hidden rounded-[1.35rem] border border-gray-100 bg-white shadow-sm">
+            {recentPointSources.map((item, index) => (
+              <div
+                key={item.id}
+                className={`flex items-center justify-between gap-3 px-4 py-3.5 ${
+                  index < recentPointSources.length - 1 ? 'border-b border-gray-100' : ''
+                }`}
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">{item.label}</span>
+                <span className="point-sources-list__value shrink-0 font-cairo text-base font-black tabular-nums text-emerald-600">
+                  +{item.points.toLocaleString('en-US')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Available competitions */}
+      {showCompetitionsBtn && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <h2 className="font-cairo text-base font-black text-gray-900">المسابقات المتاحة</h2>
+            <button
+              type="button"
+              onClick={() => navigate('/competitions')}
+              className="text-[11px] font-black text-primary"
+            >
+              عرض الكل
+            </button>
+          </div>
+
+          {competitionsLoading && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-primary" size={24} />
+            </div>
+          )}
+
+          {competitionsError && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-center">
+              <p className="text-sm font-bold text-red-600">تعذّر تحميل المسابقات</p>
+              <button type="button" onClick={() => refetchCompetitions()} className="mt-2 text-xs font-black text-primary underline">
+                إعادة المحاولة
+              </button>
+            </div>
+          )}
+
+          {!competitionsLoading && !competitionsError && activeCompetitions.length === 0 && (
+            <p className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm font-bold text-gray-400">
+              لا مسابقات متاحة حالياً
+            </p>
+          )}
+
+          {!competitionsLoading && !competitionsError && activeCompetitions.length > 0 && (
+            <div className="space-y-3">
+              {activeCompetitions.map((comp) => {
+                const minPts = comp.minPoints || 0;
+                const eligible = points >= minPts;
+                const missingPts = Math.max(0, minPts - points);
+
+                return (
+                  <div
+                    key={comp._id}
+                    className="overflow-hidden rounded-[1.35rem] border border-gray-100 bg-white shadow-sm"
+                  >
+                    <div className="flex items-stretch gap-3 p-3.5">
+                      <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 ring-1 ring-gray-100">
+                        {comp.image ? (
+                          <img src={comp.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-2xl">🏆</div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="line-clamp-2 font-cairo text-[15px] font-black leading-snug text-gray-900">
+                          {comp.title}
+                        </h3>
+                        {comp.description && (
+                          <p className="mt-1 line-clamp-2 text-[11px] font-medium text-gray-500">{comp.description}</p>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-2 py-1 text-[10px] font-black text-violet-700">
+                            <Coins size={11} />
+                            {minPts}+ نقطة
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-xl bg-gray-100 px-2 py-1 text-[10px] font-black text-gray-600">
+                            <Clock size={11} />
+                            {timeLeft(comp.endDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 bg-gray-50/80 px-3.5 py-3">
+                      {!eligible ? (
+                        <p className="text-center text-xs font-black text-amber-700">
+                          تحتاج إلى {missingPts} نقطة للمشاركة
+                        </p>
+                      ) : (
+                        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-center text-xs font-black text-emerald-700 sm:text-right">
+                            يمكنك المشاركة الآن
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCompetition(comp)}
+                            className="rounded-xl bg-gradient-to-l from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-purple-500/25 transition-transform active:scale-[0.98]"
+                          >
+                            {comp.joined || comp.hasJoined ? 'زيادة المشاركات' : 'أريد المشاركة'}
+                          </button>
+                        </div>
+                      )}
+                      {(comp.joined || comp.hasJoined) && eligible && (
+                        <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-green-700 sm:justify-start">
+                          <CheckCircle2 size={12} />
+                          لديك {comp.myEntries || 0} مشاركة
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
+
+      <AnimatePresence>
+        {selectedCompetition && (
+          <CompetitionModal
+            competition={selectedCompetition}
+            userPoints={points}
+            onClose={() => setSelectedCompetition(null)}
+            onJoined={(updated) => {
+              setSelectedCompetition(updated || null);
+              refreshCenter();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Achievement Road */}
       <AchievementRoad points={points} onUnlock={() => refreshCenter()} />
@@ -377,28 +688,6 @@ const UserCenter = () => {
         ))}
       </section>
 
-      {/* Quick actions */}
-      <section className={`grid gap-3 ${showCompetitionsBtn && showWheelBtn ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {showCompetitionsBtn && (
-          <button
-            type="button"
-            onClick={() => navigate('/competitions')}
-            className="flex items-center gap-3 bg-gradient-to-br from-purple-500 to-indigo-600 text-white p-4 rounded-[22px] font-black text-sm shadow-lg"
-          >
-            <Trophy size={22} /> المسابقات
-          </button>
-        )}
-        {showWheelBtn && (
-          <button
-            type="button"
-            onClick={() => navigate('/wheel')}
-            className="flex items-center gap-3 bg-gradient-to-br from-amber-400 to-orange-500 text-white p-4 rounded-[22px] font-black text-sm shadow-lg"
-          >
-            <Sparkles size={22} /> عجلة الحظ
-          </button>
-        )}
-      </section>
-
       {/* Referral */}
       <div className="bg-white rounded-[24px] p-4 border border-gray-100 flex items-center justify-between gap-3">
         <div>
@@ -410,27 +699,69 @@ const UserCenter = () => {
         </button>
       </div>
 
-      {/* Action icons row */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { icon: Sliders, label: 'تفضيلات', onClick: () => setShowPrefs(true), color: 'bg-violet-100 text-violet-600' },
-          { icon: Lightbulb, label: 'اقتراح', onClick: () => setShowSuggest(true), color: 'bg-amber-100 text-amber-600' },
-          { icon: MessageCircle, label: 'إدارة', onClick: contactAdmin, color: 'bg-blue-100 text-blue-600' },
-          { icon: Shield, label: 'قانوني', onClick: () => setShowLegal(true), color: 'bg-gray-100 text-gray-600' },
-        ].map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            onClick={a.onClick}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-[20px] bg-white border border-gray-100"
-          >
-            <div className={`p-2.5 rounded-xl ${a.color}`}>
-              <a.icon size={18} />
-            </div>
-            <span className="text-[9px] font-black text-gray-600">{a.label}</span>
-          </button>
-        ))}
-      </div>
+      {/* Premium bottom options */}
+      <section className="user-center-options space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              id: 'suggest',
+              label: 'قدم اقتراحات',
+              hint: 'شاركنا أفكارك لتحسين المنصة',
+              icon: Lightbulb,
+              onClick: () => setShowSuggest(true),
+              tone: 'amber',
+            },
+            {
+              id: 'support',
+              label: 'الدعم الفني',
+              hint: 'تواصل مع فريق المساعدة',
+              icon: Headphones,
+              onClick: contactAdmin,
+              tone: 'sky',
+            },
+            {
+              id: 'legal',
+              label: 'الشروط والأحكام',
+              hint: 'الخصوصية وإخلاء المسؤولية',
+              icon: ScrollText,
+              onClick: () => setShowLegal(true),
+              tone: 'slate',
+            },
+            {
+              id: 'prefs',
+              label: 'تخصيص أفضل العروض',
+              hint: 'اضبط اهتماماتك وتفضيلاتك',
+              icon: Tags,
+              onClick: () => setShowPrefs(true),
+              tone: 'violet',
+            },
+          ].map((option, index) => (
+            <motion.button
+              key={option.id}
+              type="button"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={option.onClick}
+              className={`user-center-option-card user-center-option-card--${option.tone} group`}
+            >
+              <span className={`user-center-option-card__icon user-center-option-card__icon--${option.tone}`} aria-hidden>
+                <option.icon size={22} strokeWidth={2.2} />
+              </span>
+              <span className="user-center-option-card__copy">
+                <span className="user-center-option-card__label">{option.label}</span>
+                <span className="user-center-option-card__hint">{option.hint}</span>
+              </span>
+              <ChevronLeft
+                size={18}
+                className="user-center-option-card__chevron shrink-0 text-gray-300 transition-transform group-hover:-translate-x-0.5 group-active:translate-x-0"
+                aria-hidden
+              />
+            </motion.button>
+          ))}
+        </div>
+      </section>
 
       <button
         type="button"
@@ -609,7 +940,7 @@ const UserCenter = () => {
           <motion.div className="fixed inset-0 z-[60] bg-black/50 flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="bg-white mt-auto max-h-[85vh] overflow-y-auto rounded-t-[32px] p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-black">إخلاء المسؤولية</h3>
+                <h3 className="font-black">الشروط والأحكام</h3>
                 <button type="button" onClick={() => setShowLegal(false)}><X size={22} /></button>
               </div>
               <div className="flex gap-2 mb-4">
@@ -629,8 +960,8 @@ const UserCenter = () => {
                 ))}
               </div>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{legal[legalTab] || '—'}</p>
-              <p className="mt-4 text-xs text-amber-700 bg-amber-50 p-3 rounded-xl font-bold">
-                المنصة تسويقية فقط. الجوائز داخل البلد ولا تُرسل خارج البلد.
+              <p className="mt-4 text-xs text-amber-700 bg-amber-50 p-3 rounded-xl font-bold leading-relaxed">
+                Win GoldenStore منصة تسويقية تربط العملاء بالمتاجر. الجوائز والمكافآت تُقدَّم ضمن البلد فقط ولا تُرسل خارج البلد.
               </p>
             </div>
           </motion.div>

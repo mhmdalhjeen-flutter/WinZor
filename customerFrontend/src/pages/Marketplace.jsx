@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  Camera, Loader2, Gift, AlertCircle, Trash2, Edit3,
+  Loader2, Gift, AlertCircle, Trash2, Edit3,
   RefreshCw, Clock, CheckCircle2, XCircle, Plus,
 } from 'lucide-react';
 import api from '../api/axios';
@@ -12,13 +12,15 @@ import { useToast } from '../shared/Toast';
 import BazaarListingCard, { regionLabel } from '../shared/BazaarListingCard';
 import { formatListingPrice } from '../utils/currency';
 import ReferralCardsModal from '../components/ReferralCardsModal';
-import QuickSearchPanel from '../components/QuickSearchPanel';
 import RegionPickerBox from '../components/RegionPickerBox';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { unwrapList } from '../utils/unwrapList';
 import EmptyState from '../shared/EmptyState';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import MarketplaceTabNav from '../components/marketplace/MarketplaceTabNav';
+import MarketplaceFilters from '../components/marketplace/MarketplaceFilters';
+import PublishBottomSheet from '../components/marketplace/PublishBottomSheet';
+import MarketplaceImagePicker from '../components/marketplace/MarketplaceImagePicker';
 import { BROWSE_TAB_IDS, listingMatchesTab } from '../utils/marketplaceTabs';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { getLocalPhoneError, normalizeLocalPhone } from '../utils/phoneValidation';
@@ -32,10 +34,13 @@ import {
 import { fileToOptimizedDataUrl } from '../utils/imageUpload';
 import PriceCurrencyInput from '../components/PriceCurrencyInput';
 import { DEFAULT_CURRENCY } from '../utils/currency';
+import { BAZAAR_CATEGORIES } from '../utils/bazaarCategories';
+import { BAZAAR_CONDITIONS } from '../utils/bazaarConditions';
 
 const EMPTY_FORM = {
   title: '',
   condition: 'used',
+  category: '',
   price: '',
   currency: DEFAULT_CURRENCY,
   description: '',
@@ -52,6 +57,13 @@ const STATUS_LABELS = {
   approved: { text: 'نشط', color: 'text-green-600 bg-green-50' },
   rejected: { text: 'مرفوض', color: 'text-red-600 bg-red-50' },
   expired: { text: 'منتهٍ', color: 'text-gray-500 bg-gray-100' },
+};
+
+const PUBLISH_TITLES = {
+  sell: 'نشر عنصر للبيع',
+  exchange: 'نشر للبيع أو البدل',
+  rent: 'نشر للإيجار',
+  custom: 'نشر طلب (مطلوب)',
 };
 
 const readImages = async (files, existing = []) => {
@@ -84,6 +96,7 @@ const Marketplace = () => {
 
   const [activeTab, setActiveTab] = useState('sellExchange');
   const [showPublish, setShowPublish] = useState(false);
+  const [publishSheetOpen, setPublishSheetOpen] = useState(false);
   const [favOverrides, setFavOverrides] = useState({});
   const [favPulseId, setFavPulseId] = useState(null);
   const [myListings, setMyListings] = useState([]);
@@ -93,6 +106,7 @@ const Marketplace = () => {
 
   const [regionPath, setRegionPath] = useState([]);
   const [filterCondition, setFilterCondition] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
 
   const {
     data: regionTree = [],
@@ -108,7 +122,7 @@ const Marketplace = () => {
 
   const filterRegionId = getEffectiveRegionId(regionPath);
   const formRegionPath = pathFromRegionIds(form.regionId, form.subRegionId, regionTree);
-  const browseFilters = { filterRegionId, filterCondition };
+  const browseFilters = { filterRegionId, filterCondition, filterCategory };
 
   const {
     data: browseListings = [],
@@ -119,6 +133,7 @@ const Marketplace = () => {
       const params = {};
       if (filterRegionId) params.regionId = filterRegionId;
       if (filterCondition) params.condition = filterCondition;
+      if (filterCategory) params.category = filterCategory;
       const { data } = await api.get('/bazaar', { params });
       return unwrapList(data, ['listings']);
     },
@@ -222,16 +237,27 @@ const Marketplace = () => {
     setActiveTab(tab);
   };
 
-  const openPublish = () => {
+  const resetForm = (transactionType = 'sell') => {
+    setForm({ ...EMPTY_FORM, transactionType });
+    setImages([]);
+    setMainImageIndex(0);
+    setEditingId(null);
+  };
+
+  const openPublishSheet = () => {
     if (!isAuth) {
       navigate('/login');
       return;
     }
-    runWithVerification(() => {
-      setActiveTab('mine');
-      setShowPublish(true);
-      if (!editingId) resetForm();
-    });
+    runWithVerification(() => setPublishSheetOpen(true));
+  };
+
+  const handlePublishTypeSelect = (transactionType) => {
+    setPublishSheetOpen(false);
+    setActiveTab('mine');
+    setShowPublish(true);
+    if (!editingId) resetForm(transactionType);
+    else setForm((f) => ({ ...f, transactionType }));
   };
 
   const tabListings = browseListings.filter((item) => listingMatchesTab(item, activeTab));
@@ -239,6 +265,7 @@ const Marketplace = () => {
   const filteredMyListings = myListings.filter((item) => {
     if (!listingMatchesRegionFilter(item, filterRegionId, regionTree)) return false;
     if (filterCondition && item.condition !== filterCondition) return false;
+    if (filterCategory && item.category !== filterCategory) return false;
     return true;
   });
 
@@ -262,7 +289,8 @@ const Marketplace = () => {
     setEditingId(listing._id);
     setForm({
       title: listing.title,
-      condition: listing.condition,
+      condition: listing.condition || 'used',
+      category: listing.category || '',
       price: String(listing.price),
       currency: listing.currency || DEFAULT_CURRENCY,
       description: listing.description || '',
@@ -279,13 +307,6 @@ const Marketplace = () => {
     setShowPublish(true);
   };
 
-  const resetForm = () => {
-    setForm(EMPTY_FORM);
-    setImages([]);
-    setMainImageIndex(0);
-    setEditingId(null);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isAuth) {
@@ -294,7 +315,7 @@ const Marketplace = () => {
     }
     const requestListing = isRequestListing(form.transactionType);
     if (!form.title.trim()) {
-      toast('أدخل عنوان الإعلان', 'error');
+      toast(form.transactionType === 'rent' ? 'أدخل عنوان العقار أو الأصل' : 'أدخل اسم العنصر', 'error');
       return;
     }
     if (!requestListing && images.length === 0) {
@@ -312,6 +333,10 @@ const Marketplace = () => {
       toast('أدخل السعر', 'error');
       return;
     }
+    if (!requestListing && !form.category) {
+      toast('اختر الفئة', 'error');
+      return;
+    }
     if ((meta.pointsAvailable ?? user?.points ?? 0) < meta.pointsCost && !editingId) {
       toast(`تحتاج ${meta.pointsCost} نقاط لنشر الإعلان`, 'error');
       setReferralOpen(true);
@@ -322,10 +347,11 @@ const Marketplace = () => {
       setSubmitting(true);
       try {
         const payload = {
-          ...form,
           title: form.title.trim(),
+          transactionType: form.transactionType,
           price: form.price === '' ? 0 : Number(form.price),
           currency: form.currency || DEFAULT_CURRENCY,
+          description: form.description,
           images,
           mainImageIndex,
           contactPhone: form.contactPhone.trim()
@@ -333,7 +359,16 @@ const Marketplace = () => {
             : '',
           regionId: form.regionId || undefined,
           subRegionId: form.subRegionId || undefined,
+          freeDelivery: form.freeDelivery,
         };
+
+        if (!requestListing) {
+          payload.condition = form.condition;
+          payload.category = form.category;
+          payload.keywords = form.keywords;
+        } else if (form.category) {
+          payload.category = form.category;
+        }
 
         if (editingId) {
           await api.patch(`/bazaar/${editingId}`, payload);
@@ -408,61 +443,79 @@ const Marketplace = () => {
   });
 
   const pointsAvailable = meta.pointsAvailable ?? user?.points ?? 0;
+  const requestListing = isRequestListing(form.transactionType);
+  const isRent = form.transactionType === 'rent';
 
-  const renderListingGrid = (listings) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {listings.map((item) => (
-        <BazaarListingCard
-          key={item._id}
-          listing={item}
-          favorited={isFavorited(item)}
-          isPulsing={favPulseId === String(item._id)}
-          onToggleFavorite={handleToggleFavorite}
-          onClick={(l) => navigate(`/marketplace/${l._id}`)}
-        />
+  const titlePlaceholder = isRent
+    ? 'عنوان العقار أو الأصل'
+    : requestListing
+      ? 'ما الذي تبحث عنه؟'
+      : 'اسم العنصر';
+
+  const renderListingList = (listings) => (
+    <div className="marketplace-listings">
+      {listings.map((item, index) => (
+        <React.Fragment key={item._id}>
+          {index > 0 && <div className="marketplace-list-divider" aria-hidden />}
+          <BazaarListingCard
+            listing={item}
+            favorited={isFavorited(item)}
+            isPulsing={favPulseId === String(item._id)}
+            onToggleFavorite={handleToggleFavorite}
+            onClick={(l) => navigate(`/marketplace/${l._id}`)}
+          />
+        </React.Fragment>
       ))}
     </div>
   );
 
+  const showPublishCta = !showPublish && activeTab !== 'mine';
+
   return (
-    <div className="pb-20 bg-gray-50 min-h-screen text-right" dir="rtl">
-      <div className="px-4 pt-4 pb-3 text-center">
-        <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug">
+    <div className="pb-20 bg-gray-50 min-h-screen text-right marketplace-page" dir="rtl">
+      <div className="px-2 pt-3 pb-2 text-center">
+        <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug font-cairo">
           السوق المفتوح
         </h1>
-        <p className="mt-2 text-xs sm:text-sm text-gray-500 font-medium leading-relaxed line-clamp-2 max-w-md mx-auto">
-          بيع وبدّل واعرض ما لديك، وابحث عن ما تحتاجه من منتجات، طلبات أو إعلانات للإيجار في مكان واحد.
+        <p className="marketplace-subtitle mt-2.5 text-[13px] sm:text-sm text-gray-600 leading-relaxed max-w-lg mx-auto px-1">
+          هنا يمكنك بيع أغراضك، شراء ما تبحث عنه، عرض أو استئجار العقارات والمركبات، ونشر طلباتك، كل ذلك في مكان واحد.
         </p>
       </div>
 
+      {showPublishCta && (
+        <div className="px-2 pb-2">
+          <button
+            type="button"
+            onClick={openPublishSheet}
+            className="marketplace-publish-cta w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm text-white shadow-lg shadow-primary/25 active:scale-[0.99] transition-transform"
+          >
+            <Plus size={20} strokeWidth={2.5} />
+            بيع أو نشر
+          </button>
+        </div>
+      )}
+
       <MarketplaceTabNav activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <div className="p-4">
+      <div className="px-1.5 sm:px-2 py-2">
         {BROWSE_TAB_IDS.includes(activeTab) && (
-          <div className="space-y-4">
-            <QuickSearchPanel
+          <div className="space-y-3">
+            <MarketplaceFilters
               regionTree={regionTree}
               regionPath={regionPath}
               onRegionPathChange={setRegionPath}
               regionsLoading={regionsLoading}
               regionsError={regionsError}
               onRegionsRetry={refetchRegions}
-              showProducts={false}
+              filterCondition={filterCondition}
+              onFilterConditionChange={setFilterCondition}
+              filterCategory={filterCategory}
+              onFilterCategoryChange={setFilterCategory}
             />
-
-            <select
-              value={filterCondition}
-              onChange={(e) => setFilterCondition(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-            >
-              <option value="">كل الحالات</option>
-              <option value="new">جديد</option>
-              <option value="used">مستعمل</option>
-            </select>
 
             {browseLoading && (
               <div className="flex justify-center py-12">
-                <Loader2 className="animate-spin text-amber-500" size={28} />
+                <Loader2 className="animate-spin text-primary" size={28} />
               </div>
             )}
 
@@ -470,294 +523,298 @@ const Marketplace = () => {
               <EmptyState title="لا إعلانات" description="جرّب تغيير المنطقة أو الفلاتر" />
             )}
 
-            {!browseLoading && tabListings.length > 0 && renderListingGrid(tabListings)}
+            {!browseLoading && tabListings.length > 0 && renderListingList(tabListings)}
           </div>
         )}
 
         {activeTab === 'mine' && isAuth && showPublish && (
-          <div className="space-y-4">
-                <div className={`rounded-2xl p-4 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
-                  {pointsAvailable >= meta.pointsCost ? (
-                    <CheckCircle2 className="text-green-600 shrink-0" size={22} />
-                  ) : (
-                    <AlertCircle className="text-amber-600 shrink-0" size={22} />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm font-black text-gray-800">
-                      رصيدك: {pointsAvailable} نقطة — النشر يكلف {meta.pointsCost} نقاط
+          <div className="space-y-3">
+            <div className={`rounded-2xl p-3 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
+              {pointsAvailable >= meta.pointsCost ? (
+                <CheckCircle2 className="text-green-600 shrink-0" size={22} />
+              ) : (
+                <AlertCircle className="text-amber-600 shrink-0" size={22} />
+              )}
+              <div className="flex-1">
+                <p className="text-sm font-black text-gray-800">
+                  رصيدك: {pointsAvailable} نقطة — النشر يكلف {meta.pointsCost} نقاط
+                </p>
+                {pointsAvailable < meta.pointsCost && (
+                  <>
+                    <p className="text-xs text-gray-600 mt-1">
+                      احصل على نقاط عبر مشاركة رابط الإحالة أو دعوة صديق.
                     </p>
-                    {pointsAvailable < meta.pointsCost && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        احصل على نقاط عبر مشاركة رابط الإحالة أو دعوة صديق.
-                      </p>
-                    )}
-                    {pointsAvailable < meta.pointsCost && (
-                      <button
-                        type="button"
-                        onClick={() => setReferralOpen(true)}
-                        className="mt-2 text-xs font-black text-primary flex items-center gap-1"
-                      >
-                        <Gift size={14} /> احصل على نقاط
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <form onSubmit={handleSubmit} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 space-y-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-lg font-black text-gray-900">
-                      {editingId ? 'تعديل الإعلان' : 'بيع / نشر'}
-                    </h2>
                     <button
                       type="button"
-                      onClick={() => { setShowPublish(false); if (editingId) resetForm(); }}
-                      className="text-xs font-black text-gray-500 px-3 py-1.5 rounded-xl bg-gray-100"
+                      onClick={() => setReferralOpen(true)}
+                      className="mt-2 text-xs font-black text-primary flex items-center gap-1"
                     >
-                      رجوع
+                      <Gift size={14} /> احصل على نقاط
                     </button>
-                  </div>
+                  </>
+                )}
+              </div>
+            </div>
 
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 space-y-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-black text-gray-900 font-cairo">
+                  {editingId ? 'تعديل الإعلان' : (PUBLISH_TITLES[form.transactionType] || 'بيع / نشر')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => { setShowPublish(false); if (editingId) resetForm(); }}
+                  className="text-xs font-black text-gray-500 px-3 py-1.5 rounded-xl bg-gray-100"
+                >
+                  رجوع
+                </button>
+              </div>
+
+              <MarketplaceImagePicker
+                images={images}
+                mainImageIndex={mainImageIndex}
+                onPick={handleImagePick}
+                onMainImageChange={setMainImageIndex}
+                onRemoveImage={removeImage}
+                optional={requestListing}
+                wantedMode={requestListing}
+              />
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-gray-500">
+                  {isRent ? 'عنوان العقار أو الأصل' : 'اسم العنصر'}
+                </label>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder={titlePlaceholder}
+                  className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+                />
+              </div>
+
+              {!requestListing && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-gray-500">السعر</label>
+                  <PriceCurrencyInput
+                    price={form.price}
+                    currency={form.currency}
+                    onPriceChange={(value) => setForm({ ...form, price: value })}
+                    onCurrencyChange={(value) => setForm({ ...form, currency: value })}
+                    required
+                    pricePlaceholder="السعر"
+                  />
+                </div>
+              )}
+
+              {!requestListing && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-gray-500">الفئة</label>
+                  <select
+                    required
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+                  >
+                    <option value="">اختر الفئة</option>
+                    {BAZAAR_CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {!requestListing && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-gray-500">الحالة</label>
+                  <select
+                    value={form.condition}
+                    onChange={(e) => setForm({ ...form, condition: e.target.value })}
+                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+                  >
+                    {BAZAAR_CONDITIONS.map((cond) => (
+                      <option key={cond.value} value={cond.value}>{cond.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-gray-500">الوصف</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={3}
+                  placeholder="وصف مختصر للعنصر..."
+                  className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none resize-none"
+                />
+              </div>
+
+              {!requestListing && (
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-gray-500">الكلمات المفتاحية</label>
                   <input
                     required
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="اسم المنتج / العنصر"
-                    className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
-                  />
-
-                  <div className="grid grid-cols-1 gap-3">
-                    <PriceCurrencyInput
-                      price={form.price}
-                      currency={form.currency}
-                      onPriceChange={(value) => setForm({ ...form, price: value })}
-                      onCurrencyChange={(value) => setForm({ ...form, currency: value })}
-                      required={!isRequestListing(form.transactionType)}
-                      pricePlaceholder={isRequestListing(form.transactionType) ? 'السعر (اختياري)' : 'السعر'}
-                    />
-                    <select
-                      value={form.condition}
-                      onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                      className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
-                    >
-                      <option value="new">جديد</option>
-                      <option value="used">مستعمل</option>
-                    </select>
-                  </div>
-
-                  <select
-                    value={form.transactionType}
-                    onChange={(e) => setForm({ ...form, transactionType: e.target.value })}
-                    className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
-                  >
-                    <option value="sell">بيع</option>
-                    <option value="exchange">بدل</option>
-                    <option value="rent">إيجار</option>
-                    <option value="custom">طلب</option>
-                  </select>
-
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    rows={3}
-                    placeholder="وصف مختصر..."
-                    className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
-                  />
-
-                  <RegionPickerBox
-                    tree={regionTree}
-                    pathIds={formRegionPath}
-                    onPathChange={handleFormRegionChange}
-                    loading={regionsLoading}
-                    error={regionsError}
-                    onRetry={refetchRegions}
-                  />
-
-                  <input
-                    required={!isRequestListing(form.transactionType)}
                     value={form.keywords}
                     onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                    placeholder={isRequestListing(form.transactionType) ? 'كلمات مفتاحية (اختياري)' : 'كلمات مفتاحية (2–5) مفصولة بفاصلة'}
-                    className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold"
+                    placeholder="2–5 كلمات مفصولة بفاصلة — تساعد في البحث"
+                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
                   />
+                </div>
+              )}
 
-                  <PalestinianPhoneInput
-                    value={form.contactPhone}
-                    onValueChange={(v) => setForm({ ...form, contactPhone: v })}
+              <RegionPickerBox
+                tree={regionTree}
+                pathIds={formRegionPath}
+                onPathChange={handleFormRegionChange}
+                loading={regionsLoading}
+                error={regionsError}
+                onRetry={refetchRegions}
+              />
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-gray-500">رقم الهاتف (اختياري)</label>
+                <PalestinianPhoneInput
+                  value={form.contactPhone}
+                  onValueChange={(v) => setForm({ ...form, contactPhone: v })}
+                />
+              </div>
+
+              {!requestListing && (
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.freeDelivery}
+                    onChange={(e) => setForm({ ...form, freeDelivery: e.target.checked })}
+                    className="rounded"
                   />
+                  التوصيل مجاني
+                </label>
+              )}
 
-                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.freeDelivery}
-                      onChange={(e) => setForm({ ...form, freeDelivery: e.target.checked })}
-                      className="rounded"
-                    />
-                    التوصيل مجاني
-                  </label>
-
-                  <div>
-                    <p className="text-sm font-black text-gray-700 mb-2">
-                      {isRequestListing(form.transactionType)
-                        ? 'الصور (اختياري — حتى 3)'
-                        : 'الصور (حتى 3 — اختر الرئيسية)'}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {images.map((img, idx) => (
-                        <div key={idx} className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setMainImageIndex(idx)}
-                            className={`w-20 h-20 rounded-xl overflow-hidden border-2 ${mainImageIndex === idx ? 'border-primary' : 'border-gray-200'}`}
-                          >
-                            <img src={img} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="absolute -top-1 -left-1 bg-red-500 text-white rounded-full p-0.5"
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    {images.length < 3 && (
-                      <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer text-gray-500 hover:text-primary">
-                        <Camera size={22} />
-                        <span className="text-xs font-black">إضافة صورة</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
-                      </label>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editingId && (
-                      <button type="button" onClick={resetForm} className="flex-1 py-4 rounded-2xl border font-black text-sm">
-                        إلغاء
-                      </button>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 bg-primary text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {submitting ? <Loader2 className="animate-spin" size={20} /> : (
-                        <>{editingId ? 'حفظ التعديل' : 'نشر الإعلان'}</>
-                      )}
-                    </button>
-                  </div>
-                </form>
+              <div className="flex gap-2 pt-1">
+                {editingId && (
+                  <button type="button" onClick={() => resetForm()} className="flex-1 py-3.5 rounded-xl border font-black text-sm">
+                    إلغاء
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 bg-primary text-white py-3.5 rounded-xl font-black flex items-center justify-center gap-2 disabled:opacity-60 text-sm"
+                >
+                  {submitting ? <Loader2 className="animate-spin" size={20} /> : (
+                    <>{editingId ? 'حفظ التعديل' : 'نشر الإعلان'}</>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
         {activeTab === 'mine' && isAuth && !showPublish && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-lg font-black text-gray-900">منشوراتي</h2>
-                  <button
-                    type="button"
-                    onClick={openPublish}
-                    className="flex items-center gap-1.5 bg-primary text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-sm"
-                  >
-                    <Plus size={16} /> بيع / نشر
-                  </button>
-                </div>
-                <QuickSearchPanel
-                  regionTree={regionTree}
-                  regionPath={regionPath}
-                  onRegionPathChange={setRegionPath}
-                  regionsLoading={regionsLoading}
-                  regionsError={regionsError}
-                  onRegionsRetry={refetchRegions}
-                  showProducts={false}
-                  compact
-                />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <h2 className="text-base font-black text-gray-900 font-cairo">منشوراتي</h2>
+              <button
+                type="button"
+                onClick={openPublishSheet}
+                className="flex items-center gap-1.5 bg-primary text-white text-xs font-black px-3.5 py-2 rounded-xl shadow-sm"
+              >
+                <Plus size={16} /> بيع أو نشر
+              </button>
+            </div>
 
-                <select
-                  value={filterCondition}
-                  onChange={(e) => setFilterCondition(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold"
-                >
-                  <option value="">كل الحالات</option>
-                  <option value="new">جديد</option>
-                  <option value="used">مستعمل</option>
-                </select>
+            <MarketplaceFilters
+              regionTree={regionTree}
+              regionPath={regionPath}
+              onRegionPathChange={setRegionPath}
+              regionsLoading={regionsLoading}
+              regionsError={regionsError}
+              onRegionsRetry={refetchRegions}
+              filterCondition={filterCondition}
+              onFilterConditionChange={setFilterCondition}
+              filterCategory={filterCategory}
+              onFilterCategoryChange={setFilterCategory}
+            />
 
-                {myListings.length === 0 && (
-                  <EmptyState title="لا منشورات بعد" description="اضغط «بيع / نشر» لنشر إعلانك الأول" />
-                )}
-                {myListings.length > 0 && filteredMyListings.length === 0 && (
-                  <EmptyState title="لا نتائج" description="جرّب تغيير المنطقة أو الفلاتر" />
-                )}
-                {filteredMyListings.map((item) => {
-                  const st = STATUS_LABELS[item.status] || STATUS_LABELS.pending;
-                  const canRenew = ['approved', 'expired'].includes(item.status);
-                  const expiringSoon = item.expiresAt && new Date(item.expiresAt) - Date.now() < 2 * 86400000;
+            {myListings.length === 0 && (
+              <EmptyState title="لا منشورات بعد" description="اضغط «بيع أو نشر» لنشر إعلانك الأول" />
+            )}
+            {myListings.length > 0 && filteredMyListings.length === 0 && (
+              <EmptyState title="لا نتائج" description="جرّب تغيير المنطقة أو الفلاتر" />
+            )}
+            {filteredMyListings.map((item) => {
+              const st = STATUS_LABELS[item.status] || STATUS_LABELS.pending;
+              const canRenew = ['approved', 'expired'].includes(item.status);
+              const expiringSoon = item.expiresAt && new Date(item.expiresAt) - Date.now() < 2 * 86400000;
+              const thumb = item.mainImage || item.images?.[0];
+              const isWanted = isRequestListing(item.transactionType);
 
-                  return (
-                    <div key={item._id} className="bg-white rounded-2xl p-4 border border-gray-100 flex gap-3">
-                      <img
-                        src={item.mainImage || item.images?.[0]}
-                        alt=""
-                        className="w-20 h-20 rounded-xl object-cover bg-gray-100 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <h3 className="font-black text-sm truncate">{item.title}</h3>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${st.color}`}>{st.text}</span>
-                        </div>
-                        <p className="text-primary font-black text-sm">
-                          {isRequestListing(item.transactionType) && !item.price
-                            ? 'بدون سعر'
-                            : formatListingPrice(item)}
-                        </p>
-                        <p className="text-[10px] text-gray-500 font-bold">{regionLabel(item)}</p>
-                        {item.createdAt && (
-                          <p className="text-[10px] text-gray-400 font-bold">
-                            نُشر {formatPublishAge(item.createdAt)}
-                          </p>
-                        )}
-                        {item.expiresAt && item.status === 'approved' && (
-                          <p className={`text-[10px] font-bold flex items-center gap-1 mt-1 ${expiringSoon ? 'text-amber-600' : 'text-gray-400'}`}>
-                            <Clock size={12} />
-                            {expiringSoon ? 'ينتهي قريباً — هل تريد التجديد؟' : `ينتهي ${new Date(item.expiresAt).toLocaleDateString('ar-IQ')}`}
-                          </p>
-                        )}
-                        {item.adminReview?.note && item.status === 'rejected' && (
-                          <p className="text-[10px] text-red-500 mt-1">{item.adminReview.note}</p>
-                        )}
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <button type="button" onClick={() => startEdit(item)} className="text-xs font-black text-primary flex items-center gap-1">
-                            <Edit3 size={12} /> تعديل
-                          </button>
-                          <button type="button" onClick={() => handleDelete(item._id)} className="text-xs font-black text-red-500 flex items-center gap-1">
-                            <Trash2 size={12} /> حذف
-                          </button>
-                          {canRenew && (
-                            <button type="button" onClick={() => handleRenew(item._id)} className="text-xs font-black text-green-600 flex items-center gap-1">
-                              <RefreshCw size={12} /> تجديد ({meta.pointsCost} نقاط)
-                            </button>
-                          )}
-                          {item.status === 'approved' && item.isVisible && (
-                            <button type="button" onClick={() => navigate(`/marketplace/${item._id}`)} className="text-xs font-black text-gray-600">
-                              عرض
-                            </button>
-                          )}
-                        </div>
-                      </div>
+              return (
+                <div key={item._id} className="bg-white rounded-2xl p-3 border border-gray-100 flex gap-3">
+                  {thumb ? (
+                    <img src={thumb} alt="" className="w-[4.5rem] h-[4.5rem] rounded-xl object-cover bg-gray-100 shrink-0" />
+                  ) : isWanted ? (
+                    <div className="w-[4.5rem] h-[4.5rem] rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100">
+                      <span className="text-sm font-black text-orange-500">مطلوب</span>
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <div className="w-[4.5rem] h-[4.5rem] rounded-xl bg-gray-100 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="font-black text-sm truncate">{item.title}</h3>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${st.color}`}>{st.text}</span>
+                    </div>
+                    <p className="text-primary font-black text-sm">
+                      {isWanted && !item.price ? 'بدون سعر' : formatListingPrice(item)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-bold">{regionLabel(item)}</p>
+                    {item.createdAt && (
+                      <p className="text-[10px] text-gray-400 font-bold">
+                        نُشر {formatPublishAge(item.createdAt)}
+                      </p>
+                    )}
+                    {item.expiresAt && item.status === 'approved' && (
+                      <p className={`text-[10px] font-bold flex items-center gap-1 mt-1 ${expiringSoon ? 'text-amber-600' : 'text-gray-400'}`}>
+                        <Clock size={12} />
+                        {expiringSoon ? 'ينتهي قريباً — هل تريد التجديد؟' : `ينتهي ${new Date(item.expiresAt).toLocaleDateString('ar-IQ')}`}
+                      </p>
+                    )}
+                    {item.adminReview?.note && item.status === 'rejected' && (
+                      <p className="text-[10px] text-red-500 mt-1">{item.adminReview.note}</p>
+                    )}
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      <button type="button" onClick={() => startEdit(item)} className="text-xs font-black text-primary flex items-center gap-1">
+                        <Edit3 size={12} /> تعديل
+                      </button>
+                      <button type="button" onClick={() => handleDelete(item._id)} className="text-xs font-black text-red-500 flex items-center gap-1">
+                        <Trash2 size={12} /> حذف
+                      </button>
+                      {canRenew && (
+                        <button type="button" onClick={() => handleRenew(item._id)} className="text-xs font-black text-green-600 flex items-center gap-1">
+                          <RefreshCw size={12} /> تجديد ({meta.pointsCost} نقاط)
+                        </button>
+                      )}
+                      {item.status === 'approved' && item.isVisible && (
+                        <button type="button" onClick={() => navigate(`/marketplace/${item._id}`)} className="text-xs font-black text-gray-600">
+                          عرض
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {activeTab === 'favorites' && isAuth && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-black text-gray-900 sr-only">المفضلة</h2>
-
+          <div className="space-y-3">
             {favoritesLoading && (
               <div className="flex justify-center py-12">
-                <Loader2 className="animate-spin text-amber-500" size={28} />
+                <Loader2 className="animate-spin text-primary" size={28} />
               </div>
             )}
 
@@ -768,12 +825,16 @@ const Marketplace = () => {
               />
             )}
 
-            {!favoritesLoading && visibleFavorites.length > 0 && (
-              renderListingGrid(visibleFavorites)
-            )}
+            {!favoritesLoading && visibleFavorites.length > 0 && renderListingList(visibleFavorites)}
           </div>
         )}
       </div>
+
+      <PublishBottomSheet
+        open={publishSheetOpen}
+        onClose={() => setPublishSheetOpen(false)}
+        onSelect={handlePublishTypeSelect}
+      />
 
       <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
     </div>

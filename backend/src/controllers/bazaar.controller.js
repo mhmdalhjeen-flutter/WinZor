@@ -17,6 +17,8 @@ const { normalizeCurrency } = require("../utils/currency.util");
 
 const POINTS_COST = BazaarListing.POINTS_COST;
 const LISTING_DAYS = BazaarListing.LISTING_DAYS;
+const BAZAAR_CATEGORIES = BazaarListing.BAZAAR_CATEGORIES;
+const BAZAAR_CONDITIONS = BazaarListing.BAZAAR_CONDITIONS;
 
 const POPULATE_PUBLIC = [
   { path: "seller", select: "name avatar" },
@@ -25,7 +27,7 @@ const POPULATE_PUBLIC = [
 ];
 
 const BAZAAR_LIST_SELECT =
-  "seller title condition price currency description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
+  "seller title condition category price currency description images freeDelivery transactionType keywords contactPhone regionId subRegionId status isVisible expiresAt mainImageIndex views favoritedBy createdAt";
 
 const TRANSACTION_TYPES = ["sell", "buy", "exchange", "custom", "rent"];
 
@@ -122,7 +124,7 @@ const publicBrowseFilter = () => ({
 
 exports.browse = async (req, res) => {
   try {
-    const { regionId, subRegionId, keyword, q, transactionType, condition } = req.query;
+    const { regionId, subRegionId, keyword, q, transactionType, condition, category } = req.query;
     const filter = publicBrowseFilter();
     const andClauses = [];
 
@@ -155,10 +157,17 @@ exports.browse = async (req, res) => {
     }
     if (condition) {
       const safeCondition = cleanString(condition, { field: "condition", max: 20 });
-      if (!["new", "used"].includes(safeCondition)) {
+      if (!BAZAAR_CONDITIONS.includes(safeCondition)) {
         return res.status(400).json({ message: "condition غير صالح" });
       }
       filter.condition = safeCondition;
+    }
+    if (category) {
+      const safeCategory = cleanString(category, { field: "category", max: 40 });
+      if (!BAZAAR_CATEGORIES.includes(safeCategory)) {
+        return res.status(400).json({ message: "category غير صالح" });
+      }
+      filter.category = safeCategory;
     }
 
     const search = cleanString(keyword || q || "", { field: "q", max: 80 }).toLowerCase();
@@ -169,6 +178,7 @@ exports.browse = async (req, res) => {
           { keywords: search },
           { keywords: rx },
           { title: rx },
+          { category: search },
         ],
       });
     }
@@ -226,6 +236,7 @@ exports.create = async (req, res) => {
     const {
       title,
       condition,
+      category,
       price,
       currency,
       description,
@@ -240,13 +251,29 @@ exports.create = async (req, res) => {
     } = req.body;
 
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
-    const safeCondition = cleanString(condition, { field: "condition", max: 20, required: true });
     const safeTransactionType = cleanString(transactionType, { field: "transactionType", max: 20, required: true });
-    if (!["new", "used"].includes(safeCondition)) return res.status(400).json({ message: "condition غير صالح" });
     if (!TRANSACTION_TYPES.includes(safeTransactionType)) {
       return res.status(400).json({ message: "transactionType غير صالح" });
     }
     const isRequest = isRequestListingType(safeTransactionType);
+    const safeCondition = condition != null && String(condition).trim()
+      ? cleanString(condition, { field: "condition", max: 20, required: true })
+      : (isRequest ? "used" : undefined);
+    if (!isRequest && !safeCondition) {
+      return res.status(400).json({ message: "اختر حالة المنتج" });
+    }
+    if (safeCondition && !BAZAAR_CONDITIONS.includes(safeCondition)) {
+      return res.status(400).json({ message: "condition غير صالح" });
+    }
+    const safeCategory = category
+      ? cleanString(category, { field: "category", max: 40, required: true })
+      : undefined;
+    if (!isRequest && !safeCategory) {
+      return res.status(400).json({ message: "اختر الفئة" });
+    }
+    if (safeCategory && !BAZAAR_CATEGORIES.includes(safeCategory)) {
+      return res.status(400).json({ message: "category غير صالح" });
+    }
     validateImages(images, { required: !isRequest });
     const processedImages = isRequest && (!images || images.length === 0)
       ? []
@@ -273,6 +300,7 @@ exports.create = async (req, res) => {
         seller: req.user.id,
         title: safeTitle,
         condition: safeCondition,
+        category: safeCategory,
         price: safePrice,
         currency: normalizeCurrency(currency),
         description: cleanString(description, { field: "description", max: 2000 }),
@@ -341,6 +369,7 @@ exports.update = async (req, res) => {
     const fields = [
       "title",
       "condition",
+      "category",
       "price",
       "currency",
       "description",
@@ -373,8 +402,12 @@ exports.update = async (req, res) => {
         listing.freeDelivery = !!req.body.freeDelivery;
       } else if (key === "condition") {
         const safeCondition = cleanString(req.body.condition, { field: "condition", max: 20, required: true });
-        if (!["new", "used"].includes(safeCondition)) return res.status(400).json({ message: "condition غير صالح" });
+        if (!BAZAAR_CONDITIONS.includes(safeCondition)) return res.status(400).json({ message: "condition غير صالح" });
         listing.condition = safeCondition;
+      } else if (key === "category") {
+        const safeCategory = cleanString(req.body.category, { field: "category", max: 40, required: true });
+        if (!BAZAAR_CATEGORIES.includes(safeCategory)) return res.status(400).json({ message: "category غير صالح" });
+        listing.category = safeCategory;
       } else if (key === "transactionType") {
         const safeTransactionType = cleanString(req.body.transactionType, { field: "transactionType", max: 20, required: true });
         if (!TRANSACTION_TYPES.includes(safeTransactionType)) {
@@ -560,6 +593,8 @@ exports.getMeta = async (req, res) => {
         { value: "rent", label: "إيجار" },
         { value: "custom", label: "طلب" },
       ],
+      categories: BAZAAR_CATEGORIES,
+      conditions: BAZAAR_CONDITIONS,
     });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });

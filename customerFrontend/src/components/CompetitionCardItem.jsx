@@ -174,69 +174,74 @@ export default function CompetitionCardItem({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-r from-primary/20 to-purple-900/40 border border-white/10 rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 h-full flex flex-col ${containerClass}`}
+        className={`bg-gradient-to-br from-[#1e1638] via-[#2a1545] to-[#7f1d1d]/80 border border-white/15 rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-4 h-full flex flex-col shadow-lg shadow-purple-950/20 ${containerClass}`}
       >
-        <div className="flex items-start gap-2.5 sm:gap-3 flex-1">
-          <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-lg sm:rounded-xl overflow-hidden border border-white/20">
+        <div className="flex items-start gap-3 sm:gap-3.5 flex-1">
+          <div className="shrink-0 w-[4.75rem] h-[4.75rem] sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-white/25 shadow-lg shadow-black/25 ring-1 ring-white/10 bg-white/5">
             {competition.image ? (
-              <img src={competition.image} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={competition.title} />
+              <img
+                src={competition.image}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover"
+                alt={competition.title}
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-primary-light">
-                <Trophy size={28} />
+              <div className="w-full h-full flex items-center justify-center text-amber-300/90 bg-white/5">
+                <Trophy size={32} />
               </div>
             )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <span className="text-primary-light text-[10px] font-black tracking-widest uppercase">مسابقة مميزة</span>
-            <h2 className="text-sm sm:text-lg font-black text-white mt-0.5 line-clamp-2">{competition.title}</h2>
+            <h2 className="text-sm sm:text-lg font-black text-white leading-snug line-clamp-2">{competition.title}</h2>
 
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-primary" />
+            <div className="mt-2.5 flex items-center gap-2">
+              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-gradient-to-l from-amber-400 to-primary" />
               </div>
-              <span className="text-[9px] text-white/60 font-bold">{progress}%</span>
+              <span className="text-[10px] text-white/80 font-black tabular-nums">{progress}%</span>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-white/60 font-bold">
+            <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] sm:text-xs text-white/85 font-bold">
               <span className="flex items-center gap-1">
-                <Users size={11} /> {competition.participantsCount}
+                <Users size={12} className="text-sky-300 shrink-0" /> {competition.participantsCount}
                 {competition.requiredParticipants ? ` / ${competition.requiredParticipants}` : ''}
               </span>
               <span className="flex items-center gap-1">
-                <Coins size={11} /> {competition.minPoints}+ نقطة
+                <Coins size={12} className="text-amber-300 shrink-0" /> {competition.minPoints}+ نقطة
               </span>
             </div>
           </div>
 
           {remaining && (
-            <div className="text-center bg-white/5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/5 shrink-0">
-              <div className="text-base sm:text-lg font-black text-white leading-none">{remaining.days}</div>
-              <div className="text-[8px] sm:text-[9px] text-white/40 font-bold">يوم</div>
-              <div className="text-[10px] sm:text-xs font-black text-white/70 leading-none mt-0.5 flex items-center gap-0.5 justify-center">
-                <Clock size={9} className="sm:hidden" /> <Clock size={10} className="hidden sm:block" /> {remaining.hours}س
+            <div className="text-center bg-white/10 px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl border border-white/15 shrink-0 min-w-[3.25rem] sm:min-w-[3.75rem]">
+              <div className="text-2xl sm:text-3xl font-black text-white leading-none tabular-nums">{remaining.days}</div>
+              <div className="text-[9px] sm:text-[10px] text-white/75 font-bold mt-0.5">يوم</div>
+              <div className="text-xs sm:text-sm font-black text-amber-200 leading-none mt-1 flex items-center gap-0.5 justify-center tabular-nums">
+                <Clock size={11} className="shrink-0" /> {remaining.hours}س
               </div>
             </div>
           )}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3.5">
           {competition.joined && (
-            <div className="mb-2 text-[10px] font-bold text-green-300 flex items-center gap-1">
-              <CheckCircle2 size={12} /> مشاركاتك: {competition.myEntries}
+            <div className="mb-2 text-[11px] font-bold text-emerald-300 flex items-center gap-1">
+              <CheckCircle2 size={13} /> مشاركاتك: {competition.myEntries}
             </div>
           )}
           {eligible ? (
             <button
               type="button"
               onClick={openModal}
-              className="w-full px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-lg sm:rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+              className="w-full px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-l from-primary to-red-700 text-white rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-primary/25 hover:brightness-110 transition-all"
             >
-              {competition.joined ? 'مشاركات إضافية' : 'انضم الآن'}
+              {competition.joined ? 'زيادة المشاركات' : 'أريد المشاركة'}
             </button>
           ) : (
-            <div className="flex items-center gap-2 text-amber-300 text-xs font-bold bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20">
-              <AlertTriangle size={14} />
+            <div className="flex items-center gap-2 text-amber-200 text-xs font-bold bg-amber-500/15 px-3 py-2.5 rounded-xl border border-amber-400/25">
+              <AlertTriangle size={14} className="shrink-0" />
               تحتاج {missingPoints} نقطة إضافية
             </div>
           )}

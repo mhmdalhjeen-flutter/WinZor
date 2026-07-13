@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Zap, Loader2, CheckCircle2, Camera, Sparkles } from 'lucide-react';
+import { X, Zap, Loader2, CheckCircle2, Camera, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -8,11 +8,89 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimation';
+import usePlatformSettings from '../hooks/usePlatformSettings';
 import ReferralCardsModal from './ReferralCardsModal';
 import {
   ENTER_CARD_EVENT,
   REFERRAL_CARDS_EVENT,
 } from '../utils/pointsGuideEvents';
+
+function WheelIcon({ size = 22, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="12" r="2.25" fill="currentColor" stroke="none" />
+      <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+      <circle cx="12" cy="5.25" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="17.25" cy="14.25" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="6.75" cy="14.25" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function PremiumFloatingButton({
+  onClick,
+  label,
+  icon: Icon,
+  iconNode,
+  tone = 'primary',
+  buttonRef,
+}) {
+  const tones = {
+    primary: {
+      gradient: 'from-[#c41f1f] via-primary to-[#991b1b]',
+      glow: 'rgba(185, 28, 28, 0.38)',
+      ring: 'ring-red-100/80',
+    },
+    amber: {
+      gradient: 'from-amber-400 via-amber-500 to-orange-600',
+      glow: 'rgba(245, 158, 11, 0.38)',
+      ring: 'ring-amber-100/80',
+    },
+    violet: {
+      gradient: 'from-violet-500 via-fuchsia-500 to-purple-700',
+      glow: 'rgba(139, 92, 246, 0.38)',
+      ring: 'ring-violet-100/80',
+    },
+  };
+
+  const t = tones[tone] || tones.primary;
+
+  return (
+    <motion.button
+      ref={buttonRef}
+      type="button"
+      onClick={onClick}
+      whileHover={{ y: -2, scale: 1.03 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+      className={`floating-action-btn group relative flex h-[3.65rem] w-[3.65rem] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[1.125rem] text-white ring-1 ${t.ring}`}
+      style={{
+        boxShadow: `0 10px 28px -8px ${t.glow}, 0 4px 12px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255,255,255,0.28)`,
+      }}
+    >
+      <span className={`absolute inset-0 bg-gradient-to-br ${t.gradient}`} aria-hidden />
+      <span
+        className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22), transparent 55%)' }}
+        aria-hidden
+      />
+      <span className="relative z-[1] flex items-center justify-center">
+        {iconNode || (Icon ? <Icon size={20} strokeWidth={2.25} /> : null)}
+      </span>
+      <span className="relative z-[1] px-1 text-center font-cairo text-[8.5px] font-black leading-[1.05] tracking-tight">
+        {label}
+      </span>
+    </motion.button>
+  );
+}
 
 const FloatingCodeButton = () => {
   const [viewerOpen, setViewerOpen] = useState(
@@ -44,6 +122,9 @@ const FloatingCodeButton = () => {
   const { updateUser } = useAuth();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { toast } = useToast();
+  const { data: platformSettings } = usePlatformSettings();
+  const showWheel = platformSettings?.features?.wheel !== false
+    && platformSettings?.wheel?.enabled !== false;
   const [referralOpen, setReferralOpen] = useState(false);
   const scannerRef = useRef(null);
   const html5Ref = useRef(null);
@@ -168,24 +249,29 @@ const FloatingCodeButton = () => {
   return (
     <>
       {!guideOpen && (
-        <>
-          <button
-            type="button"
+        <div className="floating-actions-stack">
+          {showWheel && (
+            <PremiumFloatingButton
+              tone="violet"
+              label={<>عجلة<br />الحظ</>}
+              iconNode={<WheelIcon size={21} />}
+              onClick={() => navigate('/wheel')}
+            />
+          )}
+          <PremiumFloatingButton
+            tone="amber"
+            label={<>كروت<br />مجانية</>}
+            icon={Gift}
             onClick={() => setReferralOpen(true)}
-            className="fixed bottom-[8.5rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-amber-500 text-white shadow-lg border-2 border-white hover:scale-110 active:scale-95 transition-all text-[9px] font-black text-center leading-tight"
-          >
-            كروت<br />مجانية
-          </button>
-
-          <button
-            ref={codeBtnRef}
-            type="button"
+          />
+          <PremiumFloatingButton
+            tone="primary"
+            buttonRef={codeBtnRef}
+            label={<>ادخل<br />الكود</>}
+            icon={Zap}
             onClick={() => runWithVerification(() => setIsOpen(true))}
-            className="fixed bottom-[5.75rem] left-6 z-50 w-16 h-16 flex items-center justify-center rounded-full bg-primary text-white shadow-[0_0_22px_rgba(99,102,241,0.6)] border-2 border-white hover:scale-110 active:scale-95 transition-all duration-300 text-[10px] font-black text-center leading-tight"
-          >
-            ادخل<br />الكود
-          </button>
-        </>
+          />
+        </div>
       )}
 
       <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />

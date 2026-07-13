@@ -6,7 +6,6 @@ import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 
 const SHOPPING_BADGE = '🛍️ للتسوق';
-const PRODUCTS_LABEL = '🛍️ للتسوق';
 
 export function mapProductForCard(product) {
   return {
@@ -104,9 +103,7 @@ export default function CategoryCarousel({
             className="home-offers-rail__slide home-offers-rail__slide--products-label"
             aria-hidden="true"
           >
-            <div className="category-reel__products-divider">
-              <span>{PRODUCTS_LABEL}</span>
-            </div>
+            <div className="category-reel__products-divider" />
           </div>
         )}
 

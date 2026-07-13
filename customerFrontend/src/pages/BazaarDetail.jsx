@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import ErrorState from '../shared/ErrorState';
 import { CONDITION_LABELS, TYPE_LABELS, regionLabel } from '../shared/BazaarListingCard';
+import { getCategoryLabel } from '../utils/bazaarCategories';
 import { formatListingPrice } from '../utils/currency';
 import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 import PhoneDisplay from '../components/PhoneDisplay';
@@ -111,6 +112,10 @@ const BazaarDetail = () => {
         <div className="aspect-square sm:aspect-video bg-gray-100">
           {images[activeImage] ? (
             <img src={images[activeImage]} alt={listing.title} className="w-full h-full object-contain bg-gray-50" />
+          ) : listing.transactionType === 'custom' ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
+              <span className="text-2xl font-black text-orange-500">مطلوب</span>
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold">بدون صورة</div>
           )}
@@ -144,11 +149,12 @@ const BazaarDetail = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { label: 'الحالة', value: CONDITION_LABELS[listing.condition] },
+            { label: 'الحالة', value: listing.condition ? CONDITION_LABELS[listing.condition] : '—', hide: listing.transactionType === 'custom' },
             { label: 'النوع', value: TYPE_LABELS[listing.transactionType] },
+            { label: 'الفئة', value: listing.category ? getCategoryLabel(listing.category) : '—', hide: !listing.category },
             { label: 'المنطقة', value: regionLabel(listing) },
-            { label: 'التوصيل', value: listing.freeDelivery ? 'مجاني' : 'غير متاح' },
-          ].map((item) => (
+            { label: 'التوصيل', value: listing.freeDelivery ? 'مجاني' : 'غير متاح', hide: listing.transactionType === 'custom' },
+          ].filter((item) => !item.hide).map((item) => (
             <div key={item.label} className="bg-gray-50 p-3 rounded-2xl text-center">
               <span className="text-[10px] font-black text-gray-400 block">{item.label}</span>
               <span className="text-xs font-black text-gray-800">{item.value}</span>

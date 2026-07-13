@@ -3,6 +3,16 @@ const mongoose = require("mongoose");
 const LISTING_DAYS = 7;
 const POINTS_COST = 3;
 
+const BAZAAR_CATEGORIES = [
+  "cars", "bikes", "phones", "tablets", "computers", "electronics",
+  "home_appliances", "furniture", "furnishings", "real_estate", "land",
+  "clothing", "shoes", "bags", "watches", "jewelry", "kids_toys",
+  "kids_supplies", "sports", "professional", "animals", "books",
+  "collectibles", "building_materials", "garden", "other",
+];
+
+const BAZAAR_CONDITIONS = ["new", "like_new", "good", "used"];
+
 const bazaarListingSchema = new mongoose.Schema(
   {
     seller: {
@@ -12,7 +22,19 @@ const bazaarListingSchema = new mongoose.Schema(
       index: true,
     },
     title: { type: String, required: true, trim: true, maxlength: 120 },
-    condition: { type: String, enum: ["new", "used"], required: true },
+    condition: {
+      type: String,
+      enum: BAZAAR_CONDITIONS,
+      required: function requiredCondition() {
+        return this.transactionType !== "custom";
+      },
+      default: "used",
+    },
+    category: {
+      type: String,
+      enum: BAZAAR_CATEGORIES,
+      index: true,
+    },
     price: { type: Number, required: true, min: 0 },
     currency: { type: String, enum: ["ILS", "JOD", "USD"], default: "ILS" },
     description: { type: String, trim: true, maxlength: 2000, default: "" },
@@ -74,5 +96,7 @@ bazaarListingSchema.set("toObject", { virtuals: true });
 
 bazaarListingSchema.statics.LISTING_DAYS = LISTING_DAYS;
 bazaarListingSchema.statics.POINTS_COST = POINTS_COST;
+bazaarListingSchema.statics.BAZAAR_CATEGORIES = BAZAAR_CATEGORIES;
+bazaarListingSchema.statics.BAZAAR_CONDITIONS = BAZAAR_CONDITIONS;
 
 module.exports = mongoose.model("BazaarListing", bazaarListingSchema);

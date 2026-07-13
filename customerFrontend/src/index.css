@@ -1366,6 +1366,54 @@ body.offer-viewer-open {
   flex: 1;
 }
 
+.home-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.35rem 0.85rem 0.35rem 0.65rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 20px -10px rgba(139, 92, 246, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.home-hero__brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(145deg, #ffffff 0%, #faf5ff 100%);
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.home-hero__brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.home-hero__brand-name {
+  font-family: Cairo, Tajawal, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background: linear-gradient(135deg, #1f2937 0%, #4c1d95 52%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .home-search-card:hover {
   border-color: rgba(139, 92, 246, 0.15);
   box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.08);
@@ -1408,7 +1456,7 @@ body.offer-viewer-open {
 
 .floating-actions-stack {
   position: fixed;
-  left: 1rem;
+  left: max(0.3rem, env(safe-area-inset-left, 0px));
   bottom: calc(4.85rem + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   display: flex;
@@ -1433,6 +1481,20 @@ body.offer-viewer-open {
   margin-top: 0.25rem;
 }
 
+.user-center-options__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .user-center-options__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem;
+  }
+}
+
 .user-center-option-card {
   display: flex;
   align-items: center;
@@ -1451,6 +1513,7 @@ body.offer-viewer-open {
     transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease;
+  overflow: hidden;
 }
 
 .user-center-option-card:hover {
@@ -1500,22 +1563,31 @@ body.offer-viewer-open {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
+  overflow: hidden;
 }
 
 .user-center-option-card__label {
   font-family: Cairo, Tajawal, sans-serif;
   font-size: 0.9375rem;
   font-weight: 900;
-  line-height: 1.35;
+  line-height: 1.4;
   color: #111827;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .user-center-option-card__hint {
   font-size: 0.6875rem;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.45;
   color: #9ca3af;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.user-center-option-card__chevron {
+  flex-shrink: 0;
 }
 
 .user-center-option-card--amber:hover .user-center-option-card__label {

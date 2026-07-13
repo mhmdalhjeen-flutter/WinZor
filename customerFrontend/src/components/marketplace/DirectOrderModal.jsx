@@ -7,17 +7,25 @@ import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { useVerificationGate } from '../../context/VerificationGateContext';
 import { getOfferPricing } from '../OfferPriceDisplay';
-import { resolveOfferImage } from '../../utils/mediaUrl';
+import { resolveOfferImage, resolveProductImage } from '../../utils/mediaUrl';
 
-export default function DirectOrderModal({ offer, open, onClose }) {
+export default function DirectOrderModal({ offer, itemType = 'offer', open, onClose }) {
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const isProduct = itemType === 'product';
   const store = offer?.store;
-  const offerImageSrc = resolveOfferImage(offer);
-  const pricing = getOfferPricing(offer);
+  const itemImageSrc = isProduct ? resolveProductImage(offer) : resolveOfferImage(offer);
+  const pricing = isProduct
+    ? {
+        finalPrice: offer?.price ?? 0,
+        displayNew: formatPrice(offer?.price, offer?.currency),
+        currency: offer?.currency,
+      }
+    : getOfferPricing(offer);
+  const itemTitle = isProduct ? (offer?.name || offer?.title) : offer?.title;
   const unitPrice = pricing?.finalPrice ?? 0;
   const totalPrice = useMemo(() => unitPrice * quantity, [unitPrice, quantity]);
 
@@ -34,13 +42,13 @@ export default function DirectOrderModal({ offer, open, onClose }) {
     try {
       const cartData = queryClient.getQueryData(queryKeys.cart);
       const existing = (cartData?.items || []).find(
-        (row) => String(row.item?._id) === String(offer._id) && row.itemType === 'offer'
+        (row) => String(row.item?._id) === String(offer._id) && row.itemType === itemType
       );
 
       if (existing) {
-        await api.patch('/cart/update', { itemId: offer._id, itemType: 'offer', quantity });
+        await api.patch('/cart/update', { itemId: offer._id, itemType, quantity });
       } else {
-        await api.post('/cart/add', { itemId: offer._id, itemType: 'offer', quantity });
+        await api.post('/cart/add', { itemId: offer._id, itemType, quantity });
       }
 
       await api.post('/cart/checkout');
@@ -116,8 +124,8 @@ export default function DirectOrderModal({ offer, open, onClose }) {
               <>
                 <div className="direct-order-modal__product">
                   <div className="direct-order-modal__image-wrap">
-                    {offerImageSrc ? (
-                      <img src={offerImageSrc} alt="" className="direct-order-modal__image" />
+                    {itemImageSrc ? (
+                      <img src={itemImageSrc} alt="" className="direct-order-modal__image" />
                     ) : (
                       <div className="direct-order-modal__image-placeholder">
                         <ImageOff size={32} />
@@ -125,7 +133,7 @@ export default function DirectOrderModal({ offer, open, onClose }) {
                     )}
                   </div>
                   <div className="direct-order-modal__details">
-                    <h3 className="direct-order-modal__title">{offer.title}</h3>
+                    <h3 className="direct-order-modal__title">{itemTitle}</h3>
                     <p className="direct-order-modal__store">{store?.name || 'متجر'}</p>
                     <p className="direct-order-modal__unit-price">
                       {pricing?.displayNew || formatPrice(unitPrice, pricing?.currency || offer?.currency)}

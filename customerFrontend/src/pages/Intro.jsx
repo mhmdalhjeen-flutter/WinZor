@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
-  Trophy, Gift, Star, Zap, ShoppingBag, Tag, Coins,
+  Trophy, Gift, Star, ShoppingBag, Tag, Coins,
   Users, TrendingDown, Sparkles, Medal, CircleDot, ChevronLeft,
   Play, Truck, Percent, ChevronRight
 } from 'lucide-react';
@@ -13,7 +13,8 @@ import {
   loginPathWithRef,
   registerPathWithRef,
 } from '../utils/referralStorage';
-import WelcomeBackground from '../components/auth/WelcomeBackground';
+import AuthExperienceBackground from '../components/auth/AuthExperienceBackground';
+import AuthExperienceBranding from '../components/auth/AuthExperienceBranding';
 import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 
 const INTRO_VIDEO =
@@ -93,6 +94,31 @@ const IntroVideo = () => {
   );
 };
 
+const StoreTypesHighlight = () => (
+  <motion.div
+    variants={fadeUp}
+    initial="hidden"
+    animate="show"
+    custom={2}
+    className="mb-8 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm sm:p-5"
+  >
+    <ul className="space-y-2.5 text-sm font-bold text-white/75">
+      <li className="flex items-start gap-2">
+        <span className="text-emerald-400 shrink-0" aria-hidden>✅</span>
+        <span>الحصول على نقاط من المتاجر المعتمدة داخل التطبيق</span>
+      </li>
+      <li className="flex items-start gap-2">
+        <span className="text-emerald-400 shrink-0" aria-hidden>✅</span>
+        <span>أكثر من 30 نوع متجر</span>
+      </li>
+    </ul>
+    <p className="mt-3 text-xs font-bold leading-relaxed text-white/50">
+      مجوهرات · ملابس · أحذية · أجهزة كهربائية · ماركتات · مطاعم
+      <span className="text-amber-300/80"> …والمزيد</span>
+    </p>
+  </motion.div>
+);
+
 const HeroStats = () => (
   <motion.div
     variants={fadeUp}
@@ -169,7 +195,7 @@ const Intro = () => {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#07070f] pb-36 font-['Cairo'] text-white" dir="rtl">
-      <WelcomeBackground />
+      <AuthExperienceBackground />
 
       <div className="relative z-20 flex items-center justify-between px-4 pt-5 sm:px-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-md">
@@ -185,7 +211,9 @@ const Intro = () => {
         </button>
       </div>
 
-      <div className="relative z-10 mx-auto max-w-2xl px-4 pt-4 sm:px-6">
+      <div className="relative z-10 mx-auto max-w-2xl px-4 pt-2 sm:px-6">
+        <AuthExperienceBranding size="large" className="mb-5" />
+
         <IntroVideo />
 
         <motion.div variants={fadeUp} initial="hidden" animate="show" custom={1} className="mb-6 text-center">
@@ -195,21 +223,15 @@ const Intro = () => {
               دعوة من صديق — اكتشف المنصة ثم أنشئ حسابك
             </span>
           )}
-          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-red-600/15 px-4 py-1.5 text-[10px] font-black tracking-wide text-red-200">
-            <Zap size={12} className="text-amber-300" />
-            منصة تسويقية · جوائز · تسوق · مجتمع
-          </span>
-          <h1 className="text-3xl font-black leading-[1.15] sm:text-4xl">
-            عروض حقيقية.
-            <br />
-            <span className="bg-gradient-to-l from-amber-300 via-white to-red-400 bg-clip-text text-transparent">
-              تجربة تربحك أكثر.
-            </span>
+          <h1 className="text-2xl font-black leading-snug sm:text-3xl md:text-[2rem]">
+            كل ما تحتاجه موجود هنا
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-sm font-bold leading-relaxed text-white/55 sm:text-base">
-            منصة واحدة تجمع أفضل العروض، التسوق الذكي، سوق المستخدمين، والجوائز — مصممة لتشعرك بالتقدم من أول دقيقة.
+          <p className="mx-auto mt-3 max-w-md text-base font-black leading-relaxed sm:text-lg bg-gradient-to-l from-amber-200 via-white to-red-300 bg-clip-text text-transparent">
+            حوّل كل عملية شراء إلى فرصة ربح
           </p>
         </motion.div>
+
+        <StoreTypesHighlight />
 
         <HeroStats />
 

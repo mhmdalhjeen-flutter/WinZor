@@ -12,12 +12,8 @@ import { recordOfferView, recordOfferShare } from '../../utils/offerAnalytics';
 import { getOfferBadge } from '../OfferCard';
 import OfferPriceDisplay from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
-import SwipeTutorial from './SwipeTutorial';
 import DirectOrderModal from './DirectOrderModal';
-import { useToast } from '../../shared/Toast';
-import { useVerificationGate } from '../../context/VerificationGateContext';
-import { queryClient, queryKeys } from '../../lib/queryClient';
-import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
+import SwipeTutorial from './SwipeTutorial';
 import { resolveOfferImage, resolveProductImage, resolveStoreLogo, storeLogoPlaceholder } from '../../utils/mediaUrl';
 import { formatPrice } from '../../utils/currency';
 
@@ -268,13 +264,10 @@ function ReelSlide({
   onChat,
   viewCount,
 }) {
-  const { toast } = useToast();
-  const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [orderOpen, setOrderOpen] = useState(false);
   const [liked, setLiked] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
-  const [orderBusy, setOrderBusy] = useState(false);
 
   const isProduct = isProductItem(item);
   const store = item?.store;
@@ -319,26 +312,7 @@ function ReelSlide({
     }
   };
 
-  const performProductOrder = async () => {
-    setOrderBusy(true);
-    try {
-      await api.post('/cart/add', { itemId: item._id, itemType: 'product', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
-      toast('تمت الإضافة للسلة', 'success');
-    } catch (err) {
-      if (handleApiVerificationError(err, performProductOrder, CART_VERIFICATION)) return;
-      toast(err.response?.data?.message || 'تعذّر الإضافة', 'error');
-    } finally {
-      setOrderBusy(false);
-    }
-  };
-
   const handleOrderClick = () => {
-    if (isProduct) {
-      if (orderBusy) return;
-      runWithVerification(performProductOrder, CART_VERIFICATION);
-      return;
-    }
     setOrderOpen(true);
   };
 
@@ -375,11 +349,10 @@ function ReelSlide({
         <button
           type="button"
           onClick={handleOrderClick}
-          disabled={orderBusy}
           className="offer-reel-slide__order-btn"
         >
           <ShoppingBag size={18} />
-          <span>{orderBusy ? 'جاري الطلب...' : 'اطلب الآن'}</span>
+          <span>اطلب الآن</span>
         </button>
       </div>
 
@@ -401,13 +374,12 @@ function ReelSlide({
         </div>
       </aside>
 
-      {!isProduct && (
-        <DirectOrderModal
-          offer={item}
-          open={orderOpen}
-          onClose={() => setOrderOpen(false)}
-        />
-      )}
+      <DirectOrderModal
+        offer={item}
+        itemType={isProduct ? 'product' : 'offer'}
+        open={orderOpen}
+        onClose={() => setOrderOpen(false)}
+      />
     </section>
   );
 }

@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import { loginCustomer, isGoogleAuthAvailable } from '../services/authService';
-import { getAuthErrorMessage, validateLoginForm } from '../utils/authValidation';
+import { getAuthErrorMessage } from '../utils/authValidation';
+import { getLocalPhoneError } from '../utils/phoneValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
-import AuthShell from '../components/auth/AuthShell';
+import AuthExperienceShell from '../components/auth/AuthExperienceShell';
 import AuthField from '../components/auth/AuthField';
 import AuthPrimaryButton from '../components/auth/AuthPrimaryButton';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import AuthOrDivider from '../components/auth/AuthOrDivider';
+import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { registerPathWithRef, saveReferralCode } from '../utils/referralStorage';
-import SocialAuthSection from '../components/auth/SocialAuthSection';
 
 const Login = () => {
-  const [identifier, setIdentifier] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,11 +46,19 @@ const Login = () => {
     onAuthenticated: (user) => redirectByRole(user.role),
   });
 
+  const validateForm = () => {
+    const phoneErr = getLocalPhoneError(phone);
+    if (phoneErr) return phoneErr;
+    if (!password) return 'أدخل كلمة المرور';
+    if (password.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    return null;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
-    const validationError = validateLoginForm({ identifier, password });
+    const validationError = validateForm();
     if (validationError) {
       setError(validationError);
       toast(validationError, 'error');
@@ -58,7 +67,7 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const data = await loginCustomer(identifier, password);
+      const data = await loginCustomer(phone, password);
       if (!data?.token || !data?.user) {
         throw new Error('استجابة غير صالحة من الخادم');
       }
@@ -80,11 +89,7 @@ const Login = () => {
   const busy = loading || socialLoading;
 
   return (
-    <AuthShell
-      badge="مرحباً بعودتك"
-      title="سجّل دخولك"
-      subtitle={showGoogle ? 'الطريقة الأسرع: Google — أو بالبريد/الهاتف' : 'بالبريد الإلكتروني أو رقم الهاتف وكلمة المرور'}
-      highlights={['دخول سريع', 'آمن', 'مجاني']}
+    <AuthExperienceShell
       footer={
         <>
           لا تملك حساب؟{' '}
@@ -104,52 +109,62 @@ const Login = () => {
           </div>
         )}
 
-        <GoogleSignInButton
-          label="🚀 تسجيل الدخول السريع بواسطة Google"
-          onSuccess={handleSocialSuccess}
-          onStart={startSocialLoading}
-          onError={(msg) => {
-            setError(msg);
-            handleSocialError(msg);
-          }}
-          disabled={busy}
-          loading={socialLoading}
-        />
-
-        {showGoogle && <AuthOrDivider />}
+        {showGoogle && (
+          <>
+            <GoogleSignInButton
+              label="المتابعة باستخدام Google"
+              onSuccess={handleSocialSuccess}
+              onStart={startSocialLoading}
+              onError={(msg) => {
+                setError(msg);
+                handleSocialError(msg);
+              }}
+              disabled={busy}
+              loading={socialLoading}
+            />
+            <AuthOrDivider />
+          </>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4" noValidate>
-          <AuthField
-            icon={Mail}
-            type="text"
-            placeholder="0592222222 أو البريد الإلكتروني"
-            value={identifier}
-            onChange={(e) => {
-              setIdentifier(e.target.value);
-              if (error) setError('');
-            }}
-            autoComplete="username"
-            disabled={busy}
-            required
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-black text-white/70">رقم الهاتف</label>
+            <PalestinianPhoneInput
+              name="phone"
+              variant="auth"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (error) setError('');
+              }}
+              disabled={busy}
+              required
+            />
+          </div>
 
-          <AuthField
-            icon={Lock}
-            type="password"
-            placeholder="كلمة المرور (6 أحرف على الأقل)"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (error) setError('');
-            }}
-            minLength={6}
-            autoComplete="current-password"
-            disabled={busy}
-            required
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-black text-white/70">كلمة المرور</label>
+            <AuthField
+              icon={Lock}
+              type="password"
+              placeholder="كلمة المرور"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError('');
+              }}
+              minLength={6}
+              autoComplete="current-password"
+              disabled={busy}
+              required
+            />
+          </div>
 
           <div className="text-left">
-            <Link to="/forgot-password" className="text-xs font-bold text-amber-300/90 hover:text-amber-200 underline-offset-2 hover:underline">
+            <Link
+              to="/forgot-password"
+              className="text-xs font-bold text-amber-300/90 hover:text-amber-200 underline-offset-2 hover:underline"
+            >
               نسيت كلمة المرور؟
             </Link>
           </div>
@@ -163,21 +178,8 @@ const Login = () => {
             )}
           </AuthPrimaryButton>
         </form>
-
-        <SocialAuthSection
-          googleBtnId="googleBtnLogin"
-          hideGoogle
-          onSuccess={handleSocialSuccess}
-          onError={(msg) => {
-            setError(msg);
-            handleSocialError(msg);
-          }}
-          disabled={busy}
-          loading={socialLoading}
-          loadingLabel="جاري إكمال تسجيل الدخول..."
-        />
       </div>
-    </AuthShell>
+    </AuthExperienceShell>
   );
 };
 

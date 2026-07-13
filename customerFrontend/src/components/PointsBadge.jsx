@@ -68,8 +68,16 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
         aria-hidden
       />
 
-      <span className="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 overflow-hidden">
-        <img src={logoImg} alt="" className="w-full h-full object-contain p-0.5" />
+      <span className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 overflow-hidden">
+        <img
+          src={logoImg}
+          alt=""
+          className="w-full h-full object-contain p-0.5"
+          width={36}
+          height={36}
+          decoding="async"
+          style={{ imageRendering: '-webkit-optimize-contrast' }}
+        />
       </span>
 
       <div className="relative flex flex-col items-start leading-none min-w-0">

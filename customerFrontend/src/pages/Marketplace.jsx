@@ -29,7 +29,6 @@ import {
   pathFromRegionIds,
   pathStillValid,
   regionPathToListingIds,
-  listingMatchesRegionFilter,
 } from '../utils/regionTree';
 import { fileToOptimizedDataUrl } from '../utils/imageUpload';
 import PriceCurrencyInput from '../components/PriceCurrencyInput';
@@ -262,12 +261,18 @@ const Marketplace = () => {
 
   const tabListings = browseListings.filter((item) => listingMatchesTab(item, activeTab));
 
-  const filteredMyListings = myListings.filter((item) => {
-    if (!listingMatchesRegionFilter(item, filterRegionId, regionTree)) return false;
-    if (filterCondition && item.condition !== filterCondition) return false;
-    if (filterCategory && item.category !== filterCategory) return false;
-    return true;
-  });
+  const hasBrowseFilters = Boolean(filterRegionId || filterCondition || filterCategory);
+
+  const clearBrowseFilters = () => {
+    setRegionPath([]);
+    setFilterCondition('');
+    setFilterCategory('');
+  };
+
+  const cancelPublish = () => {
+    setShowPublish(false);
+    if (editingId) resetForm();
+  };
 
   const handleImagePick = async (e) => {
     try {
@@ -471,6 +476,193 @@ const Marketplace = () => {
 
   const showPublishCta = !showPublish && activeTab !== 'mine';
 
+  const renderPublishForm = () => (
+    <div className="marketplace-publish-page fixed inset-0 z-[70] bg-gray-50 overflow-y-auto text-right" dir="rtl">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 bg-white/95 backdrop-blur-md border-b border-gray-100">
+        <h2 className="text-base font-black text-gray-900 font-cairo">
+          {editingId ? 'تعديل الإعلان' : (PUBLISH_TITLES[form.transactionType] || 'بيع / نشر')}
+        </h2>
+        <button
+          type="button"
+          onClick={cancelPublish}
+          className="text-sm font-black text-gray-600 px-4 py-2 rounded-xl bg-gray-100 active:scale-[0.98] transition-transform"
+        >
+          إلغاء
+        </button>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] space-y-3.5">
+        <div className={`rounded-2xl p-3 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
+          {pointsAvailable >= meta.pointsCost ? (
+            <CheckCircle2 className="text-green-600 shrink-0" size={22} />
+          ) : (
+            <AlertCircle className="text-amber-600 shrink-0" size={22} />
+          )}
+          <div className="flex-1">
+            <p className="text-sm font-black text-gray-800">
+              رصيدك: {pointsAvailable} نقطة — النشر يكلف {meta.pointsCost} نقاط
+            </p>
+            {pointsAvailable < meta.pointsCost && (
+              <>
+                <p className="text-xs text-gray-600 mt-1">
+                  احصل على نقاط عبر مشاركة رابط الإحالة أو دعوة صديق.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setReferralOpen(true)}
+                  className="mt-2 text-xs font-black text-primary flex items-center gap-1"
+                >
+                  <Gift size={14} /> احصل على نقاط
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 space-y-3.5">
+          <MarketplaceImagePicker
+            images={images}
+            mainImageIndex={mainImageIndex}
+            onPick={handleImagePick}
+            onMainImageChange={setMainImageIndex}
+            onRemoveImage={removeImage}
+            optional={requestListing}
+            wantedMode={requestListing}
+          />
+
+          <div className="space-y-1">
+            <label className="text-xs font-black text-gray-500">
+              {isRent ? 'عنوان العقار أو الأصل' : 'اسم العنصر'}
+            </label>
+            <input
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={titlePlaceholder}
+              className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+            />
+          </div>
+
+          {!requestListing && (
+            <div className="space-y-1">
+              <label className="text-xs font-black text-gray-500">السعر</label>
+              <PriceCurrencyInput
+                price={form.price}
+                currency={form.currency}
+                onPriceChange={(value) => setForm({ ...form, price: value })}
+                onCurrencyChange={(value) => setForm({ ...form, currency: value })}
+                required
+                pricePlaceholder="السعر"
+              />
+            </div>
+          )}
+
+          {!requestListing && (
+            <div className="space-y-1">
+              <label className="text-xs font-black text-gray-500">الفئة</label>
+              <select
+                required
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+              >
+                <option value="">اختر الفئة</option>
+                {BAZAAR_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!requestListing && (
+            <div className="space-y-1">
+              <label className="text-xs font-black text-gray-500">الحالة</label>
+              <select
+                value={form.condition}
+                onChange={(e) => setForm({ ...form, condition: e.target.value })}
+                className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+              >
+                {BAZAAR_CONDITIONS.map((cond) => (
+                  <option key={cond.value} value={cond.value}>{cond.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-black text-gray-500">الوصف</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              placeholder="وصف مختصر للعنصر..."
+              className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none resize-none"
+            />
+          </div>
+
+          {!requestListing && (
+            <div className="space-y-1">
+              <label className="text-xs font-black text-gray-500">الكلمات المفتاحية</label>
+              <input
+                required
+                value={form.keywords}
+                onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+                placeholder="2–5 كلمات مفصولة بفاصلة — تساعد في البحث"
+                className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
+              />
+            </div>
+          )}
+
+          <RegionPickerBox
+            tree={regionTree}
+            pathIds={formRegionPath}
+            onPathChange={handleFormRegionChange}
+            loading={regionsLoading}
+            error={regionsError}
+            onRetry={refetchRegions}
+          />
+
+          <div className="space-y-1">
+            <label className="text-xs font-black text-gray-500">رقم الهاتف (اختياري)</label>
+            <PalestinianPhoneInput
+              value={form.contactPhone}
+              onValueChange={(v) => setForm({ ...form, contactPhone: v })}
+            />
+          </div>
+
+          {!requestListing && (
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.freeDelivery}
+                onChange={(e) => setForm({ ...form, freeDelivery: e.target.checked })}
+                className="rounded"
+              />
+              التوصيل مجاني
+            </label>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            {editingId && (
+              <button type="button" onClick={() => resetForm()} className="flex-1 py-3.5 rounded-xl border font-black text-sm">
+                إلغاء
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 bg-primary text-white py-3.5 rounded-xl font-black flex items-center justify-center gap-2 disabled:opacity-60 text-sm"
+            >
+              {submitting ? <Loader2 className="animate-spin" size={20} /> : (
+                <>{editingId ? 'حفظ التعديل' : 'نشر الإعلان'}</>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <div className="pb-20 bg-gray-50 min-h-screen text-right marketplace-page" dir="rtl">
       <div className="px-2 pt-3 pb-2 text-center">
@@ -500,6 +692,19 @@ const Marketplace = () => {
       <div className="px-1.5 sm:px-2 py-2">
         {BROWSE_TAB_IDS.includes(activeTab) && (
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <span className="text-xs font-bold text-gray-500">تصفية الإعلانات</span>
+              {hasBrowseFilters && (
+                <button
+                  type="button"
+                  onClick={clearBrowseFilters}
+                  className="shrink-0 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold text-violet-600 bg-violet-50 border border-violet-100 active:scale-[0.98] transition-transform"
+                >
+                  إلغاء التصفية
+                </button>
+              )}
+            </div>
+
             <MarketplaceFilters
               regionTree={regionTree}
               regionPath={regionPath}
@@ -527,224 +732,14 @@ const Marketplace = () => {
           </div>
         )}
 
-        {activeTab === 'mine' && isAuth && showPublish && (
-          <div className="space-y-3">
-            <div className={`rounded-2xl p-3 flex items-start gap-3 ${pointsAvailable >= meta.pointsCost ? 'bg-green-50' : 'bg-amber-50'}`}>
-              {pointsAvailable >= meta.pointsCost ? (
-                <CheckCircle2 className="text-green-600 shrink-0" size={22} />
-              ) : (
-                <AlertCircle className="text-amber-600 shrink-0" size={22} />
-              )}
-              <div className="flex-1">
-                <p className="text-sm font-black text-gray-800">
-                  رصيدك: {pointsAvailable} نقطة — النشر يكلف {meta.pointsCost} نقاط
-                </p>
-                {pointsAvailable < meta.pointsCost && (
-                  <>
-                    <p className="text-xs text-gray-600 mt-1">
-                      احصل على نقاط عبر مشاركة رابط الإحالة أو دعوة صديق.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setReferralOpen(true)}
-                      className="mt-2 text-xs font-black text-primary flex items-center gap-1"
-                    >
-                      <Gift size={14} /> احصل على نقاط
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100 space-y-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-base font-black text-gray-900 font-cairo">
-                  {editingId ? 'تعديل الإعلان' : (PUBLISH_TITLES[form.transactionType] || 'بيع / نشر')}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => { setShowPublish(false); if (editingId) resetForm(); }}
-                  className="text-xs font-black text-gray-500 px-3 py-1.5 rounded-xl bg-gray-100"
-                >
-                  رجوع
-                </button>
-              </div>
-
-              <MarketplaceImagePicker
-                images={images}
-                mainImageIndex={mainImageIndex}
-                onPick={handleImagePick}
-                onMainImageChange={setMainImageIndex}
-                onRemoveImage={removeImage}
-                optional={requestListing}
-                wantedMode={requestListing}
-              />
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-gray-500">
-                  {isRent ? 'عنوان العقار أو الأصل' : 'اسم العنصر'}
-                </label>
-                <input
-                  required
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder={titlePlaceholder}
-                  className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
-                />
-              </div>
-
-              {!requestListing && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-gray-500">السعر</label>
-                  <PriceCurrencyInput
-                    price={form.price}
-                    currency={form.currency}
-                    onPriceChange={(value) => setForm({ ...form, price: value })}
-                    onCurrencyChange={(value) => setForm({ ...form, currency: value })}
-                    required
-                    pricePlaceholder="السعر"
-                  />
-                </div>
-              )}
-
-              {!requestListing && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-gray-500">الفئة</label>
-                  <select
-                    required
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
-                  >
-                    <option value="">اختر الفئة</option>
-                    {BAZAAR_CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {!requestListing && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-gray-500">الحالة</label>
-                  <select
-                    value={form.condition}
-                    onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
-                  >
-                    {BAZAAR_CONDITIONS.map((cond) => (
-                      <option key={cond.value} value={cond.value}>{cond.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-gray-500">الوصف</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={3}
-                  placeholder="وصف مختصر للعنصر..."
-                  className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none resize-none"
-                />
-              </div>
-
-              {!requestListing && (
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-gray-500">الكلمات المفتاحية</label>
-                  <input
-                    required
-                    value={form.keywords}
-                    onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                    placeholder="2–5 كلمات مفصولة بفاصلة — تساعد في البحث"
-                    className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-bold border border-transparent focus:border-primary/20 focus:outline-none"
-                  />
-                </div>
-              )}
-
-              <RegionPickerBox
-                tree={regionTree}
-                pathIds={formRegionPath}
-                onPathChange={handleFormRegionChange}
-                loading={regionsLoading}
-                error={regionsError}
-                onRetry={refetchRegions}
-              />
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-gray-500">رقم الهاتف (اختياري)</label>
-                <PalestinianPhoneInput
-                  value={form.contactPhone}
-                  onValueChange={(v) => setForm({ ...form, contactPhone: v })}
-                />
-              </div>
-
-              {!requestListing && (
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.freeDelivery}
-                    onChange={(e) => setForm({ ...form, freeDelivery: e.target.checked })}
-                    className="rounded"
-                  />
-                  التوصيل مجاني
-                </label>
-              )}
-
-              <div className="flex gap-2 pt-1">
-                {editingId && (
-                  <button type="button" onClick={() => resetForm()} className="flex-1 py-3.5 rounded-xl border font-black text-sm">
-                    إلغاء
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 bg-primary text-white py-3.5 rounded-xl font-black flex items-center justify-center gap-2 disabled:opacity-60 text-sm"
-                >
-                  {submitting ? <Loader2 className="animate-spin" size={20} /> : (
-                    <>{editingId ? 'حفظ التعديل' : 'نشر الإعلان'}</>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
         {activeTab === 'mine' && isAuth && !showPublish && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <h2 className="text-base font-black text-gray-900 font-cairo">منشوراتي</h2>
-              <button
-                type="button"
-                onClick={openPublishSheet}
-                className="flex items-center gap-1.5 bg-primary text-white text-xs font-black px-3.5 py-2 rounded-xl shadow-sm"
-              >
-                <Plus size={16} /> بيع أو نشر
-              </button>
-            </div>
-
-            <MarketplaceFilters
-              regionTree={regionTree}
-              regionPath={regionPath}
-              onRegionPathChange={setRegionPath}
-              regionsLoading={regionsLoading}
-              regionsError={regionsError}
-              onRegionsRetry={refetchRegions}
-              filterCondition={filterCondition}
-              onFilterConditionChange={setFilterCondition}
-              filterCategory={filterCategory}
-              onFilterCategoryChange={setFilterCategory}
-            />
+            <h2 className="text-base font-black text-gray-900 font-cairo px-0.5">منشوراتي</h2>
 
             {myListings.length === 0 && (
-              <EmptyState title="لا منشورات بعد" description="اضغط «بيع أو نشر» لنشر إعلانك الأول" />
+              <EmptyState title="لا منشورات بعد" description="انتقل إلى تبويب آخر واضغط «بيع أو نشر» لنشر إعلانك الأول" />
             )}
-            {myListings.length > 0 && filteredMyListings.length === 0 && (
-              <EmptyState title="لا نتائج" description="جرّب تغيير المنطقة أو الفلاتر" />
-            )}
-            {filteredMyListings.map((item) => {
+            {myListings.map((item) => {
               const st = STATUS_LABELS[item.status] || STATUS_LABELS.pending;
               const canRenew = ['approved', 'expired'].includes(item.status);
               const expiringSoon = item.expiresAt && new Date(item.expiresAt) - Date.now() < 2 * 86400000;
@@ -835,6 +830,8 @@ const Marketplace = () => {
         onClose={() => setPublishSheetOpen(false)}
         onSelect={handlePublishTypeSelect}
       />
+
+      {showPublish && renderPublishForm()}
 
       <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
     </div>

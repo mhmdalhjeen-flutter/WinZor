@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Play, X } from 'lucide-react';
 import PointsGuideModal from '../PointsGuideModal';
+import logoImg from '../../assets/logo/win-goldenstore-logo.png';
 
 const INTRO_VIDEO =
   import.meta.env.VITE_INTRO_VIDEO_URL ||
@@ -76,7 +77,21 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
           <div className="relative z-10 home-hero__content py-3.5 sm:py-4 px-3 sm:px-4">
-            <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center">
+            <div className="home-hero__brand" aria-label="WinGolden">
+              <span className="home-hero__brand-logo-wrap">
+                <img
+                  src={logoImg}
+                  alt=""
+                  className="home-hero__brand-logo"
+                  width={44}
+                  height={44}
+                  decoding="async"
+                />
+              </span>
+              <span className="home-hero__brand-name">WinGolden</span>
+            </div>
+
+            <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center mt-2.5">
               اجمع نقاطك من المتاجر المعتمدة
             </p>
 

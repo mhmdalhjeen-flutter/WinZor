@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Lock, ArrowLeft, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import { registerCustomer, isGoogleAuthAvailable } from '../services/authService';
-import { getAuthErrorMessage, validateRegisterForm } from '../utils/authValidation';
+import { getAuthErrorMessage } from '../utils/authValidation';
+import { getLocalPhoneError } from '../utils/phoneValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
-import AuthShell from '../components/auth/AuthShell';
+import AuthExperienceShell from '../components/auth/AuthExperienceShell';
 import AuthField from '../components/auth/AuthField';
 import AuthPrimaryButton from '../components/auth/AuthPrimaryButton';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import AuthOrDivider from '../components/auth/AuthOrDivider';
-import SocialAuthSection from '../components/auth/SocialAuthSection';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
+import api from '../api/axios';
 import {
   getReferralCode,
   saveReferralCode,
@@ -22,13 +23,170 @@ import {
   loginPathWithRef,
 } from '../utils/referralStorage';
 
+const RESEND_COOLDOWN_SEC = 60;
+
+function PhoneVerificationStep({
+  phone,
+  onVerified,
+  onBack,
+}) {
+  const { toast } = useToast();
+  const { updateUser } = useAuth();
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [resendSeconds, setResendSeconds] = useState(RESEND_COOLDOWN_SEC);
+  const [initialSent, setInitialSent] = useState(false);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return undefined;
+    const timer = setInterval(() => {
+      setResendSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendSeconds]);
+
+  useEffect(() => {
+    if (initialSent) return undefined;
+    let cancelled = false;
+
+    const sendCode = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const { data } = await api.post('/auth/verify/request', { channel: 'phone' });
+        if (!cancelled) {
+          setInitialSent(true);
+          setResendSeconds(RESEND_COOLDOWN_SEC);
+          toast(data.message || 'تم إرسال رمز التحقق', 'success');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'تعذّر إرسال رمز التحقق');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    sendCode();
+    return () => { cancelled = true; };
+  }, [initialSent, toast]);
+
+  const resendCode = async () => {
+    if (loading || resendSeconds > 0) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/verify/request', { channel: 'phone' });
+      setResendSeconds(RESEND_COOLDOWN_SEC);
+      toast(data.message || 'تم إعادة إرسال الرمز', 'success');
+    } catch (err) {
+      setError(err.response?.data?.message || 'تعذّر إعادة الإرسال');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmCode = async () => {
+    if (!code.trim()) {
+      setError('أدخل رمز التحقق');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/verify/confirm', { channel: 'phone', code: code.trim() });
+      updateUser({
+        ...data.user,
+        points: data.points,
+        isVerified: true,
+        phoneVerified: data.user?.phoneVerified,
+      });
+      toast(data.message || 'تم تفعيل حسابك', 'success');
+      onVerified?.();
+    } catch (err) {
+      setError(err.response?.data?.message || 'رمز غير صحيح');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="text-center space-y-2">
+        <h2 className="text-xl font-black text-white">تفعيل الحساب</h2>
+        <p className="text-sm font-bold leading-relaxed text-white/60">
+          لقد أرسلنا رمز التحقق إلى رقم هاتفك
+          {phone ? (
+            <>
+              <br />
+              <span className="text-amber-200/90 font-mono" dir="ltr">{phone}</span>
+            </>
+          ) : null}
+        </p>
+        <p className="text-xs font-bold text-white/45">
+          Please enter the code to activate your account.
+        </p>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200"
+        >
+          {error}
+        </div>
+      )}
+
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        placeholder="رمز التحقق"
+        value={code}
+        onChange={(e) => {
+          setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+          if (error) setError('');
+        }}
+        disabled={loading}
+        className="w-full rounded-2xl border border-white/12 bg-white/[0.08] py-4 text-center text-2xl font-black tracking-[0.35em] text-white outline-none transition placeholder:text-sm placeholder:tracking-normal placeholder:font-bold placeholder:text-white/30 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/20 disabled:opacity-50"
+        dir="ltr"
+      />
+
+      <AuthPrimaryButton type="button" onClick={confirmCode} loading={loading} disabled={loading || !code.trim()}>
+        {!loading && 'تأكيد وتفعيل الحساب'}
+      </AuthPrimaryButton>
+
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          className="text-xs font-bold text-white/50 hover:text-white/80 transition disabled:opacity-50"
+        >
+          تعديل البيانات
+        </button>
+        <button
+          type="button"
+          onClick={resendCode}
+          disabled={loading || resendSeconds > 0}
+          className="inline-flex items-center gap-1.5 text-xs font-black text-amber-300/90 disabled:opacity-40"
+        >
+          <RotateCw size={14} />
+          {resendSeconds > 0 ? `إعادة الإرسال (${resendSeconds})` : 'إعادة إرسال الرمز'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const Register = () => {
-  const [signupMode, setSignupMode] = useState('email');
+  const [step, setStep] = useState('form');
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
     phone: '',
     password: '',
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -62,21 +220,20 @@ const Register = () => {
     if (error) setError('');
   };
 
+  const validateForm = () => {
+    const phoneErr = getLocalPhoneError(formData.phone);
+    if (phoneErr) return phoneErr;
+    if (!formData.password) return 'أدخل كلمة المرور';
+    if (formData.password.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    if (formData.password !== formData.confirmPassword) return 'كلمتا المرور غير متطابقتين';
+    return null;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
 
-    const email = signupMode === 'email' ? formData.email.trim().toLowerCase() : '';
-    const phone = signupMode === 'phone' ? formData.phone : '';
-
-    const validationError = validateRegisterForm({
-      name: formData.name,
-      email,
-      phone,
-      password: formData.password,
-      signupMode,
-    });
-
+    const validationError = validateForm();
     if (validationError) {
       setError(validationError);
       toast(validationError, 'error');
@@ -86,9 +243,8 @@ const Register = () => {
     setLoading(true);
     try {
       const data = await registerCustomer({
-        name: formData.name.trim(),
-        email: email || undefined,
-        phone: phone || undefined,
+        name: 'مستخدم جديد',
+        phone: formData.phone,
         password: formData.password,
         referralCode: refCode || undefined,
       });
@@ -98,8 +254,7 @@ const Register = () => {
         deviceId: data.deviceId,
       });
       clearReferralSession();
-      toast(data.message || 'تم إنشاء حسابك بنجاح', 'success');
-      navigate('/', { state: { suggestVerify: true } });
+      setStep('verify');
     } catch (err) {
       const message = getAuthErrorMessage(err, 'حدث خطأ أثناء إنشاء الحساب');
       setError(message);
@@ -112,118 +267,61 @@ const Register = () => {
   const busy = loading || socialLoading;
 
   return (
-    <AuthShell
-      badge={refCode ? '🎉 دعوة من صديق' : 'ابدأ رحلتك'}
-      title="أنشئ حسابك"
-      subtitle={showGoogle ? 'الطريقة الأسرع: Google — أو بالبريد/الهاتف' : 'سجّل بالبريد الإلكتروني أو الهاتف مع كلمة مرور'}
-      highlights={['دقيقة واحدة', 'مجاني', 'ابدأ فوراً']}
+    <AuthExperienceShell
       footer={
-        <>
-          لديك حساب؟{' '}
-          <Link to={loginPathWithRef(refCode)} className="font-black text-amber-300 underline-offset-4 hover:underline">
-            سجّل دخولك
-          </Link>
-        </>
+        step === 'form' ? (
+          <>
+            لديك حساب؟{' '}
+            <Link to={loginPathWithRef(refCode)} className="font-black text-amber-300 underline-offset-4 hover:underline">
+              سجّل دخولك
+            </Link>
+          </>
+        ) : null
       }
     >
-      <div className="space-y-5">
-        {error && (
-          <div
-            role="alert"
-            className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200"
-          >
-            {error}
-          </div>
-        )}
-
-        {refCode && (
-          <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-2.5 text-center text-[11px] font-black text-amber-100">
-            مرحباً بك عبر دعوة صديق — ستبدأ بمزايا إضافية
-          </div>
-        )}
-
-        <GoogleSignInButton
-          label="🚀 إنشاء حساب سريع بواسطة Google"
-          onSuccess={handleSocialSuccess}
-          onStart={startSocialLoading}
-          onError={(msg) => {
-            setError(msg);
-            handleSocialError(msg);
-          }}
-          disabled={busy}
-          loading={socialLoading}
+      {step === 'verify' ? (
+        <PhoneVerificationStep
+          phone={formData.phone}
+          onVerified={() => navigate('/')}
+          onBack={() => setStep('form')}
         />
-
-        {showGoogle && <AuthOrDivider />}
-
-        <form onSubmit={handleRegister} className="space-y-4" noValidate>
-          <div className="flex items-center gap-2 rounded-2xl bg-white/5 p-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400/20 text-xs font-black text-amber-200">
-              1
-            </span>
-            <div>
-              <p className="text-xs font-black text-white/90">بياناتك الأساسية</p>
-              <p className="text-[10px] font-bold text-white/40">
-                اسم + {signupMode === 'email' ? 'بريد' : 'هاتف'} + كلمة مرور
-              </p>
+      ) : (
+        <div className="space-y-5">
+          {error && (
+            <div
+              role="alert"
+              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200"
+            >
+              {error}
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setSignupMode('email');
-                setError('');
-              }}
-              disabled={busy}
-              className={`rounded-xl py-2.5 text-xs font-black transition ${
-                signupMode === 'email' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
-              }`}
-            >
-              بالبريد
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSignupMode('phone');
-                setError('');
-              }}
-              disabled={busy}
-              className={`rounded-xl py-2.5 text-xs font-black transition ${
-                signupMode === 'phone' ? 'bg-white text-gray-900 shadow' : 'text-white/60'
-              }`}
-            >
-              بالهاتف
-            </button>
-          </div>
+          {refCode && (
+            <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-2.5 text-center text-[11px] font-black text-amber-100">
+              مرحباً بك عبر دعوة صديق — ستبدأ بمزايا إضافية
+            </div>
+          )}
 
-          <div className="space-y-3">
-            <AuthField
-              icon={User}
-              name="name"
-              type="text"
-              placeholder="الاسم الكامل"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={busy}
-              required
-              minLength={2}
-            />
-
-            {signupMode === 'email' ? (
-              <AuthField
-                icon={Mail}
-                name="email"
-                type="email"
-                placeholder="البريد الإلكتروني"
-                value={formData.email}
-                onChange={handleChange}
-                autoComplete="email"
+          {showGoogle && (
+            <>
+              <GoogleSignInButton
+                label="المتابعة باستخدام Google"
+                onSuccess={handleSocialSuccess}
+                onStart={startSocialLoading}
+                onError={(msg) => {
+                  setError(msg);
+                  handleSocialError(msg);
+                }}
                 disabled={busy}
-                required
+                loading={socialLoading}
               />
-            ) : (
+              <AuthOrDivider />
+            </>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-4" noValidate>
+            <div className="space-y-1">
+              <label className="text-xs font-black text-white/70">رقم الهاتف</label>
               <PalestinianPhoneInput
                 name="phone"
                 variant="auth"
@@ -232,50 +330,56 @@ const Register = () => {
                 disabled={busy}
                 required
               />
-            )}
+            </div>
 
-            <AuthField
-              icon={Lock}
-              name="password"
-              type="password"
-              placeholder="كلمة المرور (6 أحرف على الأقل)"
-              value={formData.password}
-              onChange={handleChange}
-              minLength={6}
-              autoComplete="new-password"
-              disabled={busy}
-              required
-            />
-          </div>
+            <div className="space-y-1">
+              <label className="text-xs font-black text-white/70">كلمة المرور</label>
+              <AuthField
+                icon={Lock}
+                name="password"
+                type="password"
+                placeholder="كلمة المرور (6 أحرف على الأقل)"
+                value={formData.password}
+                onChange={handleChange}
+                minLength={6}
+                autoComplete="new-password"
+                disabled={busy}
+                required
+              />
+            </div>
 
-          <AuthPrimaryButton
-            type="submit"
-            loading={loading}
-            disabled={busy || formData.password.length < 6}
-          >
-            {!loading && (
-              <>
-                إنشاء الحساب
-                <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
-              </>
-            )}
-          </AuthPrimaryButton>
-        </form>
+            <div className="space-y-1">
+              <label className="text-xs font-black text-white/70">تأكيد كلمة المرور</label>
+              <AuthField
+                icon={Lock}
+                name="confirmPassword"
+                type="password"
+                placeholder="أعد إدخال كلمة المرور"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                minLength={6}
+                autoComplete="new-password"
+                disabled={busy}
+                required
+              />
+            </div>
 
-        <SocialAuthSection
-          googleBtnId="googleBtnRegister"
-          hideGoogle
-          onSuccess={handleSocialSuccess}
-          onError={(msg) => {
-            setError(msg);
-            handleSocialError(msg);
-          }}
-          disabled={busy}
-          loading={socialLoading}
-          loadingLabel="جاري إكمال التسجيل..."
-        />
-      </div>
-    </AuthShell>
+            <AuthPrimaryButton
+              type="submit"
+              loading={loading}
+              disabled={busy || formData.password.length < 6}
+            >
+              {!loading && (
+                <>
+                  إنشاء حساب
+                  <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
+                </>
+              )}
+            </AuthPrimaryButton>
+          </form>
+        </div>
+      )}
+    </AuthExperienceShell>
   );
 };
 

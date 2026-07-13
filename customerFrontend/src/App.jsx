@@ -84,6 +84,9 @@ function AppShell() {
 
   const hideOverlayChrome = offerViewerOpen || pointsGuideOpen;
   const hideBottomNav = hideOverlayChrome || location.pathname === '/stores/search';
+  const showFloatingActions = isAuth
+    && !offerViewerOpen
+    && (location.pathname === '/' || location.pathname === '/explore');
 
   return (
     <>
@@ -145,7 +148,7 @@ function AppShell() {
         </main>
 
         {/* زر الكود العائم */}
-        {isAuth && !offerViewerOpen && <FloatingCodeButton />}
+        {showFloatingActions && <FloatingCodeButton />}
         
         {/* شريط التنقل السفلي */}
         {isAuth && !hideBottomNav && <BottomNav />}

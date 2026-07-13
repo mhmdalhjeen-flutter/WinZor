@@ -700,8 +700,8 @@ const UserCenter = () => {
       </div>
 
       {/* Premium bottom options */}
-      <section className="user-center-options space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section className="user-center-options">
+        <div className="user-center-options__grid">
           {[
             {
               id: 'suggest',

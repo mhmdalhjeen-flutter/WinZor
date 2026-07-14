@@ -10,13 +10,11 @@ import { getChatItemPath, getReferencedItems } from '../utils/chatItemRoutes';
 import { getStoredUser } from '../utils/safeStorage';
 import { getUnreadCountForUser } from '../utils/unreadCount';
 import { queryKeys } from '../lib/queryClient';
-import { fileToOptimizedDataUrl } from '../utils/imageUpload';
+import { uploadImage } from '../utils/imageUpload';
 import '../styles/Chats.css';
 
 const POLL_MS = 3000;
 const WARN_KEY = 'chatExpiryWarned';
-
-const toBase64 = (file) => fileToOptimizedDataUrl(file, { maxWidth: 800 });
 
 const getMyId = (authUser) => {
   if (authUser?._id) return String(authUser._id);
@@ -232,9 +230,13 @@ export default function Chats() {
   const handleImageSelect = async (file) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) return alert('الصورة أكبر من 5MB');
-    const base64 = await toBase64(file);
-    setImageFile(base64);
-    setImagePreview(base64);
+    try {
+      const url = await uploadImage(file);
+      setImageFile(url);
+      setImagePreview(url);
+    } catch (err) {
+      alert(err.message || 'فشل رفع الصورة');
+    }
   };
 
   const sendMessage = async () => {
@@ -332,7 +334,7 @@ export default function Chats() {
         </div>
       )}
 
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e.target.files[0])} />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleImageSelect(e.target.files[0])} />
 
       <div className="messenger-container">
         <div className={`chats-sidebar ${showWindow ? 'mobile-hidden' : ''}`}>

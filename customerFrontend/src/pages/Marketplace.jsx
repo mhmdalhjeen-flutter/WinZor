@@ -30,7 +30,7 @@ import {
   pathStillValid,
   regionPathToListingIds,
 } from '../utils/regionTree';
-import { fileToOptimizedDataUrl } from '../utils/imageUpload';
+import { uploadImages } from '../utils/imageUpload';
 import PriceCurrencyInput from '../components/PriceCurrencyInput';
 import { DEFAULT_CURRENCY } from '../utils/currency';
 import { BAZAAR_CATEGORIES } from '../utils/bazaarCategories';
@@ -70,11 +70,8 @@ const readImages = async (files, existing = []) => {
   const picked = Array.from(files).slice(0, slots);
   if (!picked.length) return existing;
 
-  const optimized = [];
-  for (const file of picked) {
-    optimized.push(await fileToOptimizedDataUrl(file));
-  }
-  return [...existing, ...optimized].slice(0, 3);
+  const urls = await uploadImages(picked);
+  return [...existing, ...urls].slice(0, 3);
 };
 
 const isRequestListing = (type) => type === 'custom';

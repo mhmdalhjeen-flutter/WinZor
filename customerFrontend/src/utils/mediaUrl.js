@@ -3,9 +3,13 @@ import { API_URL } from '../lib/apiUrl';
 const ABSOLUTE_SRC_RE = /^(https?:|data:|blob:)/i;
 
 /**
- * Central image URL resolver for customer frontend.
- * Absolute URLs (http/https/data/blob) pass through unchanged.
- * Relative paths (e.g. /offers/:id/image, uploads/...) are prefixed with API base.
+ * Shared display strategy (React + Flutter):
+ * - https:// → Cloudinary / remote URL (new uploads)
+ * - relative /offers|/products|/stores/... → prefix API base (legacy Base64 served by backend)
+ * - data:image/... → legacy Base64 (supported for backward compatibility)
+ *
+ * Upload strategy (see imageUpload.js / Flutter ImageUploadService):
+ * File → POST /api/upload/image → Cloudinary → HTTPS → save URL in MongoDB
  */
 export function resolveImageUrl(src) {
   if (!src || typeof src !== 'string') return null;

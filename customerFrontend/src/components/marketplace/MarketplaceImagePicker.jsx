@@ -70,7 +70,7 @@ export default function MarketplaceImagePicker({
                   </span>
                 </>
               )}
-              <input type="file" accept="image/*" className="hidden" onChange={onPick} />
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPick} />
             </label>
           );
         })}

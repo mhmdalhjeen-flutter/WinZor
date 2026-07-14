@@ -25,9 +25,7 @@ import { useRecentPointSources } from '../hooks/useRecentPointSources';
 import { CompetitionModal, timeLeft } from './Competitions';
 import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
-import { fileToOptimizedDataUrl } from '../utils/imageUpload';
-
-const toBase64 = (file) => fileToOptimizedDataUrl(file, { maxWidth: 400 });
+import { uploadImage } from '../utils/imageUpload';
 
 function useAnimatedCounter(target, duration = 700) {
   const [display, setDisplay] = useState(target);
@@ -195,14 +193,14 @@ const UserCenter = () => {
   const handleAvatarFile = async (file) => {
     if (!file) return;
     try {
-      const avatar = await toBase64(file);
+      const avatar = await uploadImage(file);
       const { data } = await api.patch('/users/me/profile', { avatar });
       updateUser({ avatar: data.user.avatar });
       setShowAvatar(false);
       showToast('تم تحديث الصورة');
       refreshCenter();
     } catch (err) {
-      showToast(err.response?.data?.message || 'فشل رفع الصورة');
+      showToast(err.response?.data?.message || err.message || 'فشل رفع الصورة');
     }
   };
 
@@ -797,8 +795,8 @@ const UserCenter = () => {
               className="bg-white rounded-[28px] p-6 w-full max-w-md space-y-3"
             >
               <h3 className="font-black text-lg">تغيير الصورة</h3>
-              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
-              <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
+              <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
+              <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
               <button type="button" onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-2xl font-bold">
                 <Camera size={20} /> الكاميرا
               </button>

@@ -242,6 +242,7 @@ exports.getStoreById = async (req, res) => {
         });
 
     } catch (error) {
+        console.error("[GET /api/stores/:id] getStoreById failed:", error?.stack || error);
         res.status(error.status || 500).json({ message: error.message });
     }
 };

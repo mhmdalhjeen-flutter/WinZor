@@ -460,6 +460,7 @@ function previewPricing(body) {
 module.exports = {
   attachPricing,
   attachPricingList,
+  rankOffers,
   listActiveOffers,
   listOfferFeed,
   listCategoryReels,

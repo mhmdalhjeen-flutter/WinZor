@@ -15,6 +15,7 @@ import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 import PhoneDisplay from '../components/PhoneDisplay';
 import { getPhoneCarrier } from '../utils/phoneValidation';
 import { queryClient, queryKeys } from '../lib/queryClient';
+import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const BazaarDetail = () => {
   const { id } = useParams();
@@ -85,7 +86,7 @@ const BazaarDetail = () => {
         itemId: listing._id,
         itemType: 'BazaarListing',
         itemName: listing.title,
-        itemImage: img,
+        itemImage: img ? optimizeCloudinaryUrl(img, { width: 300 }) : img,
         itemUrl: `/marketplace/${listing._id}`,
       },
     }));
@@ -111,7 +112,13 @@ const BazaarDetail = () => {
       <div className="bg-white rounded-[28px] overflow-hidden border border-gray-100 shadow-sm">
         <div className="aspect-square sm:aspect-video bg-gray-100">
           {images[activeImage] ? (
-            <img src={images[activeImage]} alt={listing.title} className="w-full h-full object-contain bg-gray-50" />
+            <img
+              src={optimizeCloudinaryUrl(images[activeImage], { width: 800 })}
+              srcSet={cloudinarySrcSet(images[activeImage], [600, 800])}
+              sizes="(max-width: 640px) 100vw, 800px"
+              alt={listing.title}
+              className="w-full h-full object-contain bg-gray-50"
+            />
           ) : listing.transactionType === 'custom' ? (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
               <span className="text-2xl font-black text-orange-500">مطلوب</span>
@@ -131,7 +138,12 @@ const BazaarDetail = () => {
                   activeImage === idx ? 'border-primary' : 'border-transparent'
                 }`}
               >
-                <img src={img} alt="" loading="lazy" className="w-full h-full object-cover" />
+                <img
+                  src={optimizeCloudinaryUrl(img, { width: 300 })}
+                  alt=""
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
           </HorizontalSwipe>

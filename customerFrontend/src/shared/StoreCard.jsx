@@ -7,7 +7,7 @@ import VerifiedBadge from '../components/marketplace/VerifiedBadge';
 
 const StoreCard = ({ store, membershipStatus }) => {
   const navigate = useNavigate();
-  const logo = resolveStoreLogo(store) || storeLogoPlaceholder(store);
+  const logo = resolveStoreLogo(store, { width: 300 }) || storeLogoPlaceholder(store);
   const location = store.subRegion || store.region;
   const categoryLabel = store.category?.includes(' › ')
     ? store.category.split(' › ').pop()

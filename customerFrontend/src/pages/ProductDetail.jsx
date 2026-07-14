@@ -72,7 +72,7 @@ const ProductDetail = () => {
         itemId: product._id,
         itemType: 'Product',
         itemName: product.name,
-        itemImage: resolveProductImage(product) || '',
+        itemImage: resolveProductImage(product, { width: 300 }) || '',
       },
     }));
     navigate('/chat');
@@ -82,7 +82,7 @@ const ProductDetail = () => {
   if (error || !product) return <ErrorState message={error || 'المنتج غير موجود'} />;
 
   const store = product.store;
-  const productImageSrc = resolveProductImage(product);
+  const productImageSrc = resolveProductImage(product, { width: 800 });
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">

@@ -17,7 +17,9 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
 
   const isProduct = itemType === 'product';
   const store = offer?.store;
-  const itemImageSrc = isProduct ? resolveProductImage(offer) : resolveOfferImage(offer);
+  const itemImageSrc = isProduct
+    ? resolveProductImage(offer, { width: 300 })
+    : resolveOfferImage(offer, { width: 300 });
   const pricing = isProduct
     ? {
         finalPrice: offer?.price ?? 0,

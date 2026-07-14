@@ -10,8 +10,8 @@ import {
 
 const PointsStoreCard = ({ store }) => {
   const navigate = useNavigate();
-  const logo = resolveStoreLogo(store) || storeLogoPlaceholder(store);
-  const cover = resolveStoreCover(store);
+  const logo = resolveStoreLogo(store, { width: 150 }) || storeLogoPlaceholder(store);
+  const cover = resolveStoreCover(store, { width: 600 });
   const categoryLabel = store.category?.includes(' › ')
     ? store.category.split(' › ').pop()
     : store.category;

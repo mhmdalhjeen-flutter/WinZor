@@ -12,7 +12,9 @@ import { resolveOfferImage, resolveProductImage } from '../utils/mediaUrl';
 import { formatPrice } from '../utils/currency';
 
 const getCartItemImage = (item, itemType) => (
-  itemType === 'product' ? resolveProductImage(item) : resolveOfferImage(item)
+  itemType === 'product'
+    ? resolveProductImage(item, { width: 160 })
+    : resolveOfferImage(item, { width: 160 })
 );
 
 const STATUS_LABELS = {

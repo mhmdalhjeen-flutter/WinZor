@@ -1,0 +1,15 @@
+# WinZor
+
+WinZor is a marketplace platform for discovering store offers, shopping from trusted merchants, earning rewards points, and joining competitions for real prizes.
+
+## What WinZor offers
+
+- Marketplace: buy, sell, and browse community listings
+- Offers: daily deals and promotions from partner stores
+- Stores: browse and visit merchant pages
+- Rewards: earn and spend points across the app
+- Competitions: enter prize competitions and related win experiences
+
+## API
+
+API reference / backend base: https://winzor.onrender.com

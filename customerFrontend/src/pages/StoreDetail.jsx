@@ -79,8 +79,8 @@ const StoreDetail = () => {
   if (error || !data?.store) return <ErrorState message={error || 'المتجر غير موجود'} />;
 
   const { store, offers = [], products = [], membershipStatus, storeCompetitionsEnabled } = data;
-  const coverSrc = resolveStoreCover(store);
-  const logoSrc = resolveStoreLogo(store) || storeLogoPlaceholder(store);
+  const coverSrc = resolveStoreCover(store, { width: 800 });
+  const logoSrc = resolveStoreLogo(store, { width: 160 }) || storeLogoPlaceholder(store);
   const isMember = membershipStatus === 'member';
   const isPending = membershipStatus === 'pending';
 

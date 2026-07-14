@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
+import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -117,7 +118,13 @@ const CompetitionDetail = () => {
 
       <div className="relative aspect-video rounded-[28px] overflow-hidden bg-gray-100">
         {competition.image ? (
-          <img src={competition.image} alt={competition.title} className="w-full h-full object-cover" />
+          <img
+            src={optimizeCloudinaryUrl(competition.image, { width: 800 })}
+            srcSet={cloudinarySrcSet(competition.image, [600, 800])}
+            sizes="(max-width: 768px) 100vw, 800px"
+            alt={competition.title}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-6xl">🏆</div>
         )}

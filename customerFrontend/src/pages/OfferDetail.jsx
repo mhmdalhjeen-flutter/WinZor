@@ -135,7 +135,7 @@ const OfferDetail = () => {
         itemId: offer._id,
         itemType: 'Offer',
         itemName: offer.title,
-        itemImage: resolveOfferImage(offer) || '',
+        itemImage: resolveOfferImage(offer, { width: 300 }) || '',
         itemUrl: `/offer/${offer._id}`,
       },
     }));
@@ -149,8 +149,8 @@ const OfferDetail = () => {
     return <div className="p-10 text-center font-black text-red-500">{error || 'العرض غير موجود'}</div>;
   }
 
-  const offerImageSrc = resolveOfferImage(offer);
-  const storeLogoSrc = resolveStoreLogo(offer?.store) || storeLogoPlaceholder(offer?.store);
+  const offerImageSrc = resolveOfferImage(offer, { width: 800 });
+  const storeLogoSrc = resolveStoreLogo(offer?.store, { width: 80 }) || storeLogoPlaceholder(offer?.store);
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">

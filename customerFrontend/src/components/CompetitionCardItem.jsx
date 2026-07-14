@@ -10,6 +10,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
+import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -137,7 +138,13 @@ export default function CompetitionCardItem({
           <div className="relative flex flex-col items-center gap-4 text-center">
             <div className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 border-yellow-300/80 shadow-lg shadow-yellow-500/30">
               {prizeImage ? (
-                <img src={prizeImage} alt={prizeName} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img
+                  src={optimizeCloudinaryUrl(prizeImage, { width: 300 })}
+                  alt={prizeName}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-yellow-500/20 text-yellow-200">
                   <Trophy size={36} />
@@ -180,7 +187,7 @@ export default function CompetitionCardItem({
           <div className="shrink-0 w-[4.75rem] h-[4.75rem] sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-white/25 shadow-lg shadow-black/25 ring-1 ring-white/10 bg-white/5">
             {competition.image ? (
               <img
-                src={competition.image}
+                src={optimizeCloudinaryUrl(competition.image, { width: 300 })}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-cover"

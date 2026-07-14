@@ -4,6 +4,7 @@ import { MapPin, Tag, Heart, FolderOpen } from 'lucide-react';
 import { formatListingPrice } from '../utils/currency';
 import { getCategoryLabel } from '../utils/bazaarCategories';
 import { CONDITION_LABELS, getConditionStyle } from '../utils/bazaarConditions';
+import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const TYPE_LABELS = {
   sell: 'بيع',
@@ -35,7 +36,9 @@ const BazaarListingCard = ({
   onToggleFavorite,
   isPulsing = false,
 }) => {
-  const img = listing.mainImage || listing.images?.[0];
+  const imgRaw = listing.mainImage || listing.images?.[0];
+  const img = imgRaw ? optimizeCloudinaryUrl(imgRaw, { width: 300 }) : null;
+  const imgSrcSet = cloudinarySrcSet(imgRaw, [300, 600]);
   const isWanted = listing.transactionType === 'custom';
   const condStyle = getConditionStyle(listing.condition);
   const showPrice = !(isWanted && !listing.price);
@@ -61,6 +64,8 @@ const BazaarListingCard = ({
           {img ? (
             <img
               src={img}
+              srcSet={imgSrcSet}
+              sizes="128px"
               alt={listing.title}
               loading="lazy"
               className="w-full h-full object-cover"

@@ -11,6 +11,7 @@ import { getStoredUser } from '../utils/safeStorage';
 import { getUnreadCountForUser } from '../utils/unreadCount';
 import { queryKeys } from '../lib/queryClient';
 import { uploadImage } from '../utils/imageUpload';
+import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
 import '../styles/Chats.css';
 
 const POLL_MS = 3000;
@@ -408,7 +409,12 @@ export default function Chats() {
                         </div>
                       )}
                       {msg.image && (
-                        <img src={msg.image} alt="" className="max-w-[200px] rounded-lg mb-1 cursor-pointer" onClick={() => window.open(msg.image, '_blank')} />
+                        <img
+                          src={optimizeCloudinaryUrl(msg.image, { width: 600 })}
+                          alt=""
+                          className="max-w-[200px] rounded-lg mb-1 cursor-pointer"
+                          onClick={() => window.open(msg.image, '_blank')}
+                        />
                       )}
                       {msg.text && <p className="m-0 whitespace-pre-wrap">{msg.text}</p>}
                       <span className="msg-time">{formatTime(msg.createdAt)}</span>

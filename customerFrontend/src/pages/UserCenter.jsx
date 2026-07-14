@@ -26,6 +26,7 @@ import { CompetitionModal, timeLeft } from './Competitions';
 import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import { uploadImage } from '../utils/imageUpload';
+import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
 
 function useAnimatedCounter(target, duration = 700) {
   const [display, setDisplay] = useState(target);
@@ -583,7 +584,12 @@ const UserCenter = () => {
                     <div className="flex items-stretch gap-3 p-3.5">
                       <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 ring-1 ring-gray-100">
                         {comp.image ? (
-                          <img src={comp.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          <img
+                            src={optimizeCloudinaryUrl(comp.image, { width: 300 })}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-2xl">🏆</div>
                         )}

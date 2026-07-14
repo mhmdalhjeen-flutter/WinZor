@@ -8,6 +8,7 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
+import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const timeLeft = (endDate) => {
   if (!endDate) return '—';
@@ -68,7 +69,14 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
       <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-[32px] overflow-hidden max-h-[90vh] overflow-y-auto" dir="rtl">
         <div className="relative aspect-[16/10] bg-gradient-to-br from-purple-600 to-indigo-800">
           {competition.image ? (
-            <img src={competition.image} alt="" className="w-full h-full object-cover mix-blend-overlay opacity-80" loading="lazy" />
+            <img
+              src={optimizeCloudinaryUrl(competition.image, { width: 800 })}
+              srcSet={cloudinarySrcSet(competition.image, [600, 800])}
+              sizes="(max-width: 640px) 100vw, 512px"
+              alt=""
+              className="w-full h-full object-cover mix-blend-overlay opacity-80"
+              loading="lazy"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-6xl opacity-40">🏆</div>
           )}
@@ -224,7 +232,9 @@ const Competitions = () => {
                 <div className="relative shrink-0 w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-[18px] overflow-hidden bg-gradient-to-br from-purple-100 to-indigo-100 ring-1 ring-gray-100">
                   {c.image ? (
                     <img
-                      src={c.image}
+                      src={optimizeCloudinaryUrl(c.image, { width: 300 })}
+                      srcSet={cloudinarySrcSet(c.image, [300, 600])}
+                      sizes="80px"
                       alt=""
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"

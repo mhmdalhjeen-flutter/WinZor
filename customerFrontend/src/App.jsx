@@ -5,32 +5,30 @@ import { useAuth } from "./context/AuthContext";
 // Components
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
-import FloatingCodeButton from './components/FloatingCodeButton';
 import VerifyBanner from './components/VerifyBanner';
 import NotificationListener from './components/NotificationListener';
 import PointsFloatLayer from './components/PointsFloatLayer';
 import AuthWelcomeEffects from './components/auth/AuthWelcomeEffects';
 import LightLoadingHint from './shared/LightLoadingHint';
 
-// Pages (خفيفة — تحميل مباشر)
+// Pages (خفيفة — تحميل مباشر لمسارات الدخول)
 import Intro from './pages/Intro';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import VerifyEmail from './pages/VerifyEmail';
-import ForgotPassword from './pages/ForgotPassword';
-import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Maintenance from './pages/Maintenance';
 import useMaintenanceMode from './hooks/useMaintenanceMode';
 
-// Pages (متوسطة — lazy load)
+// Pages / widgets — lazy load
+const FloatingCodeButton = lazy(() => import('./components/FloatingCodeButton'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const StoreDetail = lazy(() => import('./pages/StoreDetail'));
 const OfferDetail = lazy(() => import('./pages/OfferDetail'));
 const StoreQuickSearch = lazy(() => import('./pages/StoreQuickSearch'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-
-// Pages (كبيرة — lazy load)
 const Draws = lazy(() => import('./pages/Draws'));
 const UserCenter = lazy(() => import('./pages/UserCenter'));
 const TreasureChests = lazy(() => import('./pages/TreasureChests'));
@@ -110,8 +108,8 @@ function AppShell() {
             <Route path="/intro" element={!isAuth ? <Intro /> : <Navigate to="/" replace />} />
             <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/" />} />
             <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/" />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/forgot-password" element={!isAuth ? <ForgotPassword /> : <Navigate to="/" />} />
+            <Route path="/verify-email" element={<LazyPage><VerifyEmail /></LazyPage>} />
+            <Route path="/forgot-password" element={!isAuth ? <LazyPage><ForgotPassword /></LazyPage> : <Navigate to="/" />} />
             
             <Route path="/explore" element={<LazyPage><Explore /></LazyPage>} />
             <Route path="/stores/points" element={<LazyPage><PointsProgramStores /></LazyPage>} />
@@ -131,7 +129,7 @@ function AppShell() {
             <Route path="/honor" element={<ProtectedRoute><LazyPage><HonorBoard /></LazyPage></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute><LazyPage><Inventory /></LazyPage></ProtectedRoute>} />
             <Route path="/center" element={<ProtectedRoute><LazyPage><UserCenter /></LazyPage></ProtectedRoute>} />
-            <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+            <Route path="/change-password" element={<ProtectedRoute><LazyPage><ChangePassword /></LazyPage></ProtectedRoute>} />
             <Route path="/profile" element={<Navigate to="/center" replace />} />
             <Route path="/wallet" element={<Navigate to="/center" replace />} />
             <Route path="/personalization" element={<Navigate to="/center" replace />} />
@@ -147,8 +145,11 @@ function AppShell() {
           </Routes>
         </main>
 
-        {/* زر الكود العائم */}
-        {showFloatingActions && <FloatingCodeButton />}
+        {showFloatingActions && (
+          <Suspense fallback={null}>
+            <FloatingCodeButton />
+          </Suspense>
+        )}
         
         {/* شريط التنقل السفلي */}
         {isAuth && !hideBottomNav && <BottomNav />}

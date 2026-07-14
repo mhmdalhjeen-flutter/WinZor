@@ -24,6 +24,7 @@ import MarketplaceImagePicker from '../components/marketplace/MarketplaceImagePi
 import { BROWSE_TAB_IDS, listingMatchesTab } from '../utils/marketplaceTabs';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { getLocalPhoneError, normalizeLocalPhone } from '../utils/phoneValidation';
+import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
 import {
   getEffectiveRegionId,
   pathFromRegionIds,
@@ -746,7 +747,11 @@ const Marketplace = () => {
               return (
                 <div key={item._id} className="bg-white rounded-2xl p-3 border border-gray-100 flex gap-3">
                   {thumb ? (
-                    <img src={thumb} alt="" className="w-[4.5rem] h-[4.5rem] rounded-xl object-cover bg-gray-100 shrink-0" />
+                    <img
+                      src={optimizeCloudinaryUrl(thumb, { width: 300 })}
+                      alt=""
+                      className="w-[4.5rem] h-[4.5rem] rounded-xl object-cover bg-gray-100 shrink-0"
+                    />
                   ) : isWanted ? (
                     <div className="w-[4.5rem] h-[4.5rem] rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100">
                       <span className="text-sm font-black text-orange-500">مطلوب</span>

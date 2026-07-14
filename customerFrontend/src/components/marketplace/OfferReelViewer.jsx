@@ -57,7 +57,7 @@ function dismissResumedViewer() {
 }
 
 function getStoreLogoSrc(store) {
-  return resolveStoreLogo(store) || storeLogoPlaceholder(store);
+  return resolveStoreLogo(store, { width: 80 }) || storeLogoPlaceholder(store);
 }
 
 function isProductItem(item) {
@@ -75,8 +75,8 @@ function getItemTitle(item) {
 
 function getItemImage(item) {
   if (isCategoryItem(item)) return null;
-  if (isProductItem(item)) return resolveProductImage(item);
-  return resolveOfferImage(item);
+  if (isProductItem(item)) return resolveProductImage(item, { width: 800 });
+  return resolveOfferImage(item, { width: 800 });
 }
 
 function ViewerBackdrop({ src }) {
@@ -323,7 +323,11 @@ function ReelSlide({
       aria-hidden={!isActive}
     >
       <div className="offer-reel-slide__media">
-        <OfferSlideImage src={isProduct ? resolveProductImage(item) : resolveOfferImage(item)} alt={title} isActive={isActive} />
+        <OfferSlideImage
+          src={isProduct ? resolveProductImage(item, { width: 800 }) : resolveOfferImage(item, { width: 800 })}
+          alt={title}
+          isActive={isActive}
+        />
       </div>
 
       <div className="offer-reel-slide__content">

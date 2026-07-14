@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { logActivity } from '../../utils/activity';
 import { recordOfferView, recordOfferShare } from '../../utils/offerAnalytics';
-import { getOfferBadge } from '../OfferCard';
+import { getOfferBadge } from '../OfferPriceDisplay';
 import OfferPriceDisplay from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
 import DirectOrderModal from './DirectOrderModal';

@@ -7,13 +7,14 @@ import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import HomeHero from '../components/home/HomeHero';
-import HomeSearchCards from '../components/home/HomeSearchCards';
 import ProgressiveCategoryReels from '../components/home/ProgressiveCategoryReels';
+import DeferredMount from '../components/DeferredMount';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { normalizeCategoryReels, buildCategoryMaps } from '../utils/categoryDisplay';
 
 const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
+const HomeSearchCards = lazy(() => import('../components/home/HomeSearchCards'));
 
 async function fetchFavoritesPayload() {
   const { data } = await api.get('/activity/favorites');
@@ -27,6 +28,23 @@ const Home = () => {
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
+  const [deferSecondary, setDeferSecondary] = useState(false);
+
+  // Let first paint + LCP image compete without search/categories network contention
+  useEffect(() => {
+    let idleId;
+    let timeoutId;
+    const enable = () => setDeferSecondary(true);
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(enable, 400);
+    }
+    return () => {
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const effectiveCategoryId = categoryPath.length
     ? categoryPath[categoryPath.length - 1]
@@ -55,14 +73,14 @@ const Home = () => {
     isLoading: categoriesLoading,
     isError: categoriesError,
     refetch: refetchCategories,
-  } = useCategoryTree('store');
+  } = useCategoryTree('store', { enabled: deferSecondary });
 
   const {
     data: regionTree = [],
     isLoading: regionsLoading,
     isError: regionsError,
     refetch: refetchRegions,
-  } = useRegionTree();
+  } = useRegionTree({ enabled: deferSecondary });
 
   useEffect(() => {
     if (!regionPath.length || !regionTree.length) return;
@@ -86,6 +104,7 @@ const Home = () => {
     queryKey: queryKeys.favorites,
     queryFn: fetchFavoritesPayload,
     staleTime: 60 * 1000,
+    enabled: deferSecondary,
   });
 
   const favoriteIds = favoriteIdsOverride ?? new Set(favoritesData?.favoriteIds ?? []);
@@ -93,7 +112,8 @@ const Home = () => {
   const { data: reelsData, isLoading: reelsLoading } = useQuery({
     queryKey: queryKeys.offersReels(feedKey),
     queryFn: async () => {
-      const params = { limit: 20 };
+      // First batch only — ProgressiveCategoryReels reveals more as user scrolls
+      const params = { limit: 8 };
       if (selectedRegionId) params.region = selectedRegionId;
       const { data } = await api.get('/offers/reels', { params });
       return data?.reels || [];
@@ -138,36 +158,23 @@ const Home = () => {
     setCategoryPath([]);
   };
 
+  const searchPlaceholder = (
+    <div className="max-w-6xl mx-auto px-1.5 sm:px-2 h-14 rounded-2xl bg-white/70 border border-gray-100 animate-pulse" />
+  );
+
+  const competitionsPlaceholder = (
+    <div className="max-w-6xl mx-auto px-1.5 sm:px-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+      <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
+    </div>
+  );
+
   return (
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0 home-premium-bg" aria-hidden />
 
       <div className="relative z-10 space-y-4 sm:space-y-5 pb-20">
         <HomeHero />
-
-        <Suspense fallback={
-          <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
-            <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
-          </div>
-        }>
-          <FeaturedCompetitions />
-        </Suspense>
-
-        <HomeSearchCards
-          regionTree={regionTree}
-          regionPath={regionPath}
-          onRegionPathChange={setRegionPath}
-          regionsLoading={regionsLoading}
-          regionsError={regionsError}
-          onRegionsRetry={refetchRegions}
-          categoryTree={categories}
-          categoryPath={categoryPath}
-          onCategoryPathChange={setCategoryPath}
-          categoriesLoading={categoriesLoading}
-          categoriesError={categoriesError}
-          onCategoriesRetry={refetchCategories}
-        />
 
         <div id="home-offers" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
           <div className="flex items-center justify-between gap-2 px-1.5 sm:px-2">
@@ -201,6 +208,35 @@ const Home = () => {
             />
           )}
         </div>
+
+        {/* Filters / search — deferred so they don't compete with LCP offer image */}
+        <Suspense fallback={searchPlaceholder}>
+          {deferSecondary ? (
+            <HomeSearchCards
+              regionTree={regionTree}
+              regionPath={regionPath}
+              onRegionPathChange={setRegionPath}
+              regionsLoading={regionsLoading}
+              regionsError={regionsError}
+              onRegionsRetry={refetchRegions}
+              categoryTree={categories}
+              categoryPath={categoryPath}
+              onCategoryPathChange={setCategoryPath}
+              categoriesLoading={categoriesLoading}
+              categoriesError={categoriesError}
+              onCategoriesRetry={refetchCategories}
+            />
+          ) : (
+            searchPlaceholder
+          )}
+        </Suspense>
+
+        {/* Competitions / rewards teasers — below fold */}
+        <DeferredMount rootMargin="200px" placeholder={competitionsPlaceholder}>
+          <Suspense fallback={competitionsPlaceholder}>
+            <FeaturedCompetitions />
+          </Suspense>
+        </DeferredMount>
       </div>
     </div>
   );

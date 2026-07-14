@@ -1,15 +1,15 @@
 import React from 'react';
 import { ImageOff } from 'lucide-react';
-import { getOfferBadge } from '../OfferCard';
-import OfferPriceDisplay from '../OfferPriceDisplay';
+import OfferPriceDisplay, { getOfferBadge } from '../OfferPriceDisplay';
 import VerifiedBadge from './VerifiedBadge';
 import { resolveOfferImage, resolveStoreLogo, cloudinarySrcSet } from '../../utils/mediaUrl';
 
-export default function MarketplaceOfferCard({ offer, onClick, topBadge }) {
+export default function MarketplaceOfferCard({ offer, onClick, topBadge, priority = false }) {
   const store = offer?.store;
   const isVerified = store?.isVerifiedStore;
-  const imageSrc = resolveOfferImage(offer, { width: 600 });
-  const imageSrcSet = cloudinarySrcSet(imageSrc, [300, 600]);
+  // Cards: w_300 primary; priority (LCP) uses w_600 for sharper first paint
+  const imageSrc = resolveOfferImage(offer, { width: priority ? 600 : 300 });
+  const imageSrcSet = cloudinarySrcSet(offer?.image || imageSrc, [300, 600]);
   const storeLogoSrc = resolveStoreLogo(store, { width: 80 });
 
   return (
@@ -24,10 +24,11 @@ export default function MarketplaceOfferCard({ offer, onClick, topBadge }) {
           <img
             src={imageSrc}
             srcSet={imageSrcSet}
-            sizes="(max-width: 640px) 300px, 600px"
+            sizes="(max-width: 640px) 70vw, 300px"
             alt={offer.title}
-            loading="lazy"
-            decoding="async"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
+            decoding={priority ? 'sync' : 'async'}
             className="marketplace-offer-card__image"
           />
         ) : (
@@ -48,6 +49,7 @@ export default function MarketplaceOfferCard({ offer, onClick, topBadge }) {
             alt=""
             className="marketplace-offer-card__logo"
             loading="lazy"
+            decoding="async"
           />
         )}
 

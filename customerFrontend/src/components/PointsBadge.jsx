@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import logoImg from '../assets/logo/win-goldenstore-logo.png';
 
 function useAnimatedCounter(target, duration = 650) {
@@ -36,6 +35,7 @@ function useAnimatedCounter(target, duration = 650) {
 
 /**
  * Premium compact rewards badge — Arabic label, English digit points.
+ * CSS-only feedback (no framer-motion) for a lighter Home critical path.
  */
 export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const displayPoints = useAnimatedCounter(points);
@@ -43,21 +43,14 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const isDown = pulse === 'down';
 
   return (
-    <motion.button
+    <button
       type="button"
       onClick={onClick}
       id="points-header-anchor"
       aria-label={`نقاطك ${displayPoints.toLocaleString('en-US')}`}
-      animate={
-        isUp
-          ? { scale: [1, 1.06, 1] }
-          : isDown
-            ? { scale: [1, 0.97, 1] }
-            : {}
-      }
-      transition={{ duration: 0.5 }}
-      whileTap={{ scale: 0.96 }}
-      className="relative flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/50 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem]"
+      className={`relative flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/50 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem] active:scale-95 transition-transform ${
+        isUp || isDown ? 'animate-pulse' : ''
+      }`}
     >
       <span
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400"
@@ -75,6 +68,7 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
           className="w-full h-full object-contain p-0.5"
           width={36}
           height={36}
+          loading="eager"
           decoding="async"
           style={{ imageRendering: '-webkit-optimize-contrast' }}
         />
@@ -84,23 +78,16 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
         <span className="text-[9px] sm:text-[10px] font-bold text-white tracking-tight">
           نقاطك
         </span>
-        <AnimatePresence mode="popLayout">
-          <motion.span
-            key={displayPoints}
-            initial={{ y: isUp ? 4 : isDown ? -4 : 0, opacity: 0.5 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: isUp ? -4 : 4, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className={`text-[14px] sm:text-[16px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
-              isDown
-                ? 'text-red-100'
-                : 'text-white [text-shadow:0_0_12px_rgba(255,255,255,0.65),0_1px_0_rgba(255,255,255,0.9),0_0_24px_rgba(251,191,36,0.35)]'
-            }`}
-          >
-            {displayPoints.toLocaleString('en-US')}
-          </motion.span>
-        </AnimatePresence>
+        <span
+          className={`text-[14px] sm:text-[16px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
+            isDown
+              ? 'text-red-100'
+              : 'text-white [text-shadow:0_0_12px_rgba(255,255,255,0.65),0_1px_0_rgba(255,255,255,0.9),0_0_24px_rgba(251,191,36,0.35)]'
+          }`}
+        >
+          {displayPoints.toLocaleString('en-US')}
+        </span>
       </div>
-    </motion.button>
+    </button>
   );
 }

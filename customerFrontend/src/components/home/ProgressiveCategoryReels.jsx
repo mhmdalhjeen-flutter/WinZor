@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense, lazy } from 'react';
 import CategoryCarousel, { buildMultiCategoryViewerState } from '../marketplace/CategoryCarousel';
-import OfferReelViewer from '../marketplace/OfferReelViewer';
 
-const INITIAL_OFFERS = 3;
-const OFFERS_BATCH = 4;
-const INITIAL_PRODUCTS = 3;
-const PRODUCTS_BATCH = 4;
+const OfferReelViewer = lazy(() => import('../marketplace/OfferReelViewer'));
+
+const INITIAL_OFFERS = 2;
+const OFFERS_BATCH = 3;
+const INITIAL_PRODUCTS = 2;
+const PRODUCTS_BATCH = 3;
 
 function getOffersGate(totalOffers) {
   return Math.min(INITIAL_OFFERS, totalOffers);
@@ -203,6 +204,7 @@ export default function ProgressiveCategoryReels({
               <CategoryCarousel
                 reel={reel}
                 hideHeader={Boolean(reel.isParentFallback)}
+                priorityFirstImage={idx === 0}
                 onOfferClick={openOfferViewer}
                 onProductClick={openProductViewer}
               />
@@ -224,15 +226,17 @@ export default function ProgressiveCategoryReels({
       )}
 
       {viewer && (
-        <OfferReelViewer
-          offers={viewer.offers}
-          boundaries={viewer.boundaries}
-          initialIndex={viewer.initialIndex}
-          multiCategory={viewer.multiCategory}
-          onClose={() => setViewer(null)}
-          favoriteIds={favoriteIds}
-          onToggleFavorite={onToggleFavorite}
-        />
+        <Suspense fallback={null}>
+          <OfferReelViewer
+            offers={viewer.offers}
+            boundaries={viewer.boundaries}
+            initialIndex={viewer.initialIndex}
+            multiCategory={viewer.multiCategory}
+            onClose={() => setViewer(null)}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={onToggleFavorite}
+          />
+        </Suspense>
       )}
     </>
   );

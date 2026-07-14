@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Tag, Search, X, Loader2, Store, Package, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import HierarchySelect from '../HierarchySelect';
 import { getEffectiveCategoryId } from '../../utils/categoryTree';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -210,15 +209,10 @@ export default function HomeSearchCards({
         </button>
       </div>
 
-      <AnimatePresence initial={false}>
-        {searchOpen && (
-          <motion.div
+      {searchOpen && (
+          <div
             key="home-search-panel"
-            initial={{ height: 0, opacity: 0, marginTop: 0 }}
-            animate={{ height: 'auto', opacity: 1, marginTop: 10 }}
-            exit={{ height: 0, opacity: 0, marginTop: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="home-search-expand"
+            className="home-search-expand mt-2.5 overflow-hidden"
           >
             <div className="rounded-2xl border border-violet-100/80 bg-white shadow-md shadow-violet-100/30 overflow-hidden">
               <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100/80 bg-gradient-to-l from-violet-50/80 to-white">
@@ -302,9 +296,8 @@ export default function HomeSearchCards({
                 </p>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
 
       {activeMode === 'region' && (
         <div className="mt-2 sm:mt-2.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white border border-gray-100 shadow-sm space-y-2">

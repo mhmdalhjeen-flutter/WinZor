@@ -5,8 +5,10 @@ import { queryKeys } from '../lib/queryClient';
 /**
  * تصنيفات من لوحة الأدmin — مصدر واحد لكل الفلاتر والبحث.
  * @param {'store'|'product'} type
+ * @param {{ enabled?: boolean }} [options]
  */
-export function useCategoryTree(type = 'store') {
+export function useCategoryTree(type = 'store', options = {}) {
+  const { enabled = true } = options;
   return useQuery({
     queryKey: queryKeys.categoryTree(type),
     queryFn: async () => {
@@ -15,5 +17,6 @@ export function useCategoryTree(type = 'store') {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 }

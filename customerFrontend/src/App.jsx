@@ -2,26 +2,24 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from "./context/AuthContext";
 
-// Components
+// Shell on critical path for authenticated Home
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import VerifyBanner from './components/VerifyBanner';
 import NotificationListener from './components/NotificationListener';
-import PointsFloatLayer from './components/PointsFloatLayer';
 import AuthWelcomeEffects from './components/auth/AuthWelcomeEffects';
 import LightLoadingHint from './shared/LightLoadingHint';
-
-// Pages (خفيفة — تحميل مباشر لمسارات الدخول)
-import Intro from './pages/Intro';
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Maintenance from './pages/Maintenance';
 import useMaintenanceMode from './hooks/useMaintenanceMode';
 
-// Pages / widgets — lazy load
+// Deferred — must not land in the initial Home JS graph
+const PointsFloatLayer = lazy(() => import('./components/PointsFloatLayer'));
 const FloatingCodeButton = lazy(() => import('./components/FloatingCodeButton'));
+const Intro = lazy(() => import('./pages/Intro'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
@@ -90,7 +88,11 @@ function AppShell() {
     <>
       <AuthWelcomeEffects />
       {isAuth && <NotificationListener />}
-      {isAuth && <PointsFloatLayer />}
+      {isAuth && (
+        <Suspense fallback={null}>
+          <PointsFloatLayer />
+        </Suspense>
+      )}
       <div className="flex flex-col min-h-screen bg-[#f7f5f2] text-right font-body" dir="rtl">
         
         {/* الهيدر — يظهر للزوار على الصفحات العامة (استكشاف، متجر...) */}
@@ -102,12 +104,12 @@ function AppShell() {
             {/* التوجيه الأساسي */}
             <Route
               path="/"
-              element={isAuth ? <Home /> : <Intro />}
+              element={isAuth ? <Home /> : <LazyPage><Intro /></LazyPage>}
             />
 
-            <Route path="/intro" element={!isAuth ? <Intro /> : <Navigate to="/" replace />} />
-            <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/" />} />
-            <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/" />} />
+            <Route path="/intro" element={!isAuth ? <LazyPage><Intro /></LazyPage> : <Navigate to="/" replace />} />
+            <Route path="/login" element={!isAuth ? <LazyPage><Login /></LazyPage> : <Navigate to="/" />} />
+            <Route path="/register" element={!isAuth ? <LazyPage><Register /></LazyPage> : <Navigate to="/" />} />
             <Route path="/verify-email" element={<LazyPage><VerifyEmail /></LazyPage>} />
             <Route path="/forgot-password" element={!isAuth ? <LazyPage><ForgotPassword /></LazyPage> : <Navigate to="/" />} />
             

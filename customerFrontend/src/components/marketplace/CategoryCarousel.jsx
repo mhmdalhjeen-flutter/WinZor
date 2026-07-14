@@ -24,6 +24,7 @@ export default function CategoryCarousel({
   onOfferClick,
   onProductClick,
   hideHeader = false,
+  priorityFirstImage = false,
 }) {
   const trackRef = React.useRef(null);
 
@@ -93,6 +94,7 @@ export default function CategoryCarousel({
           <div key={offer._id} className="home-offers-rail__slide">
             <MarketplaceOfferCard
               offer={offer}
+              priority={priorityFirstImage && idx === 0}
               onClick={() => onOfferClick(reel, idx)}
             />
           </div>

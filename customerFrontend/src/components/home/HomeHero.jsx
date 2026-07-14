@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { BookOpen, Play, X } from 'lucide-react';
-import PointsGuideModal from '../PointsGuideModal';
 import logoImg from '../../assets/logo/win-goldenstore-logo.png';
+
+const PointsGuideModal = lazy(() => import('../PointsGuideModal'));
 
 const INTRO_VIDEO =
   import.meta.env.VITE_INTRO_VIDEO_URL ||
@@ -85,6 +86,7 @@ export default function HomeHero() {
                   className="home-hero__brand-logo"
                   width={44}
                   height={44}
+                  loading="eager"
                   decoding="async"
                 />
               </span>
@@ -119,7 +121,11 @@ export default function HomeHero() {
         </div>
       </section>
 
-      <PointsGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+      {guideOpen && (
+        <Suspense fallback={null}>
+          <PointsGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+        </Suspense>
+      )}
       <SiteVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
     </>
   );

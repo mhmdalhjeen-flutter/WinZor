@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import PointsBalanceModal from './PointsBalanceModal';
 import PointsBadge from './PointsBadge';
@@ -66,63 +65,54 @@ const MoreMenuBtn = ({ onClick }) => (
 );
 
 function MoreMenuSheet({ open, onClose, items }) {
+  if (!open) return null;
+
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.button
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+        aria-label="إغلاق القائمة"
+        onClick={onClose}
+      />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-3xl shadow-2xl border-t border-gray-100 px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] max-w-lg mx-auto animate-[slideUp_0.28s_ease-out]"
+        dir="rtl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-black text-gray-900">المزيد</h2>
+          <button
             type="button"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
-            aria-label="إغلاق القائمة"
             onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-3xl shadow-2xl border-t border-gray-100 px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] max-w-lg mx-auto"
-            dir="rtl"
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
+            aria-label="إغلاق"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-black text-gray-900">المزيد</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
-                aria-label="إغلاق"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {items.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => { item.onClick(); onClose(); }}
-                  className={`flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition active:scale-95 ${
-                    item.danger
-                      ? 'border-red-100 bg-red-50 hover:bg-red-100/80'
-                      : 'border-gray-100 bg-gray-50 hover:bg-gray-100/80'
-                  }`}
-                >
-                  <span className={`flex items-center justify-center w-12 h-12 rounded-2xl ${item.iconBg}`}>
-                    <item.icon size={26} className={item.iconColor} strokeWidth={2} />
-                  </span>
-                  <span className={`text-xs font-black leading-tight text-center ${item.danger ? 'text-red-700' : 'text-gray-800'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => { item.onClick(); onClose(); }}
+              className={`flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition active:scale-95 ${
+                item.danger
+                  ? 'border-red-100 bg-red-50 hover:bg-red-100/80'
+                  : 'border-gray-100 bg-gray-50 hover:bg-gray-100/80'
+              }`}
+            >
+              <span className={`flex items-center justify-center w-12 h-12 rounded-2xl ${item.iconBg}`}>
+                <item.icon size={26} className={item.iconColor} strokeWidth={2} />
+              </span>
+              <span className={`text-xs font-black leading-tight text-center ${item.danger ? 'text-red-700' : 'text-gray-800'}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

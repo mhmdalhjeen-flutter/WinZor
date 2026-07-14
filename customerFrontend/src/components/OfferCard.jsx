@@ -2,23 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Tag, MapPin, ImageOff, ShoppingCart, Eye, Check, Loader2, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import OfferPriceDisplay from './OfferPriceDisplay';
-import { formatOfferBadge } from '../utils/offerPricing';
+import OfferPriceDisplay, { getOfferBadge } from './OfferPriceDisplay';
 import { resolveOfferImage, cloudinarySrcSet } from '../utils/mediaUrl';
 import api from '../api/axios';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 
-export const getOfferBadge = (offer) => {
-  if (offer?.pricing?.badge) {
-    const m = offer.pricing.badge.match(/(\d+)%/);
-    if (m) return `${m[1]}%`;
-    if (offer.pricing.badge === '1+1') return '1+1';
-    return offer.pricing.badge.length <= 8 ? offer.pricing.badge : '\u0639\u0631\u0636';
-  }
-  return formatOfferBadge(offer);
-};
+export { getOfferBadge };
 
 const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
   const navigate = useNavigate();

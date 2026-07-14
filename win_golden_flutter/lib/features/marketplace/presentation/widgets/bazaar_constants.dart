@@ -74,4 +74,45 @@ class BazaarConstants {
       default: return type;
     }
   }
+
+  static String getPublishTitle(String type) {
+    switch (type) {
+      case 'sell':
+        return 'نشر عنصر للبيع';
+      case 'exchange':
+        return 'نشر للبيع أو البدل';
+      case 'rent':
+        return 'نشر للإيجار';
+      case 'custom':
+        return 'نشر طلب (مطلوب)';
+      default:
+        return 'بيع / نشر';
+    }
+  }
+
+  static const Map<String, ({String text, Color bg, Color fg})> statusLabels = {
+    'pending': (text: 'بانتظار الموافقة', bg: Color(0xFFFFFBEB), fg: Color(0xFFD97706)),
+    'approved': (text: 'نشط', bg: Color(0xFFF0FDF4), fg: Color(0xFF16A34A)),
+    'rejected': (text: 'مرفوض', bg: Color(0xFFFEF2F2), fg: Color(0xFFDC2626)),
+    'expired': (text: 'منتهٍ', bg: Color(0xFFF3F4F6), fg: Color(0xFF6B7280)),
+  };
+
+  static String formatPublishAge(DateTime? date) {
+    if (date == null) return '';
+    final days = DateTime.now().difference(date).inDays;
+    if (days <= 0) return 'اليوم';
+    if (days == 1) return 'منذ يوم';
+    return 'منذ $days يوماً';
+  }
+
+  static String regionLabel(dynamic regionId, dynamic subRegionId) {
+    final parts = <String>[];
+    if (regionId is Map && regionId['name'] != null) {
+      parts.add(regionId['name'].toString());
+    }
+    if (subRegionId is Map && subRegionId['name'] != null) {
+      parts.add(subRegionId['name'].toString());
+    }
+    return parts.isEmpty ? '—' : parts.join('، ');
+  }
 }

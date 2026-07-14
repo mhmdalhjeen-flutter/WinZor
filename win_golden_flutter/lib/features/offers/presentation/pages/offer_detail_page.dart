@@ -7,6 +7,11 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/star_rating.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../chat/data/chat_context_store.dart';
+import '../../../home/data/models/offer_model.dart';
+import '../../../favorites/presentation/providers/favorites_providers.dart';
+import '../../../orders/presentation/widgets/direct_order_sheet.dart';
 import '../providers/offer_detail_providers.dart';
 
 class OfferDetailPage extends ConsumerWidget {
@@ -20,8 +25,13 @@ class OfferDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offerAsync = ref.watch(offerDetailProvider(id));
-    final isFavorited = ref.watch(isFavoritedProvider(id));
+    final isFavorited = ref.watch(isOfferFavoritedProvider(id));
     final favBusy = ref.watch(favoritingBusyProvider(id));
+    final auth = ref.watch(authProvider);
+    // Prefetch favorite ids when authenticated (matches React OfferDetail query).
+    if (auth.isAuth) {
+      ref.watch(favoritesProvider);
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -80,9 +90,17 @@ class OfferDetailPage extends ConsumerWidget {
                                       color: Colors.white,
                                       fill: isFavorited ? 1.0 : 0.0,
                                     ),
-                                    onPressed: favBusy ? null : () {
-                                      // Toggle favorite logic
-                                    },
+                                    onPressed: favBusy
+                                        ? null
+                                        : () async {
+                                            if (!auth.isAuth) {
+                                              context.push('/login');
+                                              return;
+                                            }
+                                            await ref
+                                                .read(favoritesActionsProvider)
+                                                .toggle(id);
+                                          },
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -174,7 +192,7 @@ class OfferDetailPage extends ConsumerWidget {
                       _buildStoreCard(context, store),
                       
                       const SizedBox(height: 32),
-                      _buildActionsRow(),
+                      _buildActionsRow(context, ref, offer),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -336,7 +354,7 @@ class OfferDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionsRow() {
+  Widget _buildActionsRow(BuildContext context, WidgetRef ref, OfferModel offer) {
     return Row(
       children: [
         Expanded(
@@ -344,7 +362,31 @@ class OfferDetailPage extends ConsumerWidget {
           child: SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                final auth = ref.read(authProvider);
+                if (!auth.isAuth) {
+                  context.push('/login');
+                  return;
+                }
+                final price = offer.finalPrice ??
+                    double.tryParse(
+                        offer.pricing?['finalPrice']?.toString() ?? '') ??
+                    offer.originalPrice ??
+                    0;
+                showDirectOrderSheet(
+                  context: context,
+                  ref: ref,
+                  itemId: offer.id,
+                  itemType: 'offer',
+                  title: offer.title,
+                  unitPrice: price,
+                  currency: offer.currency ??
+                      offer.pricing?['currency']?.toString() ??
+                      'ILS',
+                  imageUrl: offer.image,
+                  storeName: offer.storeObject?.name,
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -354,9 +396,16 @@ class OfferDetailPage extends ConsumerWidget {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.shoppingCart, size: 20),
+                  Icon(LucideIcons.send, size: 20),
                   SizedBox(width: 8),
-                  Text('إضافة للسلة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
+                  Text(
+                    'اطلب الآن',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -367,7 +416,7 @@ class OfferDetailPage extends ConsumerWidget {
           child: SizedBox(
             height: 56,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () => _contactStore(context, ref, offer),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFF3F4F6), width: 2),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -385,5 +434,56 @@ class OfferDetailPage extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _contactStore(
+    BuildContext context,
+    WidgetRef ref,
+    OfferModel offer,
+  ) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      context.push('/login');
+      return;
+    }
+    try {
+      final ownerId =
+          await ref.read(offerRepositoryProvider).getStoreOwnerId(offer.id);
+      if (ownerId == null || ownerId.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'معلومات المتجر غير متوفّرة للتواصل',
+                style: TextStyle(fontFamily: 'Cairo'),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      await ChatContextStore.save({
+        'recipientId': ownerId,
+        'context': {
+          'itemId': offer.id,
+          'itemType': 'Offer',
+          'itemName': offer.title,
+          if (offer.image != null) 'itemImage': offer.image,
+          'itemUrl': '/offer/${offer.id}',
+        },
+      });
+      if (context.mounted) context.push('/chat');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تعذّر فتح المحادثة',
+              style: TextStyle(fontFamily: 'Cairo'),
+            ),
+          ),
+        );
+      }
+    }
   }
 }

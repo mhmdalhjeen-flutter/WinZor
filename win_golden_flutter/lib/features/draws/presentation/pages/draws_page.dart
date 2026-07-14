@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../verification/presentation/providers/verification_gate_provider.dart';
+import '../../../verification/utils/verification_api_error.dart';
 import '../../data/models/draw_model.dart';
 import '../providers/draws_providers.dart';
 
@@ -24,18 +26,21 @@ class _DrawsPageState extends ConsumerState<DrawsPage> {
     });
   }
 
+  void _onJoinClick(String drawId) {
+    ref.read(verificationGateProvider.notifier).runWithVerification(
+          () => _join(drawId),
+        );
+  }
+
   Future<void> _join(String drawId) async {
     try {
       final result = await ref.read(drawsActionsProvider).join(drawId);
       _showToast(result.message);
     } catch (e) {
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      // Soft stand-in until full Verification Gate parity is ported.
-      if (msg.contains('توثيق') || msg.contains('verified') || msg.contains('VERIF')) {
-        _showToast(msg.isNotEmpty ? msg : 'يلزم توثيق الحساب للمشاركة');
-      } else {
-        _showToast(msg.isNotEmpty ? msg : 'تعذّر الانضمام للسحب');
-      }
+      final gate = ref.read(verificationGateProvider.notifier);
+      if (gate.handleApiVerificationError(e, () => _join(drawId))) return;
+      final msg = VerificationApiError.messageOf(e, 'تعذّر الانضمام للسحب');
+      _showToast(msg);
     }
   }
 
@@ -125,7 +130,7 @@ class _DrawsPageState extends ConsumerState<DrawsPage> {
                             _DrawCard(
                               draw: draw,
                               joining: joiningId == draw.id,
-                              onJoin: () => _join(draw.id),
+                              onJoin: () => _onJoinClick(draw.id),
                               onInvite: () => _showToast('شارك رابط المنصة مع أصدقائك!'),
                             ),
                             const SizedBox(height: 16),

@@ -65,6 +65,7 @@ const DEFAULT_DEV_ORIGINS = [5173, 5174, 5175].flatMap((port) => [
 const DEFAULT_PROD_ORIGINS = [
     "https://winzor.netlify.app",
     "https://supplierwz.netlify.app",
+    "https://winzor-customer.mhmdalhjeen.workers.dev",
 ];
 
 const envOrigins = (process.env.CORS_ORIGINS || "")

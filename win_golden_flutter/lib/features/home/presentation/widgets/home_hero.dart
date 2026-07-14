@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import '../../../core/theme/app_brand_assets.dart';
 import '../../../core/theme/app_colors.dart';
 
+/// React `HomeHero.jsx`
 class HomeHero extends StatelessWidget {
   const HomeHero({super.key});
+
+  static const _introVideoId = 'dQw4w9WgXcQ';
+
+  Future<void> _openVideo(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _SiteVideoSheet(videoId: _introVideoId),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +44,6 @@ class HomeHero extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Glow effects (simplified for now)
           Positioned(
             top: -20,
             left: -20,
@@ -58,7 +72,6 @@ class HomeHero extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             child: Column(
               children: [
-                // Brand
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -75,7 +88,7 @@ class HomeHero extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.store, color: AppColors.primary, size: 28), // Placeholder for logo
+                      child: const BrandLogo.compact(width: 28, height: 28),
                     ),
                     const SizedBox(width: 10),
                     const Text(
@@ -83,7 +96,7 @@ class HomeHero extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                        color: AppColors.textMain,
                         fontFamily: 'Cairo',
                       ),
                     ),
@@ -101,14 +114,13 @@ class HomeHero extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                // Actions
                 Row(
                   children: [
                     Expanded(
                       child: _buildHeroButton(
                         icon: Icons.book_outlined,
                         label: 'أسئلة حول النقاط؟',
-                        onTap: () {},
+                        onTap: () => context.push('/stores/points'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -116,7 +128,7 @@ class HomeHero extends StatelessWidget {
                       child: _buildHeroButton(
                         icon: Icons.play_arrow,
                         label: 'فيديو يوضح الموقع',
-                        onTap: () {},
+                        onTap: () => _openVideo(context),
                         isPlay: true,
                       ),
                     ),
@@ -163,7 +175,8 @@ class HomeHero extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
-                child: const Icon(Icons.play_arrow, size: 10, color: Colors.white),
+                child:
+                    const Icon(Icons.play_arrow, size: 10, color: Colors.white),
               )
             else
               Icon(icon, size: 14, color: Colors.white),
@@ -179,6 +192,88 @@ class HomeHero extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SiteVideoSheet extends StatefulWidget {
+  final String videoId;
+  const _SiteVideoSheet({required this.videoId});
+
+  @override
+  State<_SiteVideoSheet> createState() => _SiteVideoSheetState();
+}
+
+class _SiteVideoSheetState extends State<_SiteVideoSheet> {
+  late final YoutubePlayerController _controller;
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.videoId,
+      flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF030712),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.close, color: Colors.white70),
+            ),
+          ),
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: _playing
+                ? YoutubePlayer(controller: _controller)
+                : GestureDetector(
+                    onTap: () {
+                      setState(() => _playing = true);
+                      _controller.play();
+                    },
+                    child: Container(
+                      color: const Color(0xFF111827),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.play_circle_fill,
+                              size: 56, color: Color(0xFFFCD34D)),
+                          SizedBox(height: 8),
+                          Text(
+                            'فيديو يوضح الموقع',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

@@ -32,10 +32,9 @@ class DrawsActions {
       ref.invalidate(openDrawsProvider);
       return result;
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? e.response?.data['message']?.toString()
-          : null;
-      throw Exception(message ?? 'تعذّر الانضمام للسحب');
+      rethrow;
+    } catch (_) {
+      throw Exception('تعذّر الانضمام للسحب');
     } finally {
       ref.read(joiningDrawIdProvider.notifier).state = null;
     }

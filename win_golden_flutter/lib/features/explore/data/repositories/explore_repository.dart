@@ -49,6 +49,41 @@ class ExploreRepository {
     }
   }
 
+  Future<Map<String, dynamic>> pointsProgramStores({
+    String? query,
+    String? regionId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (query != null && query.isNotEmpty) params['q'] = query;
+    if (regionId != null && regionId.isNotEmpty) params['regionId'] = regionId;
+
+    final response =
+        await _apiClient.dio.get('/stores/points', queryParameters: params);
+    final data = response.data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {'total': 0, 'regions': <dynamic>[]};
+  }
+
+  /// `GET /stores/by-regions` — Store Quick Search page.
+  Future<Map<String, dynamic>> storesByRegions({
+    String? query,
+    String? regionId,
+    String? categoryId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (query != null && query.isNotEmpty) params['q'] = query;
+    if (regionId != null && regionId.isNotEmpty) params['regionId'] = regionId;
+    if (categoryId != null && categoryId.isNotEmpty) {
+      params['categoryId'] = categoryId;
+    }
+
+    final response = await _apiClient.dio
+        .get('/stores/by-regions', queryParameters: params);
+    final data = response.data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return {'regions': <dynamic>[]};
+  }
+
   Future<StoreDetailResponse> getStoreDetail(String id) async {
     try {
       final response = await _apiClient.dio.get('/stores/$id');

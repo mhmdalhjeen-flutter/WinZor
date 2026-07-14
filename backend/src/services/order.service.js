@@ -430,7 +430,9 @@ async function cancelOrderByCustomer(customerId, orderId) {
       throw err;
     }
 
-    await restoreOrderItemsToCart(order.customer, order.items, session);
+    // Status-only cancel for customer UX: do NOT restore items into cart.
+    // Stock is restored so inventory stays correct after checkout deduction.
+    await restoreStockForOrderItems(order.items, session);
     await session.commitTransaction();
     return order;
   } catch (err) {
@@ -463,7 +465,8 @@ async function cancelOrderByCustomerFallback(customerId, orderId) {
     throw err;
   }
 
-  await restoreOrderItemsToCart(order.customer, order.items, null);
+  // Status-only for cart: no restoreOrderItemsToCart.
+  await restoreStockForOrderItems(order.items, null);
   return order;
 }
 

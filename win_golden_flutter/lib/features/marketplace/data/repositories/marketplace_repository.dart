@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
 import '../models/bazaar_listing_model.dart';
-import '../../../../core/models/hierarchy_node.dart';
 
 class MarketplaceRepository {
   final ApiClient _apiClient;
@@ -13,107 +12,80 @@ class MarketplaceRepository {
     String? condition,
     String? category,
   }) async {
-    try {
-      final Map<String, dynamic> params = {};
-      if (regionId != null) params['regionId'] = regionId;
-      if (condition != null) params['condition'] = condition;
-      if (category != null) params['category'] = category;
+    final Map<String, dynamic> params = {};
+    if (regionId != null && regionId.isNotEmpty) params['regionId'] = regionId;
+    if (condition != null && condition.isNotEmpty) params['condition'] = condition;
+    if (category != null && category.isNotEmpty) params['category'] = category;
 
-      final response = await _apiClient.dio.get('/bazaar', queryParameters: params);
-      final List<dynamic> data = response.data['listings'] ?? [];
-      return data.map((json) => BazaarListingModel.fromJson(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.get('/bazaar', queryParameters: params);
+    final List<dynamic> data = response.data['listings'] ?? [];
+    return data
+        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
+        .toList();
+  }
+
+  Future<BazaarListingModel> getListing(String id) async {
+    final response = await _apiClient.dio.get('/bazaar/$id');
+    return BazaarListingModel.fromJson(
+      Map<String, dynamic>.from(response.data['listing'] as Map),
+    );
   }
 
   Future<List<BazaarListingModel>> getMyListings() async {
-    try {
-      final response = await _apiClient.dio.get('/bazaar/my');
-      final List<dynamic> data = response.data['listings'] ?? [];
-      return data.map((json) => BazaarListingModel.fromJson(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.get('/bazaar/my');
+    final List<dynamic> data = response.data['listings'] ?? [];
+    return data
+        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<List<BazaarListingModel>> getFavoriteListings() async {
-    try {
-      final response = await _apiClient.dio.get('/bazaar/favorites');
-      final List<dynamic> data = response.data['listings'] ?? [];
-      return data.map((json) => BazaarListingModel.fromJson(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.get('/bazaar/favorites');
+    final List<dynamic> data = response.data['listings'] ?? [];
+    return data
+        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<Map<String, dynamic>> getBazaarMeta() async {
-    try {
-      final response = await _apiClient.dio.get('/bazaar/meta');
-      return response.data;
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.get('/bazaar/meta');
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<Map<String, dynamic>> toggleFavorite(String id) async {
-    try {
-      final response = await _apiClient.dio.post('/bazaar/$id/favorite');
-      return response.data;
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.post('/bazaar/$id/favorite');
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<void> deleteListing(String id) async {
-    try {
-      await _apiClient.dio.delete('/bazaar/$id');
-    } catch (e) {
-      rethrow;
-    }
+    await _apiClient.dio.delete('/bazaar/$id');
   }
 
   Future<Map<String, dynamic>> renewListing(String id) async {
-    try {
-      final response = await _apiClient.dio.post('/bazaar/$id/renew');
-      return response.data;
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.post('/bazaar/$id/renew');
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<String> uploadImage(String filePath) async {
-    try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(filePath),
-      });
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
 
-      final response = await _apiClient.dio.post(
-        '/upload/image',
-        data: formData,
-      );
+    final response = await _apiClient.dio.post(
+      '/upload/image',
+      data: formData,
+    );
 
-      return response.data['url'];
-    } catch (e) {
-      rethrow;
-    }
+    return response.data['url'] as String;
   }
 
   Future<Map<String, dynamic>> createListing(Map<String, dynamic> data) async {
-    try {
-      final response = await _apiClient.dio.post('/bazaar', data: data);
-      return response.data;
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.post('/bazaar', data: data);
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<Map<String, dynamic>> updateListing(String id, Map<String, dynamic> data) async {
-    try {
-      final response = await _apiClient.dio.patch('/bazaar/$id', data: data);
-      return response.data;
-    } catch (e) {
-      rethrow;
-    }
+    final response = await _apiClient.dio.patch('/bazaar/$id', data: data);
+    return Map<String, dynamic>.from(response.data as Map);
   }
 }

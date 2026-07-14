@@ -110,4 +110,68 @@ class AuthRepository {
       await DeviceUtils.clearDeviceId();
     }
   }
+
+  /// `POST /auth/password/change` — auth required.
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/auth/password/change',
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// `POST /auth/password/forgot` — public; customer appType.
+  Future<Map<String, dynamic>> requestPasswordReset(String identifier) async {
+    final response = await _apiClient.dio.post(
+      '/auth/password/forgot',
+      data: {
+        'identifier': identifier.trim(),
+        'appType': 'customer',
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// `POST /auth/password/reset` — public; customer appType.
+  Future<Map<String, dynamic>> resetPassword({
+    required String identifier,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/auth/password/reset',
+      data: {
+        'identifier': identifier.trim(),
+        'code': code.trim(),
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+        'appType': 'customer',
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// `GET /auth/verify/email-link?token=&uid=` — public deep link.
+  Future<Map<String, dynamic>> confirmEmailLink({
+    required String token,
+    required String uid,
+  }) async {
+    final response = await _apiClient.dio.get(
+      '/auth/verify/email-link',
+      queryParameters: {
+        'token': token,
+        'uid': uid,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
 }

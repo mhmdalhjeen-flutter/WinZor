@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
-class PriceCurrencyInput extends StatelessWidget {
+class PriceCurrencyInput extends StatefulWidget {
   final String price;
   final String currency;
   final Function(String) onPriceChange;
@@ -24,15 +23,35 @@ class PriceCurrencyInput extends StatelessWidget {
   ];
 
   @override
+  State<PriceCurrencyInput> createState() => _PriceCurrencyInputState();
+}
+
+class _PriceCurrencyInputState extends State<PriceCurrencyInput> {
+  late final TextEditingController _priceCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _priceCtrl = TextEditingController(text: widget.price);
+  }
+
+  @override
+  void dispose() {
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: TextField(
-            onChanged: onPriceChange,
+            controller: _priceCtrl,
+            onChanged: widget.onPriceChange,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              hintText: pricePlaceholder,
+              hintText: widget.pricePlaceholder,
               fillColor: const Color(0xFFF9FAFB),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
@@ -49,16 +68,24 @@ class PriceCurrencyInput extends StatelessWidget {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: currency,
-              items: currencies.map((c) => DropdownMenuItem(
-                value: c['code'],
-                child: Text(
-                  c['label']!,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, fontFamily: 'Cairo'),
-                ),
-              )).toList(),
+              value: widget.currency,
+              items: PriceCurrencyInput.currencies
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c['code'],
+                      child: Text(
+                        c['label']!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (val) {
-                if (val != null) onCurrencyChange(val);
+                if (val != null) widget.onCurrencyChange(val);
               },
             ),
           ),

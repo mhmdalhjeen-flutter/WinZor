@@ -4,6 +4,7 @@ import 'core/api/api_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/verification/presentation/widgets/verification_gate_host.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +41,9 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child!,
+          child: VerificationGateHost(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

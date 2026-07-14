@@ -291,12 +291,15 @@ class PlatformSettings {
   final bool storeCompetitions;
   final bool wheel;
   final bool wheelUserCenterPlacement;
+  /// Raw `settings.verification` from `GET /settings/public`.
+  final Map<String, dynamic>? verification;
 
   const PlatformSettings({
     this.referralProgram = true,
     this.storeCompetitions = true,
     this.wheel = true,
     this.wheelUserCenterPlacement = true,
+    this.verification,
   });
 
   bool get showWheelBtn => wheel && wheelUserCenterPlacement;
@@ -312,12 +315,16 @@ class PlatformSettings {
     final placements = wheelCfg['placements'] is Map
         ? Map<String, dynamic>.from(wheelCfg['placements'] as Map)
         : <String, dynamic>{};
+    final verification = settings['verification'] is Map
+        ? Map<String, dynamic>.from(settings['verification'] as Map)
+        : null;
 
     return PlatformSettings(
       referralProgram: features['referralProgram'] != false,
       storeCompetitions: features['storeCompetitions'] != false,
       wheel: features['wheel'] != false,
       wheelUserCenterPlacement: placements['userCenter'] != false,
+      verification: verification,
     );
   }
 }

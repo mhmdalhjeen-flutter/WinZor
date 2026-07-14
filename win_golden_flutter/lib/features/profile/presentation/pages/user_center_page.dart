@@ -11,7 +11,12 @@ import '../../../../core/utils/phone_validation.dart';
 import '../../../../core/widgets/app_image.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/widgets/palestinian_phone_input.dart';
+import '../../../chat/data/chat_context_store.dart';
 import '../../../home/presentation/providers/home_providers.dart';
+import '../../../competitions/data/models/competition_model.dart';
+import '../../../competitions/presentation/providers/competitions_providers.dart';
+import '../../../competitions/presentation/widgets/competition_join_sheet.dart';
+import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../data/models/user_center_models.dart';
 import '../providers/user_center_providers.dart';
 import '../widgets/achievement_road_section.dart';
@@ -139,7 +144,7 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
                       _EarnSection(
                         showWheel: settings.showWheelBtn,
                         showReferral: settings.referralProgram,
-                        onWheel: () => _showToast('عجلة الحظ — قريباً في التطبيق'),
+                        onWheel: () => context.push('/wheel'),
                         onReferral: () => _openReferral(center.user.referralCode),
                       ),
                     const SizedBox(height: 16),
@@ -153,7 +158,7 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
                         points: points,
                         timeLeft: _timeLeft,
                         onRetry: () => ref.invalidate(centerCompetitionsProvider),
-                        onViewAll: () => _showToast('صفحة المسابقات — قريباً'),
+                        onViewAll: () => context.push('/competitions'),
                         onJoin: (c) => _openJoinSheet(c, points),
                       ),
                     ],
@@ -189,12 +194,21 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
                     ),
                     const SizedBox(height: 12),
                     _ActionButton(
+                      label: 'صناديق الجوائز',
+                      icon: LucideIcons.gift,
+                      color: const Color(0xFFD97706),
+                      bg: const Color(0xFFFFFBEB),
+                      border: const Color(0xFFFDE68A),
+                      onTap: () => context.push('/chests'),
+                    ),
+                    const SizedBox(height: 10),
+                    _ActionButton(
                       label: 'تغيير كلمة المرور',
                       icon: LucideIcons.lock,
                       color: AppColors.primary,
                       bg: AppColors.primary.withOpacity(0.05),
                       border: AppColors.primary.withOpacity(0.15),
-                      onTap: () => _showToast('تغيير كلمة المرور — قريباً'),
+                      onTap: () => context.push('/change-password'),
                     ),
                     const SizedBox(height: 10),
                     _ActionButton(
@@ -490,71 +504,28 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
   }
 
   Future<void> _openJoinSheet(CenterCompetition comp, int points) async {
-    var entries = 1;
-    await showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModal) {
-            final cost = entries * (comp.pointsPerEntry <= 0 ? 1 : comp.pointsPerEntry);
-            final eligible = points >= cost && points >= comp.minPoints;
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(comp.title, style: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Cairo', fontSize: 16)),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: entries > 1 ? () => setModal(() => entries--) : null,
-                        icon: const Icon(LucideIcons.minus),
-                      ),
-                      Text('$entries', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
-                      IconButton(
-                        onPressed: () => setModal(() => entries++),
-                        icon: const Icon(LucideIcons.plus),
-                      ),
-                    ],
-                  ),
-                  Text('التكلفة: $cost نقطة', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      minimumSize: const Size(double.infinity, 48),
-                    ),
-                    onPressed: !eligible
-                        ? null
-                        : () async {
-                            try {
-                              await ref
-                                  .read(userCenterRepositoryProvider)
-                                  .joinCompetition(comp.id, entries: entries);
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              _showToast('تمت المشاركة بنجاح');
-                              _refreshAll();
-                            } catch (_) {
-                              _showToast('تعذّر الانضمام للمسابقة');
-                            }
-                          },
-                    child: Text(
-                      comp.joined ? 'شراء مشاركات إضافية' : 'انضم الآن',
-                      style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    final competition = CompetitionModel(
+      id: comp.id,
+      title: comp.title,
+      description: comp.description,
+      image: comp.image,
+      minPoints: comp.minPoints,
+      pointsPerEntry: comp.pointsPerEntry,
+      endDate: comp.endDate,
+      hasEnded: comp.hasEnded,
+      joined: comp.joined,
+      myEntries: comp.myEntries,
     );
+
+    await showCompetitionJoinSheet(
+      context: context,
+      ref: ref,
+      competition: competition,
+    );
+    ref.invalidate(centerCompetitionsProvider);
+    ref.invalidate(userCenterProvider);
+    ref.invalidate(competitionsListProvider);
+    ref.invalidate(featuredCompetitionsProvider);
   }
 
   Future<void> _openSuggest() async {
@@ -571,15 +542,29 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               if (controller.text.trim().isEmpty) return;
-              try {
-                await ref.read(userCenterRepositoryProvider).submitSuggestion(controller.text.trim());
-                if (ctx.mounted) Navigator.pop(ctx);
-                _showToast('شكراً — وصل اقتراحك للإدارة');
-              } catch (_) {
-                _showToast('فشل الإرسال');
-              }
+              ref.read(verificationGateProvider.notifier).runWithVerification(() async {
+                try {
+                  await ref
+                      .read(userCenterRepositoryProvider)
+                      .submitSuggestion(controller.text.trim());
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  _showToast('شكراً — وصل اقتراحك للإدارة');
+                } catch (e) {
+                  final gate = ref.read(verificationGateProvider.notifier);
+                  if (gate.handleApiVerificationError(e, () async {
+                    await ref
+                        .read(userCenterRepositoryProvider)
+                        .submitSuggestion(controller.text.trim());
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _showToast('شكراً — وصل اقتراحك للإدارة');
+                  })) {
+                    return;
+                  }
+                  _showToast('فشل الإرسال');
+                }
+              });
             },
             child: const Text('إرسال', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
@@ -590,8 +575,22 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
 
   Future<void> _contactAdmin() async {
     try {
-      await ref.read(userCenterRepositoryProvider).getAdminContact();
-      _showToast('المحادثة مع الإدارة — قريباً');
+      final data = await ref.read(userCenterRepositoryProvider).getAdminContact();
+      final adminId = data['adminId']?.toString();
+      if (adminId == null || adminId.isEmpty) {
+        _showToast('تعذّر فتح المحادثة');
+        return;
+      }
+      await ChatContextStore.save({
+        'recipientId': adminId,
+        'context': {
+          'itemType': 'Support',
+          'itemName': 'تواصل مع الإدارة',
+        },
+        'prefillText': 'مرحباً، أحتاج مساعدة من الإدارة.',
+      });
+      if (!mounted) return;
+      context.push('/chat');
     } catch (_) {
       _showToast('تعذّر فتح المحادثة');
     }
@@ -793,21 +792,42 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
                         backgroundColor: AppColors.primary,
                         minimumSize: const Size(double.infinity, 52),
                       ),
-                      onPressed: () async {
-                        try {
-                          final data = await ref.read(userCenterRepositoryProvider).updatePreferences(prefs);
-                          if (data['points'] != null) {
-                            ref.read(authProvider.notifier).updateUser({
-                              'points': data['points'],
-                              'isVerified': true,
-                            });
+                      onPressed: () {
+                        ref.read(verificationGateProvider.notifier).runWithVerification(() async {
+                          try {
+                            final data = await ref
+                                .read(userCenterRepositoryProvider)
+                                .updatePreferences(prefs);
+                            if (data['points'] != null) {
+                              ref.read(authProvider.notifier).updateUser({
+                                'points': data['points'],
+                                'isVerified': true,
+                              });
+                            }
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            _showToast(data['message']?.toString() ?? 'تم الحفظ');
+                            ref.invalidate(userCenterProvider);
+                          } catch (e) {
+                            final gate = ref.read(verificationGateProvider.notifier);
+                            if (gate.handleApiVerificationError(e, () async {
+                              final data = await ref
+                                  .read(userCenterRepositoryProvider)
+                                  .updatePreferences(prefs);
+                              if (data['points'] != null) {
+                                ref.read(authProvider.notifier).updateUser({
+                                  'points': data['points'],
+                                  'isVerified': true,
+                                });
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              _showToast(data['message']?.toString() ?? 'تم الحفظ');
+                              ref.invalidate(userCenterProvider);
+                            })) {
+                              return;
+                            }
+                            _showToast('فشل الحفظ');
                           }
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          _showToast(data['message']?.toString() ?? 'تم الحفظ');
-                          ref.invalidate(userCenterProvider);
-                        } catch (_) {
-                          _showToast('فشل الحفظ');
-                        }
+                        });
                       },
                       child: const Text('حفظ التفضيلات', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900)),
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_styles.dart';
@@ -27,9 +28,7 @@ class StoreCard extends StatelessWidget {
     final String? categoryLabel = store.category?.split(' › ').last;
 
     return GestureDetector(
-      onTap: () {
-        // Navigate to store detail: /store/${store.id}
-      },
+      onTap: () => context.push('/store/${store.id}'),
       child: Container(
         width: 200,
         margin: const EdgeInsets.only(left: 14),

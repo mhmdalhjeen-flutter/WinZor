@@ -55,7 +55,7 @@ class StoreRegionSuggestion extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => onApply(region['_id']),
+              onPressed: () => onApply(region['_id']?.toString() ?? ''),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: Colors.white,

@@ -4,13 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/theme/app_brand_assets.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_styles.dart';
 import '../../../../core/utils/phone_validation.dart';
 import '../providers/auth_provider.dart';
+import '../providers/auth_repository_provider.dart';
 import '../widgets/auth_welcome_background.dart';
 import '../widgets/palestinian_phone_input.dart';
-import '../pages/login_page.dart'; // To access authRepositoryProvider
 
 enum RegisterStep { form, verify }
 
@@ -619,7 +620,7 @@ class _RegisterLogo extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(LucideIcons.store, size: 80, color: AppColors.primary),
+              const BrandLogo.full(width: 110, height: 110),
             ],
           ),
         ),

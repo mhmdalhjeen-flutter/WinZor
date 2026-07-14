@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/home_providers.dart';
+import '../../../competitions/presentation/providers/competitions_providers.dart';
 import 'competition_card_item.dart';
 
 class FeaturedCompetitions extends ConsumerWidget {
@@ -20,20 +20,23 @@ class FeaturedCompetitions extends ConsumerWidget {
             children: [
               if (competitions.length > 1)
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: CompetitionCardItem(
                         competition: competitions[0],
-                        userPoints: 0, // Should be fetched from auth provider later
                         embedded: true,
+                        onUpdated: () =>
+                            ref.invalidate(featuredCompetitionsProvider),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: CompetitionCardItem(
                         competition: competitions[1],
-                        userPoints: 0,
                         embedded: true,
+                        onUpdated: () =>
+                            ref.invalidate(featuredCompetitionsProvider),
                       ),
                     ),
                   ],
@@ -41,8 +44,9 @@ class FeaturedCompetitions extends ConsumerWidget {
               else
                 CompetitionCardItem(
                   competition: competitions[0],
-                  userPoints: 0,
                   embedded: true,
+                  onUpdated: () =>
+                      ref.invalidate(featuredCompetitionsProvider),
                 ),
             ],
           ),

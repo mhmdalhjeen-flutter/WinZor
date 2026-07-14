@@ -241,16 +241,18 @@ class BazaarListingCard extends StatelessWidget {
 
         Row(
           children: [
-            const Icon(LucideIcons.folderOpen, size: 11, color: Color(0xFF7C3AED)),
-            const SizedBox(width: 4),
-            Text(
-              BazaarConstants.getCategoryLabel(listing.category),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF7C3AED),
+            if (listing.category.isNotEmpty) ...[
+              const Icon(LucideIcons.folderOpen, size: 11, color: Color(0xFF7C3AED)),
+              const SizedBox(width: 4),
+              Text(
+                BazaarConstants.getCategoryLabel(listing.category),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF7C3AED),
+                ),
               ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 4),
@@ -272,6 +274,37 @@ class BazaarListingCard extends StatelessWidget {
             ),
           ],
         ),
+        if (listing.keywords.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: listing.keywords.take(2).map((kw) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.tag, size: 9, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 2),
+                    Text(
+                      kw,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }

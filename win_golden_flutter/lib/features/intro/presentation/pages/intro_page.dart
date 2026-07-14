@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import '../../../core/theme/app_brand_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_styles.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
 import '../../auth/presentation/widgets/auth_welcome_background.dart';
 
-class IntroPage extends StatelessWidget {
+class IntroPage extends ConsumerWidget {
   const IntroPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    if (!auth.isLoading && auth.isAuth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/');
+      });
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -153,8 +163,8 @@ class _IntroHeroLogo extends StatelessWidget {
                   ],
                 ),
               ),
-              // Placeholder for logoImg
-              const Icon(LucideIcons.store, size: 100, color: AppColors.primary),
+              // Full brand logo (React Intro.jsx)
+              const BrandLogo.full(width: 110, height: 110),
             ],
           ),
         ),

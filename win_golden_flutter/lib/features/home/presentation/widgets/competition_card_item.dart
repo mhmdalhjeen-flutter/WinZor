@@ -1,33 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../home/data/models/competition_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_image.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../competitions/data/models/competition_model.dart';
+import '../../../competitions/presentation/widgets/competition_join_sheet.dart';
 
-class CompetitionCardItem extends StatelessWidget {
+class CompetitionCardItem extends ConsumerWidget {
   final CompetitionModel competition;
-  final int userPoints;
   final bool embedded;
+  final VoidCallback? onUpdated;
 
   const CompetitionCardItem({
     super.key,
     required this.competition,
-    required this.userPoints,
     this.embedded = false,
+    this.onUpdated,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final bool hasEnded = competition.status == 'ended';
-    final double progress = competition.requiredParticipants > 0
-        ? (competition.participantsCount / competition.requiredParticipants).clamp(0.0, 1.0)
-        : 0.0;
-
-    final bool eligible = userPoints >= competition.minPoints;
-    final int missingPoints = (competition.minPoints - userPoints).clamp(0, 999999);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userPoints =
+        (ref.watch(authProvider).user?['points'] as num?)?.toInt() ?? 0;
+    final hasEnded = competition.ended;
+    final progress = competition.progress;
+    final eligible = userPoints >= competition.minPoints;
+    final missingPoints = (competition.minPoints - userPoints).clamp(0, 1 << 30);
 
     if (hasEnded) {
-      return _buildEndedCard();
+      return _EndedCard(competition: competition);
     }
+
+    final remaining = competition.endDate?.difference(DateTime.now());
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -53,27 +59,22 @@ class CompetitionCardItem extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image
               Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 2),
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.25), width: 2),
                   color: Colors.white.withOpacity(0.05),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: competition.image != null
-                    ? CachedNetworkImage(
-                        imageUrl: competition.image!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: Colors.white10),
-                        errorWidget: (context, url, error) => const Icon(Icons.trophy, color: Colors.amber, size: 32),
-                      )
-                    : const Icon(Icons.trophy, color: Colors.amber, size: 32),
+                    ? AppImage(src: competition.image, fit: BoxFit.cover)
+                    : const Icon(Icons.emoji_events,
+                        color: Colors.amber, size: 32),
               ),
               const SizedBox(width: 12),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +91,6 @@ class CompetitionCardItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
-                    // Progress
                     Row(
                       children: [
                         Expanded(
@@ -126,40 +126,70 @@ class CompetitionCardItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    // Stats
                     Wrap(
                       spacing: 12,
                       children: [
-                        _buildStat(Icons.people_outline, '${competition.participantsCount}${competition.requiredParticipants > 0 ? " / ${competition.requiredParticipants}" : ""}', Colors.skyBlue),
-                        _buildStat(Icons.stars, '${competition.minPoints}+ نقطة', Colors.amber),
+                        _stat(
+                          LucideIcons.users,
+                          '${competition.participantsCount}${competition.requiredParticipants > 0 ? " / ${competition.requiredParticipants}" : ""}',
+                          Colors.sky,
+                        ),
+                        _stat(
+                          LucideIcons.coins,
+                          '${competition.minPoints}+ نقطة',
+                          Colors.amber,
+                        ),
                       ],
                     ),
+                    if (competition.joined) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'مشاركاتك: ${competition.myEntries}',
+                        style: const TextStyle(
+                          color: Color(0xFF6EE7B7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              // Countdown Placeholder
-              if (competition.endDate != null)
-                _buildCountdown(competition.endDate!),
+              if (remaining != null && !remaining.isNegative)
+                _Countdown(remaining: remaining),
             ],
           ),
           const SizedBox(height: 14),
-          // Action Button
           if (eligible)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () async {
+                  await showCompetitionJoinSheet(
+                    context: context,
+                    ref: ref,
+                    competition: competition,
+                  );
+                  onUpdated?.call();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 4,
                   shadowColor: AppColors.primary.withOpacity(0.25),
                 ),
-                child: const Text(
-                  'أريد المشاركة',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'Cairo'),
+                child: Text(
+                  competition.joined ? 'زيادة المشاركات' : 'أريد المشاركة',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Cairo',
+                  ),
                 ),
               ),
             )
@@ -173,7 +203,8 @@ class CompetitionCardItem extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 14),
+                  const Icon(LucideIcons.alertTriangle,
+                      color: Colors.amber, size: 14),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -194,7 +225,7 @@ class CompetitionCardItem extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(IconData icon, String label, Color color) {
+  Widget _stat(IconData icon, String label, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -212,11 +243,15 @@ class CompetitionCardItem extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildCountdown(DateTime endDate) {
-    final diff = endDate.difference(DateTime.now());
-    if (diff.isNegative) return const SizedBox.shrink();
-    
+class _Countdown extends StatelessWidget {
+  final Duration remaining;
+
+  const _Countdown({required this.remaining});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
@@ -227,22 +262,34 @@ class CompetitionCardItem extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            '${diff.inDays}',
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.black),
+            '${remaining.inDays}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const Text(
             'يوم',
-            style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.access_time, color: Colors.amber, size: 11),
+              const Icon(LucideIcons.clock, color: Colors.amber, size: 11),
               const SizedBox(width: 2),
               Text(
-                '${diff.inHours % 24}س',
-                style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.black),
+                '${remaining.inHours % 24}س',
+                style: const TextStyle(
+                  color: Colors.amber,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
@@ -250,35 +297,52 @@ class CompetitionCardItem extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildEndedCard() {
+class _EndedCard extends StatelessWidget {
+  final CompetitionModel competition;
+
+  const _EndedCard({required this.competition});
+
+  @override
+  Widget build(BuildContext context) {
+    final prizeImage = competition.prizeImage ?? competition.image;
+    final prizeName = competition.prizeName ?? competition.title;
+
     return Container(
-       padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.yellow.shade500.withOpacity(0.2), Colors.amber.shade600.withOpacity(0.25), Colors.purple.shade900.withOpacity(0.5)],
+          colors: [
+            Colors.yellow.shade500.withOpacity(0.2),
+            Colors.amber.shade600.withOpacity(0.25),
+            Colors.purple.shade900.withOpacity(0.5),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.yellow.shade400.withOpacity(0.7), width: 2),
+        border: Border.all(
+          color: Colors.yellow.shade400.withOpacity(0.7),
+          width: 2,
+        ),
       ),
       child: Column(
         children: [
-           Container(
+          Container(
             width: 80,
             height: 80,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.yellow.shade300.withOpacity(0.8), width: 2),
+              border: Border.all(
+                color: Colors.yellow.shade300.withOpacity(0.8),
+                width: 2,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
-            child: competition.prizeImage != null || competition.image != null
-                ? CachedNetworkImage(
-                    imageUrl: (competition.prizeImage ?? competition.image)!,
-                    fit: BoxFit.cover,
-                  )
-                : const Icon(Icons.trophy, color: Colors.amber, size: 36),
+            child: prizeImage != null
+                ? AppImage(src: prizeImage, fit: BoxFit.cover)
+                : const Icon(Icons.emoji_events, color: Colors.amber, size: 36),
           ),
           const SizedBox(height: 12),
           Container(
@@ -293,16 +357,51 @@ class CompetitionCardItem extends StatelessWidget {
               children: [
                 Icon(Icons.auto_awesome, color: Colors.yellow, size: 12),
                 SizedBox(width: 4),
-                Text('تم إعلان الفائز', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.black)),
+                Text(
+                  'تم إعلان الفائز',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            competition.prizeName ?? competition.title,
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.black),
+            prizeName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Cairo',
+            ),
             textAlign: TextAlign.center,
           ),
+          if (competition.drawLink != null &&
+              competition.drawLink!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(competition.drawLink!),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(LucideIcons.externalLink, size: 16),
+              label: const Text(
+                'مشاهدة السحب',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Cairo',
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFBBF24),
+                foregroundColor: const Color(0xFF111827),
+              ),
+            ),
+          ],
         ],
       ),
     );

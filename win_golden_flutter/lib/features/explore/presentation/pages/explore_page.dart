@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/explore_providers.dart';
-import '../widgets/quick_search_drawer.dart';
 import '../widgets/store_region_suggestion.dart';
 import '../../../../core/widgets/store_card.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,8 +14,6 @@ class ExplorePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final browseAsync = ref.watch(storeBrowseProvider);
-    final regionsAsync = ref.watch(exploreRegionsProvider);
-    final categoriesAsync = ref.watch(exploreCategoriesProvider);
     
     final regionPath = ref.watch(exploreRegionPathProvider);
     final categoryPath = ref.watch(exploreCategoryPathProvider);
@@ -76,7 +74,7 @@ class ExplorePage extends ConsumerWidget {
                       if (hasActiveSearch)
                         _buildClearSearchButton(ref)
                       else
-                        _buildQuickSearchButton(context, ref, regionsAsync, categoriesAsync),
+                        _buildQuickSearchButton(context),
                     ],
                   ),
                 ),
@@ -164,24 +162,9 @@ class ExplorePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickSearchButton(BuildContext context, WidgetRef ref, AsyncValue regions, AsyncValue categories) {
+  Widget _buildQuickSearchButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {
-        QuickSearchDrawer.show(
-          context,
-          QuickSearchDrawer(
-            regionTree: regions.value ?? [],
-            regionPath: ref.read(exploreRegionPathProvider),
-            onRegionPathChange: (path) => ref.read(exploreRegionPathProvider.notifier).state = path,
-            regionsLoading: regions.isLoading,
-            categoryTree: categories.value ?? [],
-            categoryPath: ref.read(exploreCategoryPathProvider),
-            onCategoryPathChange: (path) => ref.read(exploreCategoryPathProvider.notifier).state = path,
-            categoriesLoading: categories.isLoading,
-            onApply: () {},
-          ),
-        );
-      },
+      onPressed: () => context.push('/stores/search'),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1F2937),
@@ -267,7 +250,7 @@ class ExplorePage extends ConsumerWidget {
                 else
                   const SizedBox.shrink(),
                 TextButton(
-                  onPressed: () {}, // Navigate to search
+                  onPressed: () => context.push('/stores/search'),
                   child: const Row(
                     children: [
                       Text('المزيد', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.primary, fontFamily: 'Cairo')),

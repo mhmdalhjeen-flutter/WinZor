@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/home_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../competitions/presentation/providers/competitions_providers.dart';
 import '../widgets/home_hero.dart';
 import '../widgets/featured_competitions.dart';
 import '../widgets/home_search_cards.dart';
@@ -11,6 +14,18 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+
+    // React `/` → Intro when guest
+    if (!auth.isLoading && !auth.isAuth) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/intro');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final regionsAsync = ref.watch(regionsProvider);
     final categoriesAsync = ref.watch(storeCategoriesProvider);
     final reelsAsync = ref.watch(reelsProvider);

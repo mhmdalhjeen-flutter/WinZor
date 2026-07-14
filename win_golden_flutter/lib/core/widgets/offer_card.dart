@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_utils.dart';
 import '../utils/media_url.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/orders/presentation/widgets/direct_order_sheet.dart';
 import 'app_image.dart';
 
-class OfferCard extends StatelessWidget {
-  final Map<String, dynamic> offer; // Direct from JSON or Model
+/// React `OfferCard` — details navigation + direct order (cart UI removed).
+class OfferCard extends ConsumerWidget {
+  final Map<String, dynamic> offer;
   final bool favorited;
   final VoidCallback? onToggleFavorite;
 
@@ -17,18 +22,61 @@ class OfferCard extends StatelessWidget {
     this.onToggleFavorite,
   });
 
+  String get _id => (offer['_id'] ?? offer['id'] ?? '').toString();
+
+  void _goDetails(BuildContext context) {
+    if (_id.isEmpty) return;
+    context.push('/offer/$_id');
+  }
+
+  Future<void> _orderNow(BuildContext context, WidgetRef ref) async {
+    if (_id.isEmpty) return;
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      context.push('/login');
+      return;
+    }
+
+    final pricing = offer['pricing'];
+    final unit = (pricing is Map
+            ? (pricing['finalPrice'] ?? pricing['unitPrice'])
+            : null) ??
+        offer['finalPrice'] ??
+        offer['price'] ??
+        0;
+    final currency = (pricing is Map ? pricing['currency'] : null) ??
+        offer['currency'] ??
+        'ILS';
+    final store = offer['store'];
+    final storeName = store is Map ? store['name']?.toString() : null;
+    final image = resolveOfferImage(offer);
+
+    await showDirectOrderSheet(
+      context: context,
+      ref: ref,
+      itemId: _id,
+      itemType: 'offer',
+      title: (offer['title'] ?? '').toString(),
+      unitPrice: double.tryParse(unit.toString()) ?? 0,
+      currency: currency.toString(),
+      imageUrl: image,
+      storeName: storeName,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final String? image = resolveOfferImage(offer);
-    final String title = offer['title'] ?? '';
-    final String storeName = offer['store']?['name'] ?? 'متجر';
-    final String? region = offer['store']?['region'];
+    final String title = offer['title']?.toString() ?? '';
+    final String storeName = offer['store'] is Map
+        ? (offer['store']['name']?.toString() ?? 'متجر')
+        : 'متجر';
+    final String? region =
+        offer['store'] is Map ? offer['store']['region']?.toString() : null;
     final String badge = _getOfferBadge();
 
     return GestureDetector(
-      onTap: () {
-        // Navigate to /offer/${offer['_id']}
-      },
+      onTap: () => _goDetails(context),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -46,29 +94,25 @@ class OfferCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Media
             AspectRatio(
               aspectRatio: 16 / 9,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   if (image != null && image.isNotEmpty)
-                    AppImage(
-                      src: image,
-                      fit: BoxFit.cover,
-                    )
+                    AppImage(src: image, fit: BoxFit.cover)
                   else
                     Container(
                       color: const Color(0xFFF3F4F6),
-                      child: const Icon(LucideIcons.image, color: Colors.grey, size: 32),
+                      child: const Icon(LucideIcons.image,
+                          color: Colors.grey, size: 32),
                     ),
-                  
-                  // Badge
                   Positioned(
                     top: 10,
                     right: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(100),
@@ -78,14 +122,12 @@ class OfferCard extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.black,
+                          fontWeight: FontWeight.w900,
                           fontFamily: 'Cairo',
                         ),
                       ),
                     ),
                   ),
-
-                  // Favorite
                   if (onToggleFavorite != null)
                     Positioned(
                       top: 10,
@@ -96,7 +138,9 @@ class OfferCard extends StatelessWidget {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: favorited ? Colors.red : Colors.black.withOpacity(0.4),
+                            color: favorited
+                                ? Colors.red
+                                : Colors.black.withOpacity(0.4),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -111,8 +155,6 @@ class OfferCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Content
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -135,22 +177,30 @@ class OfferCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(LucideIcons.tag, size: 11, color: Colors.grey),
+                          const Icon(LucideIcons.tag,
+                              size: 11, color: Colors.grey),
                           const SizedBox(width: 4),
                           Text(
                             storeName,
-                            style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
-                      if (region != null)
+                      if (region != null && region.isNotEmpty)
                         Row(
                           children: [
-                            const Icon(LucideIcons.mapPin, size: 11, color: Colors.grey),
+                            const Icon(LucideIcons.mapPin,
+                                size: 11, color: Colors.grey),
                             const SizedBox(width: 4),
                             Text(
                               region,
-                              style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -163,18 +213,23 @@ class OfferCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () => _orderNow(context, ref),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(LucideIcons.shoppingCart, size: 14),
+                              Icon(LucideIcons.shoppingBag, size: 14),
                               SizedBox(width: 4),
-                              Text('للسلة', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                              Text('اطلب',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900)),
                             ],
                           ),
                         ),
@@ -182,18 +237,28 @@ class OfferCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () {},
+                          onPressed: () => _goDetails(context),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             side: const BorderSide(color: Color(0xFFE5E7EB)),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(LucideIcons.eye, size: 14, color: Colors.grey),
+                              Icon(LucideIcons.eye,
+                                  size: 14, color: Colors.grey),
                               SizedBox(width: 4),
-                              Text('التفاصيل', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey)),
+                              Text(
+                                'التفاصيل',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -212,7 +277,7 @@ class OfferCard extends StatelessWidget {
   String _getOfferBadge() {
     final pricing = offer['pricing'];
     if (pricing != null && pricing['badge'] != null) {
-      return pricing['badge'];
+      return pricing['badge'].toString();
     }
     final type = offer['offerType'];
     final value = offer['value'];
@@ -233,7 +298,8 @@ class OfferCard extends StatelessWidget {
     final oldPrice = pricing?['originalPrice'] ?? offer['originalPrice'];
     final newPrice = pricing?['finalPrice'] ?? offer['finalPrice'];
     final bool showCompare = pricing?['showCompare'] ?? (oldPrice != null);
-    final String currency = pricing?['currency'] ?? offer['currency'] ?? 'ILS';
+    final String currency =
+        pricing?['currency']?.toString() ?? offer['currency']?.toString() ?? 'ILS';
 
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -255,7 +321,7 @@ class OfferCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               color: AppColors.primary,
-              fontWeight: FontWeight.black,
+              fontWeight: FontWeight.w900,
             ),
           ),
       ],

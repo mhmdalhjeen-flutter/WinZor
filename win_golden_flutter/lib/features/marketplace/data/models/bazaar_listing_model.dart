@@ -16,7 +16,10 @@ class BazaarListingModel {
   final DateTime? createdAt;
   final DateTime? expiresAt;
   final bool isFavorited;
-  final dynamic user; // User object or ID
+  final bool isVisible;
+  final String? adminReviewNote;
+  final dynamic seller; // User object or ID (React: listing.seller)
+  final dynamic user; // legacy alias some payloads may use
   final dynamic regionId;
   final dynamic subRegionId;
 
@@ -38,10 +41,20 @@ class BazaarListingModel {
     this.createdAt,
     this.expiresAt,
     this.isFavorited = false,
+    this.isVisible = false,
+    this.adminReviewNote,
+    this.seller,
     this.user,
     this.regionId,
     this.subRegionId,
   });
+
+  String? get sellerId {
+    final raw = seller ?? user;
+    if (raw == null) return null;
+    if (raw is Map) return (raw['_id'] ?? raw['id'])?.toString();
+    return raw.toString();
+  }
 
   /// Browse responses expose `mainImage` instead of full `images[]` — support both.
   factory BazaarListingModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +64,12 @@ class BazaarListingModel {
       images = rawImages.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
     } else if (json['mainImage'] != null && json['mainImage'].toString().isNotEmpty) {
       images = [json['mainImage'].toString()];
+    }
+
+    final adminReview = json['adminReview'];
+    String? note;
+    if (adminReview is Map) {
+      note = adminReview['note']?.toString();
     }
 
     return BazaarListingModel(
@@ -73,6 +92,9 @@ class BazaarListingModel {
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       expiresAt: json['expiresAt'] != null ? DateTime.tryParse(json['expiresAt'].toString()) : null,
       isFavorited: json['isFavorited'] == true || json['favorited'] == true,
+      isVisible: json['isVisible'] == true,
+      adminReviewNote: note?.isNotEmpty == true ? note : null,
+      seller: json['seller'],
       user: json['user'],
       regionId: json['regionId'],
       subRegionId: json['subRegionId'],
@@ -97,6 +119,9 @@ class BazaarListingModel {
         'createdAt': createdAt?.toIso8601String(),
         'expiresAt': expiresAt?.toIso8601String(),
         'isFavorited': isFavorited,
+        'isVisible': isVisible,
+        'adminReview': adminReviewNote != null ? {'note': adminReviewNote} : null,
+        'seller': seller,
         'user': user,
         'regionId': regionId,
         'subRegionId': subRegionId,

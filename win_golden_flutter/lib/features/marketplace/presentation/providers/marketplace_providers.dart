@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/bazaar_listing_model.dart';
 import '../../data/repositories/marketplace_repository.dart';
 import '../../../home/presentation/providers/home_providers.dart';
-import '../../../../core/models/hierarchy_node.dart';
 
 final marketplaceRepositoryProvider = Provider((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -47,3 +46,13 @@ final bazaarMetaProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 });
 
 final favoritingPulseProvider = StateProvider<String?>((ref) => null);
+
+/// Optimistic favorite overrides keyed by listing id (mirrors React favOverrides).
+final marketplaceFavOverridesProvider = StateProvider<Map<String, bool>>((ref) => {});
+
+void invalidateMarketplaceLists(Ref ref) {
+  ref.invalidate(bazaarBrowseProvider);
+  ref.invalidate(myBazaarListingsProvider);
+  ref.invalidate(favoriteBazaarListingsProvider);
+  ref.invalidate(bazaarMetaProvider);
+}

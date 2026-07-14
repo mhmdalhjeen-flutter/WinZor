@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_utils.dart';
@@ -20,11 +21,10 @@ class ProductCard extends StatelessWidget {
     final double price = (product['price'] ?? 0).toDouble();
     final String currency = product['currency'] ?? 'ILS';
     final double ratingAvg = (product['ratingAvg'] ?? 0).toDouble();
+    final id = (product['_id'] ?? product['id'] ?? '').toString();
 
     return GestureDetector(
-      onTap: () {
-        // Navigate to /product/${product['_id']}
-      },
+      onTap: id.isEmpty ? null : () => context.push('/product/$id'),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -58,7 +58,11 @@ class ProductCard extends StatelessWidget {
                       child: const Center(
                         child: Text(
                           'بدون صورة',
-                          style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -97,7 +101,11 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         ratingAvg.toStringAsFixed(1),
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
                       ),
                     ],
                   ),
@@ -106,31 +114,44 @@ class ProductCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: id.isEmpty ? null : () => context.push('/product/$id'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             minimumSize: Size.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(LucideIcons.shoppingCart, size: 12),
+                              Icon(LucideIcons.eye, size: 12),
                               SizedBox(width: 4),
-                              Text('سلة', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                              Text(
+                                'عرض',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+                              ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                          borderRadius: BorderRadius.circular(12),
+                      InkWell(
+                        onTap: id.isEmpty ? null : () => context.push('/product/$id'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            LucideIcons.eye,
+                            size: 14,
+                            color: Color(0xFF4B5563),
+                          ),
                         ),
-                        child: const Icon(LucideIcons.eye, size: 14, color: Color(0xFF4B5563)),
                       ),
                     ],
                   ),

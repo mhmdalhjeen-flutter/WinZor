@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import 'marketplace_offer_card.dart';
 
@@ -107,7 +108,8 @@ class CategoryCarousel extends StatelessWidget {
                   item: mappedProduct,
                   topBadge: '🛍️ للتسوق',
                   onTap: () {
-                    // Navigate to product detail
+                    final pid = (product['_id'] ?? product['id'] ?? '').toString();
+                    if (pid.isNotEmpty) context.push('/product/$pid');
                   },
                 );
               }

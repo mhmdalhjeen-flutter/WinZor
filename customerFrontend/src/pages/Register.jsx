@@ -11,7 +11,7 @@ import { useSocialAuth } from '../hooks/useSocialAuth';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import api from '../api/axios';
-import logoImg from '../assets/win-goldenstore2222222.png';
+import { BRAND_LOGO_256 } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import {
   getReferralCode,
@@ -332,13 +332,14 @@ const Register = () => {
               aria-hidden
             />
             <img
-              src={logoImg}
+              src={BRAND_LOGO_256}
               alt="WinGoldenStore"
               className="relative z-[1] h-[7.5rem] w-[7.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[9rem] sm:w-[9rem]"
               width={144}
               height={144}
+              loading="eager"
+              fetchpriority="high"
               decoding="async"
-              style={{ imageRendering: '-webkit-optimize-contrast' }}
             />
           </div>
         </motion.div>

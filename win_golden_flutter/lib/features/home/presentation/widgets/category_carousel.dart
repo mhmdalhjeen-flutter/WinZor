@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_colors.dart'; // تم تصحيح المسار بإضافة ../
 import 'marketplace_offer_card.dart';
 
 class CategoryCarousel extends StatelessWidget {
@@ -65,7 +65,7 @@ class CategoryCarousel extends StatelessWidget {
             ),
           ),
         SizedBox(
-          height: 240, // Height to accommodate MarketplaceOfferCard
+          height: 240,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -74,9 +74,7 @@ class CategoryCarousel extends StatelessWidget {
               if (index < offers.length) {
                 return MarketplaceOfferCard(
                   item: offers[index],
-                  onTap: () {
-                    // Navigate to offer detail or viewer
-                  },
+                  onTap: () {},
                 );
               }
               
@@ -95,7 +93,6 @@ class CategoryCarousel extends StatelessWidget {
               final productIndex = products.isNotEmpty ? index - offers.length - 1 : index - offers.length;
               if (productIndex >= 0 && productIndex < products.length) {
                 final product = products[productIndex];
-                // Map product to card format
                 final mappedProduct = {
                   ...product,
                   'title': product['name'],

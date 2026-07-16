@@ -79,7 +79,7 @@ class ProductCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      color: AppColors.textPrimary,
                       fontFamily: 'Cairo',
                     ),
                     maxLines: 2,
@@ -90,7 +90,7 @@ class ProductCard extends StatelessWidget {
                     CurrencyUtils.formatPrice(price, currency),
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.black,
+                      fontWeight: FontWeight.w900, // تصحيح من black إلى w900
                       color: AppColors.primary,
                     ),
                   ),
@@ -105,52 +105,6 @@ class ProductCard extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.amber,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: id.isEmpty ? null : () => context.push('/product/$id'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            minimumSize: Size.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(LucideIcons.eye, size: 12),
-                              SizedBox(width: 4),
-                              Text(
-                                'عرض',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: id.isEmpty ? null : () => context.push('/product/$id'),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            LucideIcons.eye,
-                            size: 14,
-                            color: Color(0xFF4B5563),
-                          ),
                         ),
                       ),
                     ],

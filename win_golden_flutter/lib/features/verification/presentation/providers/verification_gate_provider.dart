@@ -84,10 +84,10 @@ class VerificationGateNotifier extends StateNotifier<VerificationGateState> {
   /// If API error is `VERIFICATION_REQUIRED`, open prompt with [retryAction].
   bool handleApiVerificationError(
     Object? err,
-    VoidCallback retryAction, [
+    VoidCallback retryAction, {
     VerificationPromptConfig config = const VerificationPromptConfig(),
     String? explicitCode,
-  ]) {
+  }) {
     if (VerificationApiError.isVerificationRequired(
       err,
       explicitCode: explicitCode,

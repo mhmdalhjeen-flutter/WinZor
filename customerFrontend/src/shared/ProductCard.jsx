@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, memo } from 'react';
 import { ShoppingCart, Eye, Check, Loader2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../utils/currency';
@@ -39,21 +38,20 @@ const ProductCard = ({ product, storeId }) => {
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 
-  const imageSrc = resolveProductImage(product, { width: 400 });
-  const imageSrcSet = cloudinarySrcSet(imageSrc, [300, 600]);
+  const imageSrc = resolveProductImage(product, { width: 300 });
+  const imageSrcSet = cloudinarySrcSet(product?.image, [300, 600]);
 
   return (
-    <motion.div
-      whileHover={{ y: -3 }}
+    <div
       onClick={() => navigate(`/product/${product._id}`)}
-      className="bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-sm cursor-pointer flex flex-col"
+      className="bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-sm cursor-pointer flex flex-col transition-transform duration-200 hover:-translate-y-[3px]"
     >
       <div className="aspect-square bg-gray-50 relative">
         {imageSrc ? (
           <img
             src={imageSrc}
             srcSet={imageSrcSet}
-            sizes="(max-width: 640px) 300px, 400px"
+            sizes="300px"
             alt=""
             loading="lazy"
             decoding="async"
@@ -88,8 +86,8 @@ const ProductCard = ({ product, storeId }) => {
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-export default ProductCard;
+export default memo(ProductCard);

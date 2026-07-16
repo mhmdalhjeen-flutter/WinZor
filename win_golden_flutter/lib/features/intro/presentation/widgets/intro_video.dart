@@ -124,7 +124,7 @@ class _IntroVideoState extends State<IntroVideo> {
                     ),
                     child: const Text(
                       'مجاني',
-                      style: TextStyle(color: Color(0xFFFECACA), fontSize: 10, fontWeight: FontWeight.black, fontFamily: 'Cairo'),
+                      style: TextStyle(color: Color(0xFFFECACA), fontSize: 10, fontWeight: FontWeight.w900, fontFamily: 'Cairo'),
                     ),
                   ),
                 ],

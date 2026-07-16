@@ -15,7 +15,7 @@ import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 import PhoneDisplay from '../components/PhoneDisplay';
 import { getPhoneCarrier } from '../utils/phoneValidation';
 import { queryClient, queryKeys } from '../lib/queryClient';
-import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const BazaarDetail = () => {
   const { id } = useParams();
@@ -86,7 +86,7 @@ const BazaarDetail = () => {
         itemId: listing._id,
         itemType: 'BazaarListing',
         itemName: listing.title,
-        itemImage: img ? optimizeCloudinaryUrl(img, { width: 300 }) : img,
+        itemImage: img ? resolveImageUrl(img, { width: 300 }) : img,
         itemUrl: `/marketplace/${listing._id}`,
       },
     }));
@@ -113,7 +113,7 @@ const BazaarDetail = () => {
         <div className="aspect-square sm:aspect-video bg-gray-100">
           {images[activeImage] ? (
             <img
-              src={optimizeCloudinaryUrl(images[activeImage], { width: 800 })}
+              src={resolveImageUrl(images[activeImage], { width: 800 })}
               srcSet={cloudinarySrcSet(images[activeImage], [600, 800])}
               sizes="(max-width: 640px) 100vw, 800px"
               alt={listing.title}
@@ -139,7 +139,7 @@ const BazaarDetail = () => {
                 }`}
               >
                 <img
-                  src={optimizeCloudinaryUrl(img, { width: 300 })}
+                  src={resolveImageUrl(img, { width: 300 })}
                   alt=""
                   loading="lazy"
                   className="w-full h-full object-cover"

@@ -7,7 +7,7 @@ import HorizontalSwipe from '../components/ui/HorizontalSwipe';
 import { queryKeys } from '../lib/queryClient';
 import { unwrapList } from '../utils/unwrapList';
 import LightLoadingHint from '../shared/LightLoadingHint';
-import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
+import { resolveImageUrl } from '../utils/mediaUrl';
 
 const HonorBoard = () => {
   const { data: items = [], isLoading, isError, refetch } = useQuery({
@@ -25,9 +25,9 @@ const HonorBoard = () => {
   const WinnerCard = ({ item, large = false }) => {
     const name = item.user?.name || 'فائز';
     const photoRaw = item.winnerImage || item.user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
-    const photo = optimizeCloudinaryUrl(photoRaw, { width: 160 });
+    const photo = resolveImageUrl(photoRaw, { width: 160 }) || photoRaw;
     const prizeImgRaw = item.awardImage || item.prizeImage;
-    const prizeImg = prizeImgRaw ? optimizeCloudinaryUrl(prizeImgRaw, { width: 160 }) : null;
+    const prizeImg = prizeImgRaw ? resolveImageUrl(prizeImgRaw, { width: 160 }) : null;
     const prize = item.prizeName || item.title;
 
     return (

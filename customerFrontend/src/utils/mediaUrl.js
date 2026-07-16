@@ -2,30 +2,60 @@ import { API_URL } from '../lib/apiUrl';
 
 const ABSOLUTE_SRC_RE = /^(https?:|data:|blob:)/i;
 const CLOUDINARY_HOST_RE = /^(https?:)?\/\/res\.cloudinary\.com\//i;
+/** Single Cloudinary transform token (w_300, f_auto, c_fill, …) — not a folder name. */
+const CLOUDINARY_TRANSFORM_TOKEN_RE =
+  /^(a|ar|b|bo|c|co|cs|d|dl|dn|du|e|f|fl|g|h|l|o|p|q|r|t|u|w|x|y|z|dpr|if|so|eo|ac|af|br|vs)[_:].+/i;
 
 /**
- * Shared display strategy (React + Flutter):
- * - https:// → Cloudinary / remote URL (new uploads)
- * - relative /offers|/products|/stores/... → prefix API base (legacy Base64 served by backend)
- * - data:image/... → legacy Base64 (supported for backward compatibility)
+ * Display-only image resolver (parity with Flutter media_url.dart).
  *
- * Upload strategy (see imageUpload.js / Flutter ImageUploadService):
- * File → POST /api/upload/image → Cloudinary → HTTPS → save URL in MongoDB
+ * - Absolute http(s)/data/blob → use as-is (optimize Cloudinary /upload/ only)
+ * - Relative /offers|/products|/stores/... → prefix API base
+ * - Invalid / non-URL strings (e.g. accidental text in image fields) → null
  *
- * Display-only: Cloudinary delivery URLs get f_auto / q_auto / w_* without
- * changing stored DB values or API payloads.
+ * Does not change API responses or database fields.
+ * Does not proxy Facebook/Google through Cloudinary fetch or wsrv.nl.
  */
 
-/** True when URL is a Cloudinary delivery URL with an /upload/ segment. */
 export function isCloudinaryUrl(url) {
   if (!url || typeof url !== 'string') return false;
-  return CLOUDINARY_HOST_RE.test(url) && url.includes('/upload/');
+  return CLOUDINARY_HOST_RE.test(url) && /\/upload\//i.test(url);
+}
+
+/** True when the value is safe to use as an <img src>. */
+export function isDisplayableImageSrc(src) {
+  if (!src || typeof src !== 'string') return false;
+  const trimmed = src.trim();
+  if (!trimmed) return false;
+  if (ABSOLUTE_SRC_RE.test(trimmed)) return true;
+  // API-relative media paths only (not arbitrary relative text)
+  return (
+    trimmed.startsWith('/offers/')
+    || trimmed.startsWith('/products/')
+    || trimmed.startsWith('/stores/')
+    || trimmed.startsWith('/brand/')
+    || trimmed.startsWith('/uploads/')
+  );
+}
+
+function isCloudinaryTransformSegment(seg) {
+  if (!seg || /^v\d+$/i.test(seg)) return false;
+  const parts = seg.split(',');
+  if (parts.length === 0) return false;
+  return parts.every((part) => CLOUDINARY_TRANSFORM_TOKEN_RE.test(part));
+}
+
+function buildTransformSegment(options = {}) {
+  const parts = ['f_auto', 'q_auto'];
+  if (options.width) parts.push(`w_${Number(options.width)}`);
+  if (options.height) parts.push(`h_${Number(options.height)}`);
+  if (options.crop) parts.push(`c_${options.crop}`);
+  return parts.join(',');
 }
 
 /**
- * Insert or replace Cloudinary delivery transforms.
- * @param {string} url
- * @param {{ width?: number, height?: number, crop?: string }} [options]
+ * Insert/replace Cloudinary transforms after /upload/ on delivery URLs.
+ * Non-Cloudinary absolute URLs are returned unchanged.
  */
 export function optimizeCloudinaryUrl(url, options = {}) {
   if (!url || typeof url !== 'string' || !isCloudinaryUrl(url)) return url;
@@ -37,34 +67,17 @@ export function optimizeCloudinaryUrl(url, options = {}) {
   const prefix = url.slice(0, idx + marker.length);
   let rest = url.slice(idx + marker.length);
 
-  // Drop an existing transformation segment so we do not stack duplicates.
   const slash = rest.indexOf('/');
   const firstSeg = slash === -1 ? rest : rest.slice(0, slash);
-  const isVersion = /^v\d+$/i.test(firstSeg);
-  const looksLikeTransform =
-    !isVersion &&
-    firstSeg.length > 0 &&
-    (/^[^/]*_/i.test(firstSeg) || firstSeg.includes(','));
 
-  if (looksLikeTransform) {
+  if (isCloudinaryTransformSegment(firstSeg)) {
     rest = slash === -1 ? '' : rest.slice(slash + 1);
   }
-
   if (!rest) return url;
 
-  const transforms = ['f_auto', 'q_auto'];
-  if (options.width) transforms.push(`w_${Number(options.width)}`);
-  if (options.height) transforms.push(`h_${Number(options.height)}`);
-  if (options.crop) transforms.push(`c_${options.crop}`);
-
-  return `${prefix}${transforms.join(',')}/${rest}`;
+  return `${prefix}${buildTransformSegment(options)}/${rest}`;
 }
 
-/**
- * Responsive srcset for Cloudinary (no-op for non-Cloudinary URLs).
- * @param {string} url
- * @param {number[]} [widths]
- */
 export function cloudinarySrcSet(url, widths = [300, 600]) {
   if (!isCloudinaryUrl(url)) return undefined;
   return widths
@@ -73,11 +86,11 @@ export function cloudinarySrcSet(url, widths = [300, 600]) {
 }
 
 export function resolveImageUrl(src, options = {}) {
-  if (!src || typeof src !== 'string') return null;
+  if (!isDisplayableImageSrc(src)) return null;
   const trimmed = src.trim();
-  if (!trimmed) return null;
 
   if (ABSOLUTE_SRC_RE.test(trimmed)) {
+    if (/^(data:|blob:)/i.test(trimmed)) return trimmed;
     return optimizeCloudinaryUrl(trimmed, options);
   }
 
@@ -86,8 +99,12 @@ export function resolveImageUrl(src, options = {}) {
   return `${base}${path}`;
 }
 
-/** @alias resolveImageUrl */
 export const resolveMediaSrc = resolveImageUrl;
+
+/** Alias kept for callers that used the remote-optimizer name. */
+export function optimizeRemoteImageUrl(url, options = {}) {
+  return optimizeCloudinaryUrl(url, options);
+}
 
 export function resolveOfferImage(offer, options = {}) {
   if (!offer) return null;
@@ -109,29 +126,31 @@ export function resolveProductImage(product, options = {}) {
   return null;
 }
 
-export function resolveStoreLogo(store, options = { width: 150 }) {
+export function resolveStoreLogo(store, options = {}) {
   if (!store) return null;
-  const direct = resolveImageUrl(store.logo, options);
+  const opts = { width: 64, ...options };
+  const direct = resolveImageUrl(store.logo, opts);
   if (direct) return direct;
   if (store.hasLogo && store._id) {
-    return resolveImageUrl(`/stores/${store._id}/logo`, options);
+    return resolveImageUrl(`/stores/${store._id}/logo`, opts);
   }
   return null;
 }
 
-export function resolveStoreCover(store, options = { width: 800 }) {
+export function resolveStoreCover(store, options = {}) {
   if (!store) return null;
-  const direct = resolveImageUrl(store.coverImage, options);
+  const opts = { width: 800, ...options };
+  const direct = resolveImageUrl(store.coverImage, opts);
   if (direct) return direct;
   if (store.hasCoverImage && store._id) {
-    return resolveImageUrl(`/stores/${store._id}/cover`, options);
+    return resolveImageUrl(`/stores/${store._id}/cover`, opts);
   }
   return null;
 }
 
 export function storeLogoPlaceholder(store) {
   const name = encodeURIComponent(store?.name || 'S');
-  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff`;
+  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff&size=128`;
 }
 
 export default resolveImageUrl;

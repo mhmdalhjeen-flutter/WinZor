@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronRight, Send, Loader2 } from 'lucide-react';
 import axios from '../api/axios';
-import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
+import { resolveImageUrl } from '../utils/mediaUrl';
 
 const getMyId = () => {
   try {
@@ -106,7 +106,7 @@ const ChatConversation = () => {
                 {m.text}
                 {m.image && (
                   <img
-                    src={optimizeCloudinaryUrl(m.image, { width: 600 })}
+                    src={resolveImageUrl(m.image, { width: 600 })}
                     className="mt-2 rounded-xl max-w-full"
                     alt=""
                   />

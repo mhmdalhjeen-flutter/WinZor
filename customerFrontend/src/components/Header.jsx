@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   Bell, MessageCircle, ShoppingCart, CircleDot, Medal,
   BarChart3, Settings, LogOut, X,
@@ -6,13 +6,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import PointsBalanceModal from './PointsBalanceModal';
 import PointsBadge from './PointsBadge';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
-import logoImg from '../assets/logo/win-goldenstore-logo.png';
+import { BRAND_LOGO_64 } from '../utils/brandAssets';
+
+const PointsBalanceModal = lazy(() => import('./PointsBalanceModal'));
 
 const HEADER_ICON_THEMES = {
   bell: {
@@ -203,7 +204,7 @@ const Header = () => {
     };
   }, []);
 
-  const moreItems = [
+  const moreItems = useMemo(() => [
     showWheel && {
       icon: CircleDot,
       label: 'عجلة الحظ',
@@ -240,7 +241,11 @@ const Header = () => {
       danger: true,
       onClick: () => logout(),
     },
-  ].filter(Boolean);
+  ].filter(Boolean), [showWheel, showCompetitions, navigate, logout]);
+
+  const openPoints = useCallback(() => setPointsOpen(true), []);
+  const closePoints = useCallback(() => setPointsOpen(false), []);
+  const closeMore = useCallback(() => setMoreOpen(false), []);
 
   return (
     <>
@@ -254,7 +259,7 @@ const Header = () => {
             <PointsBadge
               points={points}
               pulse={pointsPulse}
-              onClick={() => setPointsOpen(true)}
+              onClick={openPoints}
             />
           ) : (
             <button
@@ -264,9 +269,14 @@ const Header = () => {
               aria-label="الرئيسية"
             >
               <img
-                src={logoImg}
+                src={BRAND_LOGO_64}
                 alt=""
                 className="w-9 h-9 rounded-lg object-contain shadow-md shrink-0"
+                width={36}
+                height={36}
+                loading="eager"
+                fetchpriority="high"
+                decoding="async"
               />
               <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Win GoldenStore</span>
             </button>
@@ -322,19 +332,23 @@ const Header = () => {
       {isAuth && (
         <MoreMenuSheet
           open={moreOpen}
-          onClose={() => setMoreOpen(false)}
+          onClose={closeMore}
           items={moreItems}
         />
       )}
 
-      <PointsBalanceModal
-        open={pointsOpen}
-        onClose={() => setPointsOpen(false)}
-        points={points}
-        user={user || meData}
-      />
+      {pointsOpen && (
+        <Suspense fallback={null}>
+          <PointsBalanceModal
+            open={pointsOpen}
+            onClose={closePoints}
+            points={points}
+            user={user || meData}
+          />
+        </Suspense>
+      )}
     </>
   );
 };
 
-export default Header;
+export default React.memo(Header);

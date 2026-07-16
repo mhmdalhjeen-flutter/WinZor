@@ -8,7 +8,7 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
-import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const timeLeft = (endDate) => {
   if (!endDate) return '—';
@@ -63,14 +63,15 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
   };
 
   const onJoinClick = () => runWithVerification(handleJoin);
+  const heroImageSrc = resolveImageUrl(competition.image, { width: 800 });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-[32px] overflow-hidden max-h-[90vh] overflow-y-auto" dir="rtl">
         <div className="relative aspect-[16/10] bg-gradient-to-br from-purple-600 to-indigo-800">
-          {competition.image ? (
+          {heroImageSrc ? (
             <img
-              src={optimizeCloudinaryUrl(competition.image, { width: 800 })}
+              src={heroImageSrc}
               srcSet={cloudinarySrcSet(competition.image, [600, 800])}
               sizes="(max-width: 640px) 100vw, 512px"
               alt=""
@@ -230,9 +231,9 @@ const Competitions = () => {
                 </div>
 
                 <div className="relative shrink-0 w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-[18px] overflow-hidden bg-gradient-to-br from-purple-100 to-indigo-100 ring-1 ring-gray-100">
-                  {c.image ? (
+                  {resolveImageUrl(c.image, { width: 300 }) ? (
                     <img
-                      src={optimizeCloudinaryUrl(c.image, { width: 300 })}
+                      src={resolveImageUrl(c.image, { width: 300 })}
                       srcSet={cloudinarySrcSet(c.image, [300, 600])}
                       sizes="80px"
                       alt=""

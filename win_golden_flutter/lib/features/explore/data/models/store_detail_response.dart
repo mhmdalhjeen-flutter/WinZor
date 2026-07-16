@@ -1,13 +1,13 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'store_model.dart';
-import '../../home/data/models/offer_model.dart';
+import '../../../home/data/models/offer_model.dart'; // تم تصحيح المسار من ../../ إلى ../../../
 
 part 'store_detail_response.g.dart';
 
 @JsonSerializable()
 class StoreDetailResponse {
   final StoreModel store;
-  final List<Map<String, dynamic>>? offers; // Using Map for now as OfferModel might need adjustments for store detail
+  final List<Map<String, dynamic>>? offers; 
   final List<Map<String, dynamic>>? products;
   final String? membershipStatus;
   final bool? storeCompetitionsEnabled;

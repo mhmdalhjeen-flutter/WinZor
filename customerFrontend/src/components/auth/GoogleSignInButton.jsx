@@ -130,8 +130,15 @@ const GoogleSignInButton = ({
   const [loadFailed, setLoadFailed] = useState(false);
   const hiddenHostRef = useRef(null);
   const hiddenBtnRef = useRef(null);
+  // Stable ref so GIS always invokes the latest handler even if React remounts.
+  const handleGoogleCredentialRef = useRef(null);
 
   const handleGoogleCredential = useCallback(async (response) => {
+    if (!response?.credential) {
+      onErrorRef.current?.('تعذّر الحصول على بيانات Google');
+      return;
+    }
+
     try {
       const data = await googleAuth(response.credential);
       onSuccessRef.current?.(data);
@@ -140,8 +147,13 @@ const GoogleSignInButton = ({
     }
   }, []);
 
+  handleGoogleCredentialRef.current = handleGoogleCredential;
+
   useEffect(() => {
-    if (!isGoogleAuthAvailable() || disabled) {
+    // Do NOT gate init on `disabled`. Parent sets disabled=true via onStart(socialLoading)
+    // as soon as the custom button is clicked; tearing down GIS mid-popup drops the
+    // credential callback. Clicks stay gated by `disabled` in handleClick.
+    if (!isGoogleAuthAvailable()) {
       setReady(false);
       setLoadFailed(false);
       return undefined;
@@ -150,53 +162,77 @@ const GoogleSignInButton = ({
     setLoadFailed(false);
 
     let cancelled = false;
+    let idleId;
+    let timeoutId;
     const clientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 
-    loadGoogleSdk()
-      .then(async () => {
-        if (cancelled || !window.google?.accounts?.id || !clientId) return;
+    const startSdk = () => {
+      if (cancelled) return;
+      loadGoogleSdk()
+        .then(async () => {
+          if (cancelled || !window.google?.accounts?.id || !clientId) return;
 
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredential,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        const host = hiddenHostRef.current;
-        hiddenBtnRef.current = null;
-        if (host) {
-          host.innerHTML = '';
-          const mount = document.createElement('div');
-          mount.id = HIDDEN_BTN_ID;
-          host.appendChild(mount);
-          window.google.accounts.id.renderButton(mount, {
-            theme: 'outline',
-            size: 'large',
-            type: 'standard',
-            text: 'signin_with',
-            width: 320,
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            // Indirection keeps GIS callback valid across StrictMode / re-renders.
+            callback: (response) => handleGoogleCredentialRef.current?.(response),
+            auto_select: false,
+            cancel_on_tap_outside: true,
+            ux_mode: 'popup',
+            error_callback: (err) => {
+              // GIS fires this when the popup channel fails (often COOP / postMessage).
+              console.warn('[GSI] error_callback', err);
+              if (err?.type === 'popup_closed' || err?.type === 'popup_failed_to_open') {
+                onErrorRef.current?.('تعذّر إكمال تسجيل الدخول عبر Google — أعد المحاولة');
+              }
+            },
           });
 
-          const hiddenBtn = await waitForHiddenGoogleButton(mount);
-          if (cancelled) return;
-          hiddenBtnRef.current = hiddenBtn;
-          if (hiddenBtn) setReady(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setReady(false);
-          setLoadFailed(true);
-        }
-      });
+          const host = hiddenHostRef.current;
+          hiddenBtnRef.current = null;
+          if (host) {
+            host.innerHTML = '';
+            const mount = document.createElement('div');
+            mount.id = HIDDEN_BTN_ID;
+            host.appendChild(mount);
+            window.google.accounts.id.renderButton(mount, {
+              theme: 'outline',
+              size: 'large',
+              type: 'standard',
+              text: 'signin_with',
+              width: 320,
+            });
+
+            const hiddenBtn = await waitForHiddenGoogleButton(mount);
+            if (cancelled) return;
+            hiddenBtnRef.current = hiddenBtn;
+            if (hiddenBtn) setReady(true);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setReady(false);
+            setLoadFailed(true);
+          }
+        });
+    };
+
+    // Defer Google SDK until after first paint so login UI paints first
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(startSdk, { timeout: 2000 });
+    } else {
+      timeoutId = window.setTimeout(startSdk, 1);
+    }
 
     return () => {
       cancelled = true;
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      // Keep the rendered GIS iframe in the DOM; only clear the click ref.
+      // Clearing host.innerHTML here would destroy the popup opener channel mid-flow.
       hiddenBtnRef.current = null;
-      setReady(false);
     };
-  }, [disabled, handleGoogleCredential]);
+  }, []);
 
   const handleClick = () => {
     if (disabled || loading || !ready) return;
@@ -235,12 +271,18 @@ const GoogleSignInButton = ({
         <span className="text-center leading-snug">{label}</span>
       </button>
 
-      <p className="text-center text-[10px] font-bold text-white/45">الأسرع والأكثر أمانًا</p>
+      <p className="text-center text-[10px] font-bold text-white/70">الأسرع والأكثر أمانًا</p>
 
+      {/*
+        Keep the GIS button in-document and interactive for the library.
+        Off-screen + opacity-0 (not pointer-events-none / display:none) so
+        programmatic click still opens the chooser with a valid popup opener.
+      */}
       <div
         ref={hiddenHostRef}
-        className="pointer-events-none absolute -left-[9999px] top-0 h-12 w-[320px] overflow-hidden opacity-0"
+        className="absolute left-0 top-0 h-12 w-[320px] -translate-x-[120%] overflow-hidden opacity-0"
         aria-hidden="true"
+        tabIndex={-1}
       />
     </div>
   );

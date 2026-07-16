@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 import { formatPrice } from '../../utils/currency';
 import { isMiscReel } from '../../utils/categoryDisplay';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
+import { getSlideScrollTarget } from '../../hooks/useCenterSnapCarousel';
 
 const SHOPPING_BADGE = '🛍️ للتسوق';
 
@@ -19,7 +20,7 @@ export function mapProductForCard(product) {
   };
 }
 
-export default function CategoryCarousel({
+function CategoryCarousel({
   reel,
   onOfferClick,
   onProductClick,
@@ -55,7 +56,6 @@ export default function CategoryCarousel({
 
     const nextIdx = Math.max(0, Math.min(slides.length - 1, activeIdx + dir));
     el.scrollTo({
-      left: getSlideScrollTarget(el, slides[nextIdx]),
       behavior: 'smooth',
     });
   };
@@ -122,6 +122,8 @@ export default function CategoryCarousel({
     </section>
   );
 }
+
+export default memo(CategoryCarousel);
 
 /** Flatten reels: category intro → offers → products per category (strict order, no mixing) */
 export function buildMultiCategoryViewerState(reels, reelIndex, offerIndex, productIndex = null) {

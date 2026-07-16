@@ -115,7 +115,7 @@ class OfferDetailPage extends ConsumerWidget {
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
-                                      fontWeight: FontWeight.black,
+                                      fontWeight: FontWeight.w900,
                                       fontFamily: 'Cairo',
                                     ),
                                   ),
@@ -236,7 +236,7 @@ class OfferDetailPage extends ConsumerWidget {
             CurrencyUtils.formatPrice(newPrice, currency),
             style: const TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.black,
+              fontWeight: FontWeight.w900,
               color: Color(0xFF111827),
             ),
           ),
@@ -335,7 +335,7 @@ class OfferDetailPage extends ConsumerWidget {
                   if (store.isVerifiedStore)
                     const Padding(
                       padding: EdgeInsets.only(top: 4.0),
-                      child: Text('✔ متجر موثق', style: TextStyle(fontSize: 10, fontWeight: FontWeight.black, color: Color(0xFF059669))),
+                      child: Text('✔ متجر موثق', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF059669))),
                     ),
                 ],
               ),

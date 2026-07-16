@@ -30,7 +30,6 @@ class ExplorePage extends ConsumerWidget {
           },
           child: CustomScrollView(
             slivers: [
-              // Header
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                 sliver: SliverToBoxAdapter(
@@ -54,7 +53,6 @@ class ExplorePage extends ConsumerWidget {
                 ),
               ),
 
-              // Search Bar & Filter Button
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverToBoxAdapter(
@@ -82,7 +80,6 @@ class ExplorePage extends ConsumerWidget {
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-              // Main Content
               browseAsync.when(
                 data: (data) {
                   final List parentGroups = data['parentGroups'] ?? [];
@@ -114,7 +111,6 @@ class ExplorePage extends ConsumerWidget {
                     );
                   }
 
-                  // If parentGroups is empty, we derive them from groups like in React
                   final List finalParentGroups = parentGroups.isNotEmpty 
                     ? parentGroups 
                     : _deriveParentGroups(groups);
@@ -123,7 +119,7 @@ class ExplorePage extends ConsumerWidget {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final parentGroup = finalParentGroups[index];
-                        return _buildParentGroupSection(parentGroup);
+                        return _buildParentGroupSection(context, parentGroup); // تمرير context
                       },
                       childCount: finalParentGroups.length,
                     ),
@@ -202,7 +198,7 @@ class ExplorePage extends ConsumerWidget {
     return derived.values.toList();
   }
 
-  Widget _buildParentGroupSection(dynamic parentGroup) {
+  Widget _buildParentGroupSection(BuildContext context, dynamic parentGroup) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 32.0),
       child: Column(
@@ -222,13 +218,13 @@ class ExplorePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...((parentGroup['sections'] as List).map((section) => _buildSection(section, parentGroup['parentCategory']))),
+          ...((parentGroup['sections'] as List).map((section) => _buildSection(context, section, parentGroup['parentCategory']))),
         ],
       ),
     );
   }
 
-  Widget _buildSection(dynamic section, String? parentCategory) {
+  Widget _buildSection(BuildContext context, dynamic section, String? parentCategory) {
     final bool showChildTitle = section['isParentFallback'] != true && 
                                 section['category'] != null && 
                                 section['category'] != parentCategory;

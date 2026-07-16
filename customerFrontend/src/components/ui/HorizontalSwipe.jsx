@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import clsx from 'clsx';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { FreeMode } from 'swiper/modules';
+import 'swiper/css';
 import 'swiper/css/free-mode';
 
 const MOVE_THRESHOLD = 6;

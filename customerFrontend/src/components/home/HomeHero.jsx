@@ -1,6 +1,6 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { BookOpen, Play, X } from 'lucide-react';
-import logoImg from '../../assets/logo/win-goldenstore-logo.png';
+import { BRAND_LOGO_128 } from '../../utils/brandAssets';
 
 const PointsGuideModal = lazy(() => import('../PointsGuideModal'));
 
@@ -81,12 +81,13 @@ export default function HomeHero() {
             <div className="home-hero__brand" aria-label="WinGolden">
               <span className="home-hero__brand-logo-wrap">
                 <img
-                  src={logoImg}
+                  src={BRAND_LOGO_128}
                   alt=""
                   className="home-hero__brand-logo"
                   width={44}
                   height={44}
                   loading="eager"
+                  fetchpriority="high"
                   decoding="async"
                 />
               </span>

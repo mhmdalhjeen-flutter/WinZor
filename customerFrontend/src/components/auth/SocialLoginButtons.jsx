@@ -121,44 +121,70 @@ const SocialLoginButtons = ({ onSuccess, onError, googleBtnId = 'googleBtn', dis
     }
 
     let cancelled = false;
+    let idleId;
+    let timeoutId;
 
-    loadGoogleSdk()
-      .then(() => {
-        if (cancelled || !window.google?.accounts?.id) return;
+    const startSdk = () => {
+      if (cancelled) return;
+      loadGoogleSdk()
+        .then(() => {
+          if (cancelled || !window.google?.accounts?.id) return;
 
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: handleGoogle,
-        });
-
-        const el = document.getElementById(googleBtnId);
-        if (el) {
-          el.innerHTML = '';
-          const width = el.offsetWidth > 0 ? el.offsetWidth : 280;
-          window.google.accounts.id.renderButton(el, {
-            theme: 'filled_black',
-            size: 'large',
-            shape: 'pill',
-            width: Math.min(320, width),
-            text: 'continue_with',
-            locale: 'ar',
+          window.google.accounts.id.initialize({
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+            callback: handleGoogle,
           });
-        }
 
-        if (!cancelled) setGoogleReady(true);
-      })
-      .catch(() => {
-        if (!cancelled) setGoogleReady(false);
-      });
+          const el = document.getElementById(googleBtnId);
+          if (el) {
+            el.innerHTML = '';
+            const width = el.offsetWidth > 0 ? el.offsetWidth : 280;
+            window.google.accounts.id.renderButton(el, {
+              theme: 'filled_black',
+              size: 'large',
+              shape: 'pill',
+              width: Math.min(320, width),
+              text: 'continue_with',
+              locale: 'ar',
+            });
+          }
+
+          if (!cancelled) setGoogleReady(true);
+        })
+        .catch(() => {
+          if (!cancelled) setGoogleReady(false);
+        });
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(startSdk, { timeout: 2000 });
+    } else {
+      timeoutId = window.setTimeout(startSdk, 1);
+    }
 
     return () => {
       cancelled = true;
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, [googleBtnId, handleGoogle, disabled, hideGoogle, providers.google]);
 
   useEffect(() => {
-    if (!providers.facebook || disabled) return;
-    loadFacebookSdk(import.meta.env.VITE_FACEBOOK_APP_ID).catch(() => {});
+    if (!providers.facebook || disabled) return undefined;
+    let idleId;
+    let timeoutId;
+    const start = () => {
+      loadFacebookSdk(import.meta.env.VITE_FACEBOOK_APP_ID).catch(() => {});
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(start, { timeout: 2500 });
+    } else {
+      timeoutId = window.setTimeout(start, 400);
+    }
+    return () => {
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
   }, [disabled, providers.facebook]);
 
   const handleFacebook = () => {

@@ -169,7 +169,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildErrorAlert() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.bottom(16),
+      margin: const EdgeInsets.only(bottom: 16), // تم تصحيح الخطأ هنا
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF2F2),
@@ -189,8 +189,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Widget _buildGoogleButton() {
-    // Mirroring React: isGoogleAuthAvailable()
-    // For now, a visual placeholder
     return Container(
       width: double.infinity,
       height: 64,
@@ -216,7 +214,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {}, // Social Auth Step later
+            onPressed: () {}, 
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1F2937),

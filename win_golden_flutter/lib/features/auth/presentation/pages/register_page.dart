@@ -94,7 +94,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           refreshToken: data['refreshToken'],
         );
         
-        // After registration/login, move to verification step
         setState(() {
           _currentStep = RegisterStep.verify;
           _loading = false;
@@ -125,7 +124,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         code: _otpCode,
       );
 
-      // Update local user state
       ref.read(authProvider.notifier).updateUser({
         ...data['user'],
         'points': data['points'],
@@ -281,7 +279,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         Text(
           _phone,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontFamily: 'monospace'),
-          dir: TextDirection.ltr,
+          textDirection: TextDirection.ltr, // تصحيح من dir إلى textDirection
         ),
         const SizedBox(height: 16),
         if (_error != null) _buildErrorAlert(),
@@ -397,7 +395,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {}, // Social Auth Placeholder
+            onPressed: () {}, 
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1F2937),

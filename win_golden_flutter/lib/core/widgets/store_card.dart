@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_styles.dart';
 import '../../features/explore/data/models/store_model.dart';
 import '../utils/media_url.dart';
 import 'app_image.dart';

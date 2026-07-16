@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/currency_utils.dart';
-import '../../../core/utils/media_url.dart';
-import '../../../core/widgets/app_image.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_utils.dart';
+import '../../../../core/utils/media_url.dart';
+import '../../../../core/widgets/app_image.dart';
 
 class MarketplaceOfferCard extends StatelessWidget {
-  final dynamic item; // Can be OfferModel or Product (mapped to similar structure)
+  final dynamic item;
   final String? topBadge;
   final VoidCallback? onTap;
 
@@ -18,8 +18,14 @@ class MarketplaceOfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final map = item is Map<String, dynamic> ? item as Map<String, dynamic> : Map<String, dynamic>.from(item as Map);
-    final String? image = resolveOfferImage(map) ?? resolveProductImage(map) ?? resolveImageUrl(map['image']?.toString());
+    final Map<String, dynamic> map = item is Map<String, dynamic> 
+        ? item as Map<String, dynamic> 
+        : Map<String, dynamic>.from(item as Map);
+
+    final String? image = resolveOfferImage(map) ?? 
+                          resolveProductImage(map) ?? 
+                          resolveImageUrl(map['image']?.toString());
+    
     final store = map['store'] is Map ? Map<String, dynamic>.from(map['store'] as Map) : null;
     final String? storeLogo = resolveStoreLogo(store);
     final String storeName = store?['name']?.toString() ?? 'متجر';
@@ -43,120 +49,105 @@ class MarketplaceOfferCard extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Media area
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (image != null && image.isNotEmpty)
-                        AppImage(
-                          src: image,
-                          fit: BoxFit.cover,
-                          placeholder: Container(color: Colors.grey.shade100),
-                          errorWidget: _buildPlaceholder(),
-                        )
-                      else
-                        _buildPlaceholder(),
-                      
-                      // Gradient overlay
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.6),
-                              ],
-                              stops: const [0.6, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Store Logo
-                      if (storeLogo != null)
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: AppImage(src: storeLogo, fit: BoxFit.cover),
-                          ),
-                        ),
-                      
-                      // Badge
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: _buildBadge(item),
-                      ),
-                    ],
-                  ),
-                ),
-                // Info area
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              storeName,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Cairo',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(Icons.verified, color: Colors.blue, size: 12),
+            AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (image != null && image.isNotEmpty)
+                    AppImage(
+                      src: image,
+                      fit: BoxFit.cover,
+                    )
+                  else
+                    _buildPlaceholder(),
+                  
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.6),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Cairo',
+                          stops: const [0.6, 1.0],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      _buildPriceDisplay(item),
+                    ),
+                  ),
+
+                  if (storeLogo != null)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: AppImage(src: storeLogo, fit: BoxFit.cover),
+                      ),
+                    ),
+                  
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildBadge(map),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          storeName,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Cairo',
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isVerified) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.verified, color: Colors.blue, size: 12),
+                      ],
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Cairo',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildPriceDisplay(map),
+                ],
+              ),
             ),
-            
-            // Replicating React's info placement inside media if needed, 
-            // but the React code shows it at the bottom.
-            // Adjusting based on MarketplaceOfferCard.jsx which has .marketplace-offer-card__info inside .marketplace-offer-card__media
           ],
         ),
       ),
@@ -170,8 +161,8 @@ class MarketplaceOfferCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(dynamic item) {
-    String badgeText = topBadge ?? _getOfferBadge(item);
+  Widget _buildBadge(Map<String, dynamic> map) {
+    String badgeText = topBadge ?? _getOfferBadge(map);
     if (badgeText.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -185,18 +176,20 @@ class MarketplaceOfferCard extends StatelessWidget {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 9,
-          fontWeight: FontWeight.black,
+          fontWeight: FontWeight.w900,
           fontFamily: 'Cairo',
         ),
       ),
     );
   }
 
-  String _getOfferBadge(dynamic item) {
-    if (item['pricing']?['badge'] != null) return item['pricing']['badge'];
-    final type = item['offerType'];
-    final value = item['value'];
-    final currency = item['currency'];
+  String _getOfferBadge(Map<String, dynamic> map) {
+    final pricing = map['pricing'];
+    if (pricing?['badge'] != null) return pricing['badge'].toString();
+    
+    final type = map['offerType']?.toString();
+    final value = map['value'];
+    final currency = map['currency']?.toString();
 
     switch (type) {
       case 'discount':
@@ -210,26 +203,25 @@ class MarketplaceOfferCard extends StatelessWidget {
       case 'free_item':
         return 'هدية';
       default:
-        return 'عرض';
+        return '';
     }
   }
 
-  Widget _buildPriceDisplay(dynamic item) {
-    final pricing = item['pricing'];
-    final oldPrice = pricing?['originalPrice'] ?? item['originalPrice'];
-    final newPrice = pricing?['finalPrice'] ?? item['finalPrice'];
-    final bool showCompare = pricing?['showCompare'] ?? (oldPrice != null);
-    final String currency = pricing?['currency'] ?? item['currency'] ?? 'ILS';
+  Widget _buildPriceDisplay(Map<String, dynamic> map) {
+    final pricing = map['pricing'];
+    final oldPrice = (pricing?['originalPrice'] ?? map['originalPrice'])?.toDouble();
+    final newPrice = (pricing?['finalPrice'] ?? map['finalPrice'])?.toDouble();
+    final String currency = (pricing?['currency'] ?? map['currency'] ?? 'ILS').toString();
 
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 6,
       children: [
-        if (showCompare && oldPrice != null)
+        if (oldPrice != null && oldPrice > (newPrice ?? 0))
           Text(
             CurrencyUtils.formatPrice(oldPrice, currency),
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 10,
               color: Colors.grey,
               decoration: TextDecoration.lineThrough,
               fontWeight: FontWeight.bold,
@@ -239,9 +231,9 @@ class MarketplaceOfferCard extends StatelessWidget {
           Text(
             CurrencyUtils.formatPrice(newPrice, currency),
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               color: AppColors.primary,
-              fontWeight: FontWeight.black,
+              fontWeight: FontWeight.w900,
             ),
           ),
       ],

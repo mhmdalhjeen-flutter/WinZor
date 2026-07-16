@@ -153,7 +153,7 @@ class _MarketplaceImagePickerState extends ConsumerState<MarketplaceImagePicker>
               ),
               child: const Text(
                 'رئيسية',
-                style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.black),
+                style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
               ),
             ),
           ),

@@ -1,3 +1,4 @@
+import '../styles/marketplacePage.css';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
@@ -24,7 +25,7 @@ import MarketplaceImagePicker from '../components/marketplace/MarketplaceImagePi
 import { BROWSE_TAB_IDS, listingMatchesTab } from '../utils/marketplaceTabs';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { getLocalPhoneError, normalizeLocalPhone } from '../utils/phoneValidation';
-import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
+import { resolveImageUrl } from '../utils/mediaUrl';
 import {
   getEffectiveRegionId,
   pathFromRegionIds,
@@ -748,7 +749,7 @@ const Marketplace = () => {
                 <div key={item._id} className="bg-white rounded-2xl p-3 border border-gray-100 flex gap-3">
                   {thumb ? (
                     <img
-                      src={optimizeCloudinaryUrl(thumb, { width: 300 })}
+                      src={resolveImageUrl(thumb, { width: 300 })}
                       alt=""
                       className="w-[4.5rem] h-[4.5rem] rounded-xl object-cover bg-gray-100 shrink-0"
                     />

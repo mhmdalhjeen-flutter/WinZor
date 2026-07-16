@@ -2,15 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/models/hierarchy_node.dart';
-import '../../../core/utils/media_url.dart';
-import '../../../core/widgets/hierarchy_select.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/models/hierarchy_node.dart';
+import '../../../../core/utils/media_url.dart';
+import '../../../../core/widgets/hierarchy_select.dart';
 import '../providers/home_providers.dart';
 
 enum SearchMode { region, offer }
 
-/// React `HomeSearchCards` — region/category filters + universal search APIs.
 class HomeSearchCards extends ConsumerStatefulWidget {
   final List<HierarchyNode> regionTree;
   final List<String> regionPath;
@@ -107,8 +106,7 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
       _lastQ = q;
     });
     try {
-      final result =
-          await ref.read(homeRepositoryProvider).universalSearch(q);
+      final result = await ref.read(homeRepositoryProvider).universalSearch(q);
       if (!mounted || _lastQ != q) return;
       setState(() {
         _offers = result.offers;
@@ -193,13 +191,6 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             color: isActive ? activeColor : const Color(0xFFF3F4F6),
             width: isActive ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -217,13 +208,11 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             Text(
               label,
               textAlign: TextAlign.center,
-              maxLines: 2,
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF1F2937),
                 fontFamily: 'Cairo',
-                height: 1.15,
               ),
             ),
           ],
@@ -239,10 +228,10 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
         width: 60,
         constraints: const BoxConstraints(minHeight: 68),
         decoration: BoxDecoration(
-          color: searchOpen ? const Color(0xFF7C3AED) : Colors.white,
+          color: searchOpen ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: searchOpen ? const Color(0xFF7C3AED) : const Color(0xFFF3F4F6),
+            color: searchOpen ? AppColors.primary : const Color(0xFFF3F4F6),
           ),
         ),
         child: Column(
@@ -250,7 +239,7 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
           children: [
             Icon(
               searchOpen ? Icons.close : Icons.search,
-              color: searchOpen ? Colors.white : const Color(0xFF7C3AED),
+              color: searchOpen ? Colors.white : AppColors.primary,
               size: 18,
             ),
             const SizedBox(height: 4),
@@ -271,8 +260,7 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
 
   Widget _buildSearchPanel() {
     final hasQuery = _searchController.text.trim().length >= 2;
-    final hasResults =
-        _offers.isNotEmpty || _products.isNotEmpty || _stores.isNotEmpty;
+    final hasResults = _offers.isNotEmpty || _products.isNotEmpty || _stores.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -288,7 +276,7 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.search, color: Color(0xFF8B5CF6), size: 18),
+                const Icon(Icons.search, color: AppColors.violet, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
@@ -296,166 +284,63 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
                     onChanged: _onQueryChanged,
                     decoration: const InputDecoration(
                       hintText: 'ابحث عن عروض، منتجات، متاجر...',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
                       border: InputBorder.none,
                     ),
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
-                if (_loading)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                if (_loading) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
               ],
             ),
           ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Text(
-                _error!,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-            )
-          else if (hasQuery && !_loading && !hasResults)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Text(
-                'لا نتائج مطابقة',
-                style: TextStyle(
-                  color: Color(0xFF9CA3AF),
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-            )
-          else if (hasResults) ...[
-            if (_offers.isNotEmpty)
-              _section(
-                'عروض',
-                _offers,
-                (m) => (
-                  title: m['title']?.toString() ?? '',
-                  subtitle: m['store'] is Map
-                      ? m['store']['name']?.toString()
-                      : null,
-                  image: resolveOfferImage(Map<String, dynamic>.from(m)),
-                  onTap: () {
-                    final id = (m['_id'] ?? m['id'] ?? '').toString();
-                    if (id.isNotEmpty) context.push('/offer/$id');
-                  },
-                ),
-              ),
-            if (_products.isNotEmpty)
-              _section(
-                'منتجات',
-                _products,
-                (m) => (
-                  title: m['name']?.toString() ?? m['title']?.toString() ?? '',
-                  subtitle: m['store'] is Map
-                      ? m['store']['name']?.toString()
-                      : null,
-                  image: resolveProductImage(Map<String, dynamic>.from(m)),
-                  onTap: () {
-                    final id = (m['_id'] ?? m['id'] ?? '').toString();
-                    if (id.isNotEmpty) context.push('/product/$id');
-                  },
-                ),
-              ),
-            if (_stores.isNotEmpty)
-              _section(
-                'متاجر',
-                _stores,
-                (m) => (
-                  title: m['name']?.toString() ?? '',
-                  subtitle: m['region']?.toString(),
-                  image: resolveStoreLogo(Map<String, dynamic>.from(m)),
-                  onTap: () {
-                    final id = (m['_id'] ?? m['id'] ?? '').toString();
-                    if (id.isNotEmpty) context.push('/store/$id');
-                  },
-                ),
-              ),
-            const SizedBox(height: 8),
-          ],
+          if (hasResults) ...[
+            if (_offers.isNotEmpty) _section('عروض', _offers, (m) {
+              final map = Map<String, dynamic>.from(m);
+              return (
+                title: map['title']?.toString() ?? '',
+                subtitle: map['store']?['name']?.toString(),
+                image: resolveOfferImage(map),
+                onTap: () => context.push('/offer/${map['_id'] ?? map['id']}'),
+              );
+            }),
+            if (_products.isNotEmpty) _section('منتجات', _products, (m) {
+              final map = Map<String, dynamic>.from(m);
+              return (
+                title: map['name']?.toString() ?? '',
+                subtitle: map['store']?['name']?.toString(),
+                image: resolveProductImage(map),
+                onTap: () => context.push('/product/${map['_id'] ?? map['id']}'),
+              );
+            }),
+            if (_stores.isNotEmpty) _section('متاجر', _stores, (m) {
+              final map = Map<String, dynamic>.from(m);
+              return (
+                title: map['name']?.toString() ?? '',
+                subtitle: map['region']?.toString(),
+                image: resolveStoreLogo(map),
+                onTap: () => context.push('/store/${map['_id'] ?? map['id']}'),
+              );
+            }),
+          ]
         ],
       ),
     );
   }
 
-  Widget _section(
-    String title,
-    List<dynamic> items,
-    ({String title, String? subtitle, String? image, VoidCallback onTap})
-            Function(Map)
-        mapItem,
-  ) {
+  Widget _section(String title, List items, dynamic mapItem) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Cairo',
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-              color: Color(0xFF6B7280),
-            ),
-          ),
+          padding: const EdgeInsets.all(8.0),
+          child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.grey)),
         ),
-        ...items.whereType<Map>().map((raw) {
+        ...items.map((raw) {
           final item = mapItem(raw);
           return ListTile(
-            dense: true,
+            leading: item.image != null ? Image.network(item.image!, width: 40) : const Icon(Icons.image),
+            title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w900)),
+            subtitle: Text(item.subtitle ?? ''),
             onTap: item.onTap,
-            leading: item.image != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      item.image!,
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.image),
-                    ),
-                  )
-                : const Icon(Icons.storefront_outlined),
-            title: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
-            ),
-            subtitle: item.subtitle != null
-                ? Text(
-                    item.subtitle!,
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  )
-                : null,
-            trailing: const Icon(Icons.chevron_left, size: 18),
           );
         }),
       ],
@@ -474,22 +359,12 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             firstPlaceholder: 'كل المناطق',
             showPath: false,
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() => activeMode = null);
-                widget.onSearchTriggered();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF059669),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('عرض العروض',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => activeMode = null);
+              widget.onSearchTriggered();
+            },
+            child: const Text('عرض العروض'),
           ),
         ],
       ),
@@ -508,22 +383,12 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             firstPlaceholder: 'كل التصنيفات',
             showPath: false,
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() => activeMode = null);
-                widget.onSearchTriggered();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('عرض العروض',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => activeMode = null);
+              widget.onSearchTriggered();
+            },
+            child: const Text('عرض العروض'),
           ),
         ],
       ),
@@ -534,11 +399,7 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3F4F6)),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: child,
     );
   }

@@ -82,13 +82,22 @@ const ProductDetail = () => {
   if (error || !product) return <ErrorState message={error || 'المنتج غير موجود'} />;
 
   const store = product.store;
-  const productImageSrc = resolveProductImage(product, { width: 800 });
+  const productImageSrc = resolveProductImage(product, { width: 600 });
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">
       <div className="relative h-64 bg-gray-100 rounded-b-[32px] overflow-hidden">
         {productImageSrc ? (
-          <img src={productImageSrc} alt="" className="w-full h-full object-cover" />
+          <img
+            src={productImageSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            width={600}
+            height={400}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold">بدون صورة</div>
         )}

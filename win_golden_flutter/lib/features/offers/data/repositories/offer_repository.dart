@@ -1,5 +1,5 @@
 import '../../../../core/api/api_client.dart';
-import '../../home/data/models/offer_model.dart';
+import '../../../home/data/models/offer_model.dart';
 
 class OfferRepository {
   final ApiClient _apiClient;

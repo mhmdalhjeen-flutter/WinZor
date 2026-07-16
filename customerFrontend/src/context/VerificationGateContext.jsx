@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useRef, useState, lazy, Suspense } from 'react';
 import { isVerifiedUser, useVerificationPolicy } from '../hooks/useVerification';
 import { useAuth } from './AuthContext';
-import VerificationPromptModal from '../components/auth/VerificationPromptModal';
-import VerifyAccountModal from '../components/auth/VerifyAccountModal';
+
+const VerificationPromptModal = lazy(() => import('../components/auth/VerificationPromptModal'));
+const VerifyAccountModal = lazy(() => import('../components/auth/VerifyAccountModal'));
 
 const VerificationGateContext = createContext(null);
 
@@ -74,17 +75,25 @@ export const VerificationGateProvider = ({ children }) => {
       }}
     >
       {children}
-      <VerificationPromptModal
-        open={promptOpen}
-        config={promptConfig}
-        onVerifyNow={handleVerifyNow}
-        onLater={handleLater}
-      />
-      <VerifyAccountModal
-        open={verifyOpen}
-        onClose={() => setVerifyOpen(false)}
-        onVerified={handleVerified}
-      />
+      {promptOpen && (
+        <Suspense fallback={null}>
+          <VerificationPromptModal
+            open={promptOpen}
+            config={promptConfig}
+            onVerifyNow={handleVerifyNow}
+            onLater={handleLater}
+          />
+        </Suspense>
+      )}
+      {verifyOpen && (
+        <Suspense fallback={null}>
+          <VerifyAccountModal
+            open={verifyOpen}
+            onClose={() => setVerifyOpen(false)}
+            onVerified={handleVerified}
+          />
+        </Suspense>
+      )}
     </VerificationGateContext.Provider>
   );
 };

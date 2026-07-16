@@ -103,7 +103,7 @@ class MarketplaceTabNav extends StatelessWidget {
                 onTap: () => onTabChange(tab.id),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  minWidth: 70,
+                  constraints: const BoxConstraints(minWidth: 70),
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
                     color: isActive ? tab.activeBg : Colors.transparent,

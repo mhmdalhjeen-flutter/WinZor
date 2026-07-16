@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import '../../../core/theme/app_brand_assets.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_styles.dart';
-import '../../auth/presentation/providers/auth_provider.dart';
-import '../../auth/presentation/widgets/auth_welcome_background.dart';
+import '../../../../core/theme/app_brand_assets.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_styles.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/widgets/auth_welcome_background.dart';
 
 class IntroPage extends ConsumerWidget {
   const IntroPage({super.key});
@@ -163,7 +163,6 @@ class _IntroHeroLogo extends StatelessWidget {
                   ],
                 ),
               ),
-              // Full brand logo (React Intro.jsx)
               const BrandLogo.full(width: 110, height: 110),
             ],
           ),
@@ -275,7 +274,7 @@ class _IntroVideoState extends State<_IntroVideo> {
                   children: [
                     const Row(
                       children: [
-                        Icon(LucideIcons.play, size: 14, color: Colors.amber, fill: 1.0),
+                        Icon(LucideIcons.play, size: 14, color: Colors.amber),
                         SizedBox(width: 8),
                         Text(
                           'شاهد كيف تعمل المنصة في 60 ثانية',
@@ -291,7 +290,7 @@ class _IntroVideoState extends State<_IntroVideo> {
                       ),
                       child: const Text(
                         'مجاني',
-                        style: TextStyle(color: Color(0xFFFECACA), fontSize: 10, fontWeight: FontWeight.black),
+                        style: TextStyle(color: Color(0xFFFECACA), fontSize: 10, fontWeight: FontWeight.w900),
                       ),
                     ),
                   ],
@@ -475,13 +474,13 @@ class _PersonasSection extends StatelessWidget {
         'icon': LucideIcons.shoppingBag,
         'title': 'محب التسوق',
         'desc': 'تسوق من متاجر موثوقة مع توصيل وتجربة سلسة.',
-        'gradient': [const Color(0xFFF43F5E), const Color(0xFFE11D48)]
+        'gradient': [AppColors.rose, const Color(0xFFE11D48)]
       },
       {
         'icon': LucideIcons.percent,
         'title': 'محب العروض',
         'desc': 'اكتشف أفضل الخصومات قبل الجميع في مكان واحد.',
-        'gradient': [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)]
+        'gradient': [AppColors.violet, const Color(0xFF7C3AED)]
       },
       {
         'icon': LucideIcons.users,
@@ -559,13 +558,6 @@ class _PersonasSection extends StatelessWidget {
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (p['gradient'] as List<Color>)[0].withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
                       ),
                       child: Icon(p['icon'] as IconData, size: 22, color: Colors.white),
                     ),
@@ -601,7 +593,7 @@ class _PillarsSection extends StatelessWidget {
         'title': 'العروض',
         'headline': 'كل العروض في مكان واحد',
         'desc': 'تصفح عروض المطاعم، الأزياء، الإلكترونيات والمزيد — مرتّبة حسب اهتماماتك ومنطقتك.',
-        'color': Colors.rose,
+        'color': AppColors.rose,
       },
       {
         'icon': LucideIcons.truck,
@@ -629,7 +621,7 @@ class _PillarsSection extends StatelessWidget {
         'title': 'النقاط',
         'headline': 'كل تفاعل يقربك للفوز',
         'desc': 'الشراء، الدعوات، الأكواد، والمشاركة — كلها تمنحك نقاطاً ترتقي بمستواك.',
-        'color': Colors.violet,
+        'color': AppColors.violet,
       },
     ];
 
@@ -697,7 +689,7 @@ class _PillarsSection extends StatelessWidget {
                               children: [
                                 Text(
                                   item['title'] as String,
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.black, color: Colors.grey),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -755,7 +747,7 @@ class _PrizeHighlights extends StatelessWidget {
             const Row(
               children: [
                 Icon(LucideIcons.gift, size: 24, color: Colors.amber),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -790,7 +782,7 @@ class _PrizeHighlights extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         p['label']!,
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.black, color: Color(0xFF374151)),
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF374151)),
                       ),
                     ],
                   )).toList(),
@@ -826,7 +818,7 @@ class _PrizeFooterItem extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.black, color: Colors.amber.shade900),
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.amber.shade900),
         ),
       ],
     );

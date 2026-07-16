@@ -10,7 +10,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
-import { optimizeCloudinaryUrl } from '../utils/mediaUrl';
+import { resolveImageUrl } from '../utils/mediaUrl';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -59,6 +59,8 @@ export default function CompetitionCardItem({
   const cost = entries * competition.pointsPerEntry;
 
   const prizeImage = competition.prizeImage || competition.image;
+  const prizeImageSrc = resolveImageUrl(prizeImage, { width: 300 });
+  const cardImageSrc = resolveImageUrl(competition.image, { width: 300 });
   const prizeName = competition.prizeName || competition.title;
 
   const openModal = () => {
@@ -137,9 +139,9 @@ export default function CompetitionCardItem({
 
           <div className="relative flex flex-col items-center gap-4 text-center">
             <div className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 border-yellow-300/80 shadow-lg shadow-yellow-500/30">
-              {prizeImage ? (
+              {prizeImageSrc ? (
                 <img
-                  src={optimizeCloudinaryUrl(prizeImage, { width: 300 })}
+                  src={prizeImageSrc}
                   alt={prizeName}
                   loading="lazy"
                   decoding="async"
@@ -185,9 +187,9 @@ export default function CompetitionCardItem({
       >
         <div className="flex items-start gap-3 sm:gap-3.5 flex-1">
           <div className="shrink-0 w-[4.75rem] h-[4.75rem] sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-white/25 shadow-lg shadow-black/25 ring-1 ring-white/10 bg-white/5">
-            {competition.image ? (
+            {cardImageSrc ? (
               <img
-                src={optimizeCloudinaryUrl(competition.image, { width: 300 })}
+                src={cardImageSrc}
                 loading="lazy"
                 decoding="async"
                 className="w-full h-full object-cover"

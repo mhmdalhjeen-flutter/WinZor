@@ -1,6 +1,6 @@
 import '../../../../core/api/api_client.dart';
-import 'point_sources.dart';
-import 'user_center_models.dart';
+import '../models/point_sources.dart';
+import '../models/user_center_models.dart';
 
 class UserCenterRepository {
   final ApiClient _apiClient;

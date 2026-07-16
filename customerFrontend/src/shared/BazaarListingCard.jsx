@@ -4,7 +4,7 @@ import { MapPin, Tag, Heart, FolderOpen } from 'lucide-react';
 import { formatListingPrice } from '../utils/currency';
 import { getCategoryLabel } from '../utils/bazaarCategories';
 import { CONDITION_LABELS, getConditionStyle } from '../utils/bazaarConditions';
-import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const TYPE_LABELS = {
   sell: 'بيع',
@@ -37,7 +37,7 @@ const BazaarListingCard = ({
   isPulsing = false,
 }) => {
   const imgRaw = listing.mainImage || listing.images?.[0];
-  const img = imgRaw ? optimizeCloudinaryUrl(imgRaw, { width: 300 }) : null;
+  const img = imgRaw ? resolveImageUrl(imgRaw, { width: 300 }) : null;
   const imgSrcSet = cloudinarySrcSet(imgRaw, [300, 600]);
   const isWanted = listing.transactionType === 'custom';
   const condStyle = getConditionStyle(listing.condition);

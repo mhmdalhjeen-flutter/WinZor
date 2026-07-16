@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../home/data/models/offer_model.dart';
+import '../../../home/data/models/offer_model.dart';
 import '../widgets/reel_slide.dart';
 import '../providers/offer_detail_providers.dart';
 

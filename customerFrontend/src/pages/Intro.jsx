@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
@@ -13,9 +13,10 @@ import {
   loginPathWithRef,
   registerPathWithRef,
 } from '../utils/referralStorage';
-import logoImg from '../assets/win-goldenstore2222222.png';
-import HorizontalSwipe from '../components/ui/HorizontalSwipe';
+import { BRAND_LOGO_256 } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
+
+const HorizontalSwipe = lazy(() => import('../components/ui/HorizontalSwipe'));
 
 const INTRO_VIDEO =
   import.meta.env.VITE_INTRO_VIDEO_URL ||
@@ -43,13 +44,14 @@ const IntroHeroLogo = () => (
         aria-hidden
       />
       <img
-        src={logoImg}
+        src={BRAND_LOGO_256}
         alt="WinGoldenStore"
         className="relative z-[1] h-[8.5rem] w-[8.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[10.5rem] sm:w-[10.5rem] md:h-[12rem] md:w-[12rem]"
         width={192}
         height={192}
+        loading="eager"
+        fetchpriority="high"
         decoding="async"
-        style={{ imageRendering: '-webkit-optimize-contrast' }}
       />
     </div>
   </motion.div>
@@ -266,28 +268,30 @@ const Intro = () => {
               <h2 className="text-xl font-black text-gray-900 sm:text-2xl">مناسبة لك — مهما كان هدفك</h2>
               <p className="text-xs font-bold text-gray-500 sm:text-sm">اختر مسارك… المنصة تخدم الجميع.</p>
             </div>
-            <span className="hidden shrink-0 items-center gap-1 text-[10px] font-bold text-gray-400 sm:inline-flex">
+            <span className="hidden shrink-0 items-center gap-1 text-[10px] font-bold text-gray-600 sm:inline-flex">
               مرّر <ChevronRight size={12} className="animate-pulse" />
             </span>
           </motion.div>
-          <HorizontalSwipe spaceBetween={12} className="pb-2">
-            {personas.map((p, i) => (
-              <motion.div
-                key={p.title}
-                variants={fadeUp}
-                custom={i + 1}
-                whileHover={{ y: -4 }}
-                className="w-[72vw] max-w-[260px] shrink-0 rounded-[24px] border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:border-gray-300 hover:shadow-lg hover:shadow-red-500/10"
-              >
-                <div className={`mb-3 inline-flex rounded-2xl bg-gradient-to-br ${p.color} p-3 text-white shadow-lg`}>
-                  <p.icon size={22} />
-                </div>
-                <h3 className="font-black text-base text-gray-900">{p.title}</h3>
-                <p className="mt-2 text-xs font-bold leading-relaxed text-gray-600">{p.desc}</p>
-              </motion.div>
-            ))}
-          </HorizontalSwipe>
-          <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-gray-400 sm:hidden">
+          <Suspense fallback={<div className="h-40 rounded-2xl bg-white/50 animate-pulse" />}>
+            <HorizontalSwipe spaceBetween={12} className="pb-2">
+              {personas.map((p, i) => (
+                <motion.div
+                  key={p.title}
+                  variants={fadeUp}
+                  custom={i + 1}
+                  whileHover={{ y: -4 }}
+                  className="w-[72vw] max-w-[260px] shrink-0 rounded-[24px] border border-gray-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:border-gray-300 hover:shadow-lg hover:shadow-red-500/10"
+                >
+                  <div className={`mb-3 inline-flex rounded-2xl bg-gradient-to-br ${p.color} p-3 text-white shadow-lg`}>
+                    <p.icon size={22} />
+                  </div>
+                  <h3 className="font-black text-base text-gray-900">{p.title}</h3>
+                  <p className="mt-2 text-xs font-bold leading-relaxed text-gray-600">{p.desc}</p>
+                </motion.div>
+              ))}
+            </HorizontalSwipe>
+          </Suspense>
+          <p className="mt-2 flex items-center justify-center gap-1 text-[10px] font-bold text-gray-600 sm:hidden">
             <ChevronRight size={12} className="animate-pulse" /> اسحب لرؤية المزيد
           </p>
         </Section>
@@ -311,7 +315,7 @@ const Intro = () => {
                   <item.icon size={22} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-black tracking-wider text-gray-400">{item.title}</span>
+                  <span className="text-[10px] font-black tracking-wider text-gray-600">{item.title}</span>
                   <h3 className="mt-1 font-black text-lg text-gray-900">{item.headline}</h3>
                   <p className="mt-2 text-xs font-bold leading-relaxed text-gray-600 sm:text-sm">{item.desc}</p>
                 </div>

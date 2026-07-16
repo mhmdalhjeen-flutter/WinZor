@@ -22,7 +22,8 @@ final featuredCompetitionsProvider =
   return ref.watch(competitionsRepositoryProvider).getFeaturedMerged();
 });
 
-void invalidateCompetitions(Ref ref) {
+// تم تغيير النوع إلى dynamic ليعمل مع Ref و WidgetRef معاً
+void invalidateCompetitions(dynamic ref) {
   ref.invalidate(competitionsListProvider);
   ref.invalidate(featuredCompetitionsProvider);
 }

@@ -132,7 +132,7 @@ class CompetitionCardItem extends ConsumerWidget {
                         _stat(
                           LucideIcons.users,
                           '${competition.participantsCount}${competition.requiredParticipants > 0 ? " / ${competition.requiredParticipants}" : ""}',
-                          Colors.sky,
+                          AppColors.sky, // تم التصحيح هنا من Colors.sky
                         ),
                         _stat(
                           LucideIcons.coins,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
@@ -112,8 +112,7 @@ const Home = () => {
   const { data: reelsData, isLoading: reelsLoading } = useQuery({
     queryKey: queryKeys.offersReels(feedKey),
     queryFn: async () => {
-      // First batch only — ProgressiveCategoryReels reveals more as user scrolls
-      const params = { limit: 8 };
+      const params = { limit: 20 };
       if (selectedRegionId) params.region = selectedRegionId;
       const { data } = await api.get('/offers/reels', { params });
       return data?.reels || [];
@@ -133,7 +132,7 @@ const Home = () => {
     return normalizedReels.filter((reel) => reelMatchesCategory(reel, effectiveCategoryId, maps));
   }, [normalizedReels, effectiveCategoryId, categories]);
 
-  const handleToggleFavorite = async (offer) => {
+  const handleToggleFavorite = useCallback(async (offer) => {
     const id = String(offer._id);
     setFavoriteIdsOverride((prev) => {
       const base = prev ?? new Set(favoritesData?.favoriteIds ?? []);
@@ -147,26 +146,19 @@ const Home = () => {
     } catch {
       setFavoriteIdsOverride(null);
     }
-  };
+  }, [favoritesData?.favoriteIds]);
+
+  const resetFilters = useCallback(() => {
+    setRegionPath([]);
+    setCategoryPath([]);
+  }, []);
 
   const isLoadingOffers = reelsLoading;
   const hasOffers = displayReels?.length > 0;
   const hasActiveFilters = regionPath.length > 0 || categoryPath.length > 0;
 
-  const resetFilters = () => {
-    setRegionPath([]);
-    setCategoryPath([]);
-  };
-
   const searchPlaceholder = (
     <div className="max-w-6xl mx-auto px-1.5 sm:px-2 h-14 rounded-2xl bg-white/70 border border-gray-100 animate-pulse" />
-  );
-
-  const competitionsPlaceholder = (
-    <div className="max-w-6xl mx-auto px-1.5 sm:px-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
-      <div className="h-32 rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
-    </div>
   );
 
   return (
@@ -176,6 +168,7 @@ const Home = () => {
       <div className="relative z-10 space-y-4 sm:space-y-5 pb-20">
         <HomeHero />
 
+        {/* Offers first — LCP element is the first offer card image */}
         <div id="home-offers" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
           <div className="flex items-center justify-between gap-2 px-1.5 sm:px-2">
             <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
@@ -231,9 +224,9 @@ const Home = () => {
           )}
         </Suspense>
 
-        {/* Competitions / rewards teasers — below fold */}
-        <DeferredMount rootMargin="200px" placeholder={competitionsPlaceholder}>
-          <Suspense fallback={competitionsPlaceholder}>
+        {/* Competitions — below fold, mount when near viewport */}
+        <DeferredMount rootMargin="40px" placeholder={null}>
+          <Suspense fallback={null}>
             <FeaturedCompetitions />
           </Suspense>
         </DeferredMount>

@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, memo } from 'react';
 import { Tag, MapPin, ImageOff, ShoppingCart, Eye, Check, Loader2, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import OfferPriceDisplay, { getOfferBadge } from './OfferPriceDisplay';
@@ -44,21 +43,20 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 
-  const imageSrc = resolveOfferImage(offer, { width: 600 });
-  const imageSrcSet = cloudinarySrcSet(imageSrc, [300, 600]);
+  const imageSrc = resolveOfferImage(offer, { width: 300 });
+  const imageSrcSet = cloudinarySrcSet(offer?.image, [300, 600]);
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
+    <div
       onClick={goDetails}
-      className="bg-white/5 border border-white/10 rounded-[28px] overflow-hidden backdrop-blur-md group cursor-pointer flex flex-col"
+      className="bg-white/5 border border-white/10 rounded-[28px] overflow-hidden backdrop-blur-md group cursor-pointer flex flex-col transition-transform duration-200 hover:-translate-y-1"
     >
       <div className="relative aspect-video bg-white/10">
         {imageSrc ? (
           <img
             src={imageSrc}
             srcSet={imageSrcSet}
-            sizes="(max-width: 640px) 300px, 600px"
+            sizes="300px"
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -118,12 +116,12 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
             onClick={(e) => { e.stopPropagation(); goDetails(); }}
             className="flex-1 bg-white/10 hover:bg-white/20 text-white text-[11px] font-black py-2 rounded-xl flex items-center justify-center gap-1 transition-all"
           >
-            <Eye size={14} /> التفاصيل
+            <Eye size={14} /> تفاصيل
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-export default OfferCard;
+export default memo(OfferCard);

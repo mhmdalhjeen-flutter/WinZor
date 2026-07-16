@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import '../../../core/theme/app_brand_assets.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_brand_assets.dart';
+import '../../../../core/theme/app_colors.dart';
 
-/// React `HomeHero.jsx`
 class HomeHero extends StatelessWidget {
   const HomeHero({super.key});
 
@@ -28,7 +27,7 @@ class HomeHero extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             Colors.white,
-            Colors.grey.shade50,
+            AppColors.bgSoft,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -51,19 +50,7 @@ class HomeHero extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -20,
-            right: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.05),
+                color: AppColors.violet.withOpacity(0.05),
                 shape: BoxShape.circle,
               ),
             ),
@@ -96,7 +83,7 @@ class HomeHero extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textMain,
+                        color: AppColors.textPrimary,
                         fontFamily: 'Cairo',
                       ),
                     ),
@@ -167,17 +154,7 @@ class HomeHero extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isPlay)
-              Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                ),
-                child:
-                    const Icon(Icons.play_arrow, size: 10, color: Colors.white),
-              )
+              const Icon(Icons.play_circle_filled, size: 14, color: Colors.white)
             else
               Icon(icon, size: 14, color: Colors.white),
             const SizedBox(width: 4),

@@ -6,8 +6,6 @@ import { useAuth } from "./context/AuthContext";
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import VerifyBanner from './components/VerifyBanner';
-import NotificationListener from './components/NotificationListener';
-import AuthWelcomeEffects from './components/auth/AuthWelcomeEffects';
 import LightLoadingHint from './shared/LightLoadingHint';
 import Home from './pages/Home';
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -15,6 +13,8 @@ import Maintenance from './pages/Maintenance';
 import useMaintenanceMode from './hooks/useMaintenanceMode';
 
 // Deferred — must not land in the initial Home JS graph
+const NotificationListener = lazy(() => import('./components/NotificationListener'));
+const AuthWelcomeEffects = lazy(() => import('./components/auth/AuthWelcomeEffects'));
 const PointsFloatLayer = lazy(() => import('./components/PointsFloatLayer'));
 const FloatingCodeButton = lazy(() => import('./components/FloatingCodeButton'));
 const Intro = lazy(() => import('./pages/Intro'));
@@ -67,6 +67,23 @@ function AppShell() {
     () => typeof document !== 'undefined' && document.body.classList.contains('points-guide-open')
   );
 
+  const [deferChrome, setDeferChrome] = useState(false);
+
+  useEffect(() => {
+    let idleId;
+    let timeoutId;
+    const enable = () => setDeferChrome(true);
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(enable, { timeout: 1500 });
+    } else {
+      timeoutId = window.setTimeout(enable, 300);
+    }
+    return () => {
+      if (idleId != null && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, []);
+
   useEffect(() => {
     const sync = () => {
       setOfferViewerOpen(document.body.classList.contains('offer-viewer-open'));
@@ -86,8 +103,16 @@ function AppShell() {
 
   return (
     <>
-      <AuthWelcomeEffects />
-      {isAuth && <NotificationListener />}
+      {deferChrome && (
+        <Suspense fallback={null}>
+          <AuthWelcomeEffects />
+        </Suspense>
+      )}
+      {isAuth && deferChrome && (
+        <Suspense fallback={null}>
+          <NotificationListener />
+        </Suspense>
+      )}
       {isAuth && (
         <Suspense fallback={null}>
           <PointsFloatLayer />

@@ -149,7 +149,7 @@ const OfferDetail = () => {
     return <div className="p-10 text-center font-black text-red-500">{error || 'العرض غير موجود'}</div>;
   }
 
-  const offerImageSrc = resolveOfferImage(offer, { width: 800 });
+  const offerImageSrc = resolveOfferImage(offer, { width: 600 });
   const storeLogoSrc = resolveStoreLogo(offer?.store, { width: 80 }) || storeLogoPlaceholder(offer?.store);
 
   return (
@@ -157,7 +157,16 @@ const OfferDetail = () => {
       {/* رأس الصفحة مع صورة العرض */}
       <div className="relative h-72 w-full bg-gray-100">
         {offerImageSrc ? (
-          <img src={offerImageSrc} className="w-full h-full object-cover rounded-b-[40px]" alt={offer.title} />
+          <img
+            src={offerImageSrc}
+            className="w-full h-full object-cover rounded-b-[40px]"
+            alt={offer.title}
+            width={600}
+            height={400}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 rounded-b-[40px]">
             <ImageOff size={48} />

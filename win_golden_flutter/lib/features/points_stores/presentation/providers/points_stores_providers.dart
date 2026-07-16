@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/hierarchy_node.dart';
-import '../../explore/presentation/providers/explore_providers.dart';
-import '../utils/points_program_filters.dart';
+import '../../../../core/models/hierarchy_node.dart';
+import '../../../explore/presentation/providers/explore_providers.dart';
+import '../../utils/points_program_filters.dart';
 
 final pointsSearchQueryProvider = StateProvider<String>((ref) => '');
 final pointsRegionPathProvider = StateProvider<List<String>>((ref) => []);

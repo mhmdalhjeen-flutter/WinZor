@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import logoImg from '../assets/logo/win-goldenstore-logo.png';
+import { BRAND_LOGO_64 } from '../utils/brandAssets';
 
 function useAnimatedCounter(target, duration = 650) {
   const [display, setDisplay] = useState(target);
@@ -63,14 +63,13 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
 
       <span className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 overflow-hidden">
         <img
-          src={logoImg}
+          src={BRAND_LOGO_64}
           alt=""
           className="w-full h-full object-contain p-0.5"
           width={36}
           height={36}
           loading="eager"
           decoding="async"
-          style={{ imageRendering: '-webkit-optimize-contrast' }}
         />
       </span>
 

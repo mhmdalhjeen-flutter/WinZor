@@ -50,7 +50,7 @@ final favoritingPulseProvider = StateProvider<String?>((ref) => null);
 /// Optimistic favorite overrides keyed by listing id (mirrors React favOverrides).
 final marketplaceFavOverridesProvider = StateProvider<Map<String, bool>>((ref) => {});
 
-void invalidateMarketplaceLists(Ref ref) {
+void invalidateMarketplaceLists(dynamic ref) {
   ref.invalidate(bazaarBrowseProvider);
   ref.invalidate(myBazaarListingsProvider);
   ref.invalidate(favoriteBazaarListingsProvider);

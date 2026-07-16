@@ -76,14 +76,14 @@ const BottomNav = () => {
                   <item.icon
                     size={24}
                     strokeWidth={isActive ? 2.5 : 2}
-                    className={isActive ? 'text-primary' : 'text-gray-500'}
+                    className={isActive ? 'text-primary' : 'text-gray-600'}
                   />
                 )}
               </div>
 
               <span
                 className={`font-cairo text-[10px] font-black leading-none text-center ${
-                  isActive ? 'text-primary' : 'text-gray-500'
+                  isActive ? 'text-primary' : 'text-gray-600'
                 }`}
               >
                 {item.label}

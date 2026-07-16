@@ -17,6 +17,7 @@ class AppColors {
   static const Color bgCard = Color(0xFFFFFFFF);
   
   // Text colors
+  static const Color textPrimary = Color(0xFF111827); // المضافة لحل الخطأ
   static const Color textMain = Color(0xFF111827); // gray-900
   static const Color textSecondary = Color(0xFF4B5563); // gray-600
   static const Color textMuted = Color(0xFF9CA3AF); // gray-400
@@ -25,6 +26,11 @@ class AppColors {
   static const Color gray100 = Color(0xFFF3F4F6);
   static const Color gray200 = Color(0xFFE5E7EB);
   
+  // Additional colors for UI consistency
+  static const Color sky = Color(0xFF0EA5E9);
+  static const Color rose = Color(0xFFF43F5E);
+  static const Color violet = Color(0xFF8B5CF6);
+
   // Custom Gradients from index.css
   static const List<Color> bodyGradient = [
     Color(0xFFF8F6F3),

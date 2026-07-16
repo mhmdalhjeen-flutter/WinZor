@@ -10,7 +10,6 @@ import '../../../verification/presentation/providers/verification_gate_provider.
 import '../../../verification/utils/verification_gate_config.dart';
 import '../providers/orders_providers.dart';
 
-/// React `DirectOrderModal` — quantity + submit without cart UI.
 Future<void> showDirectOrderSheet({
   required BuildContext context,
   required WidgetRef ref,
@@ -90,39 +89,35 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
 
   Future<void> _submit() async {
     if (_submitting || _success) return;
-
-    final gate = ref.read(verificationGateProvider.notifier);
-    gate.runWithVerification(() => _performSubmit(), cartVerification);
+    _performSubmit();
   }
 
   Future<void> _performSubmit() async {
     if (_submitting || _success) return;
     setState(() => _submitting = true);
+    
     final result = await ref.read(ordersActionsProvider).placeDirectOrder(
           itemId: widget.itemId,
           itemType: widget.itemType,
           quantity: _quantity,
         );
+    
     if (!mounted) return;
 
     if (!result.ok) {
       setState(() => _submitting = false);
-      final gate = ref.read(verificationGateProvider.notifier);
-      if (gate.handleApiVerificationError(
-        null,
-        () => _performSubmit(),
-        cartVerification,
-        explicitCode: result.code,
-      )) {
-        return;
+      
+      // إذا كان الخطأ يتطلب تحقق (Verification)
+      if (result.code == 'VERIFICATION_REQUIRED') {
+         ref.read(verificationGateProvider.notifier).runWithVerification(
+           () => _performSubmit(), 
+           cartVerification
+         );
+         return;
       }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.message,
-            style: const TextStyle(fontFamily: 'Cairo'),
-          ),
-        ),
+        SnackBar(content: Text(result.message, style: const TextStyle(fontFamily: 'Cairo'))),
       );
       return;
     }
@@ -131,6 +126,7 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
       _submitting = false;
       _success = true;
     });
+    
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     Navigator.pop(context);
@@ -144,12 +140,7 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        20 + MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: _success
@@ -159,14 +150,7 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                   SizedBox(height: 24),
                   Icon(LucideIcons.checkCircle2, size: 48, color: Color(0xFF22C55E)),
                   SizedBox(height: 12),
-                  Text(
-                    'تم إرسال الطلب',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Cairo',
-                    ),
-                  ),
+                  Text('تم إرسال الطلب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
                   SizedBox(height: 24),
                 ],
               )
@@ -174,33 +158,12 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE5E7EB),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(4)))),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'طلب مباشر',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Cairo',
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _submitting ? null : () => Navigator.pop(context),
-                        icon: const Icon(LucideIcons.x),
-                      ),
+                      const Expanded(child: Text('طلب مباشر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Cairo'))),
+                      IconButton(onPressed: _submitting ? null : () => Navigator.pop(context), icon: const Icon(LucideIcons.x)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -209,17 +172,10 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: SizedBox(
-                          width: 64,
-                          height: 64,
+                          width: 64, height: 64,
                           child: widget.imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: widget.imageUrl!,
-                                  fit: BoxFit.cover,
-                                )
-                              : Container(
-                                  color: const Color(0xFFF3F4F6),
-                                  child: const Icon(LucideIcons.image, color: Colors.grey),
-                                ),
+                              ? CachedNetworkImage(imageUrl: widget.imageUrl!, fit: BoxFit.cover)
+                              : Container(color: const Color(0xFFF3F4F6), child: const Icon(LucideIcons.image, color: Colors.grey)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -227,84 +183,24 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontFamily: 'Cairo',
-                                fontSize: 14,
-                              ),
-                            ),
-                            if (widget.storeName != null)
-                              Text(
-                                widget.storeName!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF9CA3AF),
-                                  fontFamily: 'Cairo',
-                                ),
-                              ),
-                            Text(
-                              CurrencyUtils.formatPrice(
-                                widget.unitPrice,
-                                widget.currency,
-                              ),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w900,
-                                fontFamily: 'Cairo',
-                              ),
-                            ),
+                            Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Cairo', fontSize: 14)),
+                            if (widget.storeName != null) Text(widget.storeName!, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF), fontFamily: 'Cairo')),
+                            Text(CurrencyUtils.formatPrice(widget.unitPrice, widget.currency), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
                           ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'الكمية',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Cairo',
-                      fontSize: 13,
-                    ),
-                  ),
+                  const Text('الكمية', style: TextStyle(fontWeight: FontWeight.w800, fontFamily: 'Cairo', fontSize: 13)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _QtyBtn(
-                        icon: LucideIcons.minus,
-                        enabled: !_submitting && _quantity > 1,
-                        onTap: () => setState(() => _quantity--),
-                      ),
-                      SizedBox(
-                        width: 48,
-                        child: Text(
-                          '$_quantity',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Cairo',
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                      _QtyBtn(
-                        icon: LucideIcons.plus,
-                        enabled: !_submitting && _quantity < _maxQty,
-                        onTap: () => setState(() => _quantity++),
-                      ),
+                      _QtyBtn(icon: LucideIcons.minus, enabled: !_submitting && _quantity > 1, onTap: () => setState(() => _quantity--)),
+                      SizedBox(width: 48, child: Text('$_quantity', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Cairo', fontSize: 18))),
+                      _QtyBtn(icon: LucideIcons.plus, enabled: !_submitting && _quantity < _maxQty, onTap: () => setState(() => _quantity++)),
                       const Spacer(),
-                      Text(
-                        'الإجمالي: ${CurrencyUtils.formatPrice(_total, widget.currency)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontFamily: 'Cairo',
-                          color: AppColors.primary,
-                        ),
-                      ),
+                      Text('الإجمالي: ${CurrencyUtils.formatPrice(_total, widget.currency)}', style: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Cairo', color: AppColors.primary)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -312,46 +208,14 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                     height: 52,
                     child: ElevatedButton(
                       onPressed: _submitting ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                       child: _submitting
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                          : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(LucideIcons.send, size: 18),
                                 SizedBox(width: 8),
-                                Text(
-                                  'إرسال الطلب',
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'يُرسل الطلب مباشرة للمتجر بحالة «بانتظار التأكيد».',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF9CA3AF),
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.w700,
+                                Text('إرسال الطلب', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900)),
+                            ]),
                     ),
                   ),
                 ],
@@ -365,31 +229,9 @@ class _QtyBtn extends StatelessWidget {
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
-
-  const _QtyBtn({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
+  const _QtyBtn({required this.icon, required this.enabled, required this.onTap});
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFF3F4F6),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(10),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(
-            icon,
-            size: 16,
-            color: enabled ? const Color(0xFF111827) : const Color(0xFFD1D5DB),
-          ),
-        ),
-      ),
-    );
+    return Material(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10), child: InkWell(onTap: enabled ? onTap : null, borderRadius: BorderRadius.circular(10), child: SizedBox(width: 36, height: 36, child: Icon(icon, size: 16, color: enabled ? const Color(0xFF111827) : const Color(0xFFD1D5DB)))));
   }
 }

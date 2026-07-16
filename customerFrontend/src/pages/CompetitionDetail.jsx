@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
-import { optimizeCloudinaryUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -109,6 +109,7 @@ const CompetitionDetail = () => {
   const eligible = userPoints >= competition.minPoints;
   const maxEntries = Math.max(0, Math.floor(userPoints / (competition.pointsPerEntry || 1)));
   const cost = entries * (competition.pointsPerEntry || 1);
+  const heroImageSrc = resolveImageUrl(competition.image, { width: 800 });
 
   return (
     <div className="pb-24 space-y-5 text-right" dir="rtl">
@@ -117,9 +118,9 @@ const CompetitionDetail = () => {
       </button>
 
       <div className="relative aspect-video rounded-[28px] overflow-hidden bg-gray-100">
-        {competition.image ? (
+        {heroImageSrc ? (
           <img
-            src={optimizeCloudinaryUrl(competition.image, { width: 800 })}
+            src={heroImageSrc}
             srcSet={cloudinarySrcSet(competition.image, [600, 800])}
             sizes="(max-width: 768px) 100vw, 800px"
             alt={competition.title}

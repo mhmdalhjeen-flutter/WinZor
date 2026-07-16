@@ -133,7 +133,7 @@ const VerificationPromptModal = ({ open, config = {}, onVerifyNow, onLater }) =>
                 className="w-full rounded-2xl border-2 border-gray-100 py-3.5 text-sm font-black text-gray-500 transition hover:bg-gray-50"
               >
                 <span className="block">لاحقاً</span>
-                <span className="mt-0.5 block text-[10px] font-bold text-gray-400">Later</span>
+                <span className="mt-0.5 block text-[10px] font-bold text-gray-600">Later</span>
               </button>
             </div>
           </motion.div>

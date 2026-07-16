@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_utils.dart';
 import '../providers/marketplace_providers.dart';
 import '../widgets/marketplace_tab_nav.dart';
 import '../widgets/marketplace_filters.dart';
 import '../widgets/bazaar_listing_card.dart';
 import '../widgets/publish_bottom_sheet.dart';
 import '../widgets/bazaar_constants.dart';
-import '../models/bazaar_listing_model.dart';
+import '../../data/models/bazaar_listing_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
@@ -23,7 +25,6 @@ class MarketplacePage extends ConsumerWidget {
     final isAuth = ref.watch(authProvider).isAuth;
     final regionsAsync = ref.watch(regionsProvider);
     
-    // Data providers
     final browseAsync = ref.watch(bazaarBrowseProvider);
     final myAsync = ref.watch(myBazaarListingsProvider);
     final favoritesAsync = ref.watch(favoriteBazaarListingsProvider);
@@ -34,14 +35,9 @@ class MarketplacePage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(),
-            
-            // Publish CTA
             if (activeTab != 'mine')
               _buildPublishCta(context, ref, isAuth),
-
-            // Tab Navigation
             MarketplaceTabNav(
               activeTab: activeTab,
               onTabChange: (tab) {
@@ -52,8 +48,6 @@ class MarketplacePage extends ConsumerWidget {
                 ref.read(marketplaceActiveTabProvider.notifier).state = tab;
               },
             ),
-
-            // Main Content
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -93,24 +87,13 @@ class MarketplacePage extends ConsumerWidget {
         children: [
           Text(
             'السوق المفتوح',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
-              fontFamily: 'Cairo',
-            ),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF111827), fontFamily: 'Cairo'),
           ),
           SizedBox(height: 8),
           Text(
             'هنا يمكنك بيع أغراضك، شراء ما تبحث عنه، عرض أو استئجار العقارات والمركبات، ونشر طلباتك، كل ذلك في مكان واحد.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF4B5563),
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Tajawal',
-            ),
+            style: TextStyle(fontSize: 13, color: Color(0xFF4B5563), height: 1.5, fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
           ),
         ],
       ),
@@ -139,7 +122,6 @@ class MarketplacePage extends ConsumerWidget {
             backgroundColor: AppColors.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 4,
-            shadowColor: AppColors.primary.withOpacity(0.3),
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -185,7 +167,6 @@ class MarketplacePage extends ConsumerWidget {
       );
     }
 
-    // Default: Browse tabs
     return Column(
       children: [
         Padding(
@@ -207,11 +188,7 @@ class MarketplacePage extends ConsumerWidget {
             data: (listings) {
               final tabConfig = marketplaceTabs[activeTab];
               final filtered = listings.where((l) => tabConfig?.types?.contains(l.transactionType) ?? false).toList();
-              
-              if (filtered.isEmpty) {
-                return _buildEmptyState('لا إعلانات', 'جرّب تغيير المنطقة أو الفلاتر');
-              }
-
+              if (filtered.isEmpty) return _buildEmptyState('لا إعلانات', 'جرّب تغيير المنطقة أو الفلاتر');
               return _buildListingList(context, ref, filtered);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -231,7 +208,7 @@ class MarketplacePage extends ConsumerWidget {
         final item = listings[index];
         return BazaarListingCard(
           listing: item,
-          favorited: item.isFavorited, // Note: Need pulse logic or local overrides if matching React 100%
+          favorited: item.isFavorited,
           onClick: () => context.push('/marketplace/${item.id}'),
           onToggleFavorite: (l) async {
             try {
@@ -252,23 +229,16 @@ class MarketplacePage extends ConsumerWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final item = listings[index];
-        final bool expiringSoon = item.expiresAt != null && item.expiresAt!.difference(DateTime.now()).inDays < 2;
         final bool canRenew = ['approved', 'expired'].contains(item.status);
 
         return Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFF3F4F6)),
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF3F4F6))),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Thumbnail
               _buildMyListingThumb(item),
               const SizedBox(width: 12),
-              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,21 +251,15 @@ class MarketplacePage extends ConsumerWidget {
                       ],
                     ),
                     Text(
-                      item.transactionType == 'custom' && item.price == 0 
-                          ? 'بدون سعر' 
-                          : CurrencyUtils.formatPrice(item.price, item.currency),
+                      item.transactionType == 'custom' && item.price == 0 ? 'بدون سعر' : CurrencyUtils.formatPrice(item.price, item.currency),
                       style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 13),
                     ),
                     const SizedBox(height: 8),
-                    // Actions
                     Wrap(
                       spacing: 12,
                       children: [
                         _buildInlineAction(LucideIcons.edit3, 'تعديل', () {
-                          context.push('/marketplace/publish', extra: {
-                            'type': item.transactionType,
-                            'editingListing': item,
-                          });
+                          context.push('/marketplace/publish', extra: {'type': item.transactionType, 'editingListing': item});
                         }),
                         _buildInlineAction(LucideIcons.trash2, 'حذف', () async {
                           final confirmed = await _showDeleteConfirm(context);
@@ -313,16 +277,12 @@ class MarketplacePage extends ConsumerWidget {
                                 ref.invalidate(bazaarMetaProvider);
                               } catch (e) {
                                 final gate = ref.read(verificationGateProvider.notifier);
-                                if (gate.handleApiVerificationError(e, () {
-                                  // retry same renew
+                                gate.handleApiVerificationError(e, () {
                                   ref.read(marketplaceRepositoryProvider).renewListing(item.id).then((_) {
                                     ref.invalidate(myBazaarListingsProvider);
                                     ref.invalidate(bazaarMetaProvider);
                                   });
-                                })) {
-                                  return;
-                                }
-                                // Soft ignore non-verification failures mirrors prior silent catch
+                                });
                               }
                             });
                           }, color: Colors.green),
@@ -341,66 +301,40 @@ class MarketplacePage extends ConsumerWidget {
   Widget _buildMyListingThumb(BazaarListingModel item) {
     final String? thumb = item.images.isNotEmpty ? item.images[item.mainImageIndex] : null;
     return Container(
-      width: 72,
-      height: 72,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: const Color(0xFFF3F4F6),
-      ),
+      width: 72, height: 72,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xFFF3F4F6)),
       clipBehavior: Clip.antiAlias,
       child: thumb != null 
         ? CachedNetworkImage(imageUrl: thumb, fit: BoxFit.cover)
         : item.transactionType == 'custom'
-          ? const Center(child: Text('مطلوب', style: TextStyle(fontSize: 12, fontWeight: FontWeight.black, color: Colors.orange)))
+          ? const Center(child: Text('مطلوب', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.orange)))
           : const SizedBox.shrink(),
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    Color color;
-    Color bg;
-    String label;
-
+    Color color; Color bg; String label;
     switch (status) {
-      case 'approved':
-        color = const Color(0xFF059669);
-        bg = const Color(0xFFDCFCE7);
-        label = 'نشط';
-        break;
-      case 'rejected':
-        color = const Color(0xFFDC2626);
-        bg = const Color(0xFFFEF2F2);
-        label = 'مرفوض';
-        break;
-      case 'expired':
-        color = Colors.grey;
-        bg = const Color(0xFFF3F4F6);
-        label = 'منتهٍ';
-        break;
-      default:
-        color = const Color(0xFFD97706);
-        bg = const Color(0xFFFFFBEB);
-        label = 'بانتظار الموافقة';
+      case 'approved': color = const Color(0xFF059669); bg = const Color(0xFFDCFCE7); label = 'نشط'; break;
+      case 'rejected': color = const Color(0xFFDC2626); bg = const Color(0xFFFEF2F2); label = 'مرفوض'; break;
+      case 'expired': color = Colors.grey; bg = const Color(0xFFF3F4F6); label = 'منتهٍ'; break;
+      default: color = const Color(0xFFD97706); bg = const Color(0xFFFFFBEB); label = 'بانتظار الموافقة';
     }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(100)),
-      child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.black, fontFamily: 'Cairo')),
+      child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
     );
   }
 
   Widget _buildInlineAction(IconData icon, String label, VoidCallback onTap, {Color color = AppColors.primary}) {
     return GestureDetector(
       onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
-        ],
-      ),
+      ]),
     );
   }
 
@@ -408,16 +342,13 @@ class MarketplacePage extends ConsumerWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Icon(LucideIcons.package, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
             const SizedBox(height: 8),
             Text(description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-          ],
-        ),
+        ]),
       ),
     );
   }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import logoImg from '../../assets/logo/win-goldenstore-logo.png';
+import { BRAND_LOGO_128 } from '../../utils/brandAssets';
 
 const AuthExperienceBranding = ({ size = 'default', className = '' }) => {
   const isLarge = size === 'large';
@@ -19,13 +19,13 @@ const AuthExperienceBranding = ({ size = 'default', className = '' }) => {
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50/30 to-violet-50/40" aria-hidden />
         <img
-          src={logoImg}
+          src={BRAND_LOGO_128}
           alt=""
           className="relative z-[1] h-[78%] w-[78%] object-contain"
           width={isLarge ? 80 : 64}
           height={isLarge ? 80 : 64}
+          loading="lazy"
           decoding="async"
-          style={{ imageRendering: '-webkit-optimize-contrast' }}
         />
       </div>
 

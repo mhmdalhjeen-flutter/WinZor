@@ -1,3 +1,4 @@
+import '../styles/pointsBalance.css';
 import React, { useEffect } from 'react';
 import { X, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

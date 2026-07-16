@@ -55,7 +55,7 @@ exports.createProduct = async (req, res) => {
             description: cleanString(description, { field: "description", max: 1000 }),
             price: numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: true }),
             currency: normalizeCurrency(currency),
-            image: await processDataUrlImage(image.trim()),
+            image: await processDataUrlImage(image.trim(), { enforceCloudinaryHttps: true }),
             isWholesale: !!isWholesale,
             freeDelivery: !!freeDelivery,
             store: store._id,
@@ -190,7 +190,10 @@ exports.updateProduct = async (req, res) => {
         for (const field of allowed) {
             if (req.body[field] === undefined) continue;
             if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
-                product.image = await processDataUrlImage(req.body.image.trim());
+                product.image = await processDataUrlImage(req.body.image.trim(), {
+                    enforceCloudinaryHttps: true,
+                    previousValue: product.image,
+                });
             } else if (field === "price") {
                 product.price = numberInRange(req.body.price, { field: "price", min: 0, max: 10_000_000, required: true });
             } else if (field === "currency") {

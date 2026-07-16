@@ -107,7 +107,7 @@ exports.createOffer = async (req, res) => {
         }
 
         const payload = buildOfferPayload(req.body, store._id, req.user.id);
-        payload.image = await processDataUrlImage(payload.image);
+        payload.image = await processDataUrlImage(payload.image, { enforceCloudinaryHttps: true });
         const offer = await Offer.create(payload);
 
         await logActivity({
@@ -290,7 +290,10 @@ exports.updateOffer = async (req, res) => {
             if (field === "image") {
                 const nextImage = patch.image;
                 if (typeof nextImage === "string" && nextImage.trim()) {
-                    offer.image = await processDataUrlImage(nextImage.trim());
+                    offer.image = await processDataUrlImage(nextImage.trim(), {
+                        enforceCloudinaryHttps: true,
+                        previousValue: offer.image,
+                    });
                 }
                 continue;
             }

@@ -89,7 +89,7 @@ exports.createStore = async (req, res) => {
             region: cleanString(region, { field: "region", max: 120 }),
             subRegion: cleanString(subRegion, { field: "subRegion", max: 120 }),
             category: cleanString(category, { field: "category", max: 120 }),
-            logo: await processOptionalImage(image, { maxWidth: 400 }),
+            logo: await processOptionalImage(image, { maxWidth: 400, enforceCloudinaryHttps: true }),
             owner: req.user.id,
             isActive: false,
             codePrefix,
@@ -463,8 +463,20 @@ exports.updateMyStore = async (req, res) => {
         if (nameText) store.name = nameText;
         if (description !== undefined) store.description = cleanString(description, { field: "description", max: 1000 });
         if (address !== undefined) store.address = cleanString(address, { field: "address", max: 500 });
-        if (logo !== undefined) store.logo = await processOptionalImage(logo, { maxWidth: 400 });
-        if (coverImage !== undefined) store.coverImage = await processOptionalImage(coverImage, { maxWidth: 1200 });
+        if (logo !== undefined) {
+            store.logo = await processOptionalImage(logo, {
+                maxWidth: 400,
+                enforceCloudinaryHttps: true,
+                previousValue: store.logo,
+            });
+        }
+        if (coverImage !== undefined) {
+            store.coverImage = await processOptionalImage(coverImage, {
+                maxWidth: 1200,
+                enforceCloudinaryHttps: true,
+                previousValue: store.coverImage,
+            });
+        }
         if (brandingWelcomeSeen !== undefined) store.brandingWelcomeSeen = !!brandingWelcomeSeen;
 
         if (phone !== undefined) {

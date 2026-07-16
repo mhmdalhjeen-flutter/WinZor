@@ -17,6 +17,24 @@ function badImage(message) {
   return err;
 }
 
+function isCloudinaryUrl(url) {
+  try {
+    const { protocol, hostname } = new URL(url);
+    if (protocol !== "https:") return false;
+    const host = hostname.toLowerCase();
+    return host === "res.cloudinary.com" || host.endsWith(".cloudinary.com") || host === "cloudinary.com";
+  } catch {
+    return false;
+  }
+}
+
+function assertTrustedHttps(trimmed, previousValue) {
+  if (isCloudinaryUrl(trimmed)) return;
+  const prev = typeof previousValue === "string" ? previousValue.trim() : "";
+  if (prev && trimmed === prev) return;
+  throw badImage("يجب رفع الصورة عبر النظام — الروابط الخارجية غير مسموحة");
+}
+
 function parseDataUrl(str) {
   if (typeof str !== "string" || !str.startsWith("data:")) return null;
   const match = str.match(DATA_URL_RE);
@@ -59,13 +77,27 @@ async function validateImageInput(input, { maxBytes = DEFAULT_MAX_BYTES } = {}) 
 
 /**
  * يحوّل data URL إلى WebP مضغوط (نفس الحقل — لا تغيير API).
- * روابط https القديمة تُعاد كما هي؛ data URLs الجديدة تُفحص قبل التخزين.
+ * مع enforceCloudinaryHttps: روابط https الجديدة يجب أن تكون من Cloudinary؛
+ * الروابط الخارجية القديمة تُقبل فقط إن طابقت previousValue.
  */
-async function processDataUrlImage(input, { maxWidth = 1200, quality = 82, thumbnail = false, maxBytes = DEFAULT_MAX_BYTES } = {}) {
+async function processDataUrlImage(
+  input,
+  {
+    maxWidth = 1200,
+    quality = 82,
+    thumbnail = false,
+    maxBytes = DEFAULT_MAX_BYTES,
+    previousValue,
+    enforceCloudinaryHttps = false,
+  } = {}
+) {
   if (typeof input !== "string" || !input.trim()) return input;
   const trimmed = input.trim();
   if (trimmed.startsWith("http://")) throw badImage("روابط الصور غير الآمنة غير مسموحة");
-  if (trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.startsWith("https://")) {
+    if (enforceCloudinaryHttps) assertTrustedHttps(trimmed, previousValue);
+    return trimmed;
+  }
   if (!trimmed.startsWith("data:")) throw badImage("صيغة الصورة غير مدعومة");
 
   const parsed = await validateImageInput(trimmed, { maxBytes });
@@ -100,4 +132,5 @@ module.exports = {
   processDataUrlImage,
   processDataUrlImages,
   processOptionalImage,
+  isCloudinaryUrl,
 };

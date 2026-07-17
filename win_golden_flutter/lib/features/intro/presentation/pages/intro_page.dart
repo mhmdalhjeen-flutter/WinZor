@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../../../core/theme/app_brand_assets.dart';
 import '../../../../core/theme/app_colors.dart';

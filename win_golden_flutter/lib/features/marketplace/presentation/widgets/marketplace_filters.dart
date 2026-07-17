@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/models/hierarchy_node.dart';
 import '../../../../core/widgets/hierarchy_select.dart';
 import 'bazaar_constants.dart';

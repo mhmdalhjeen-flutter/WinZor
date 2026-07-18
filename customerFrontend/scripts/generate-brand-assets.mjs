@@ -67,6 +67,7 @@ async function writeFavicon() {
 
   // Minimal ICO: single 32x32 PNG embedded (widely supported by browsers).
   await fs.writeFile(path.join(brandDir, 'favicon.ico'), pngBuffers[1]);
+  await fs.writeFile(path.join(brandDir, 'favicon.png'), pngBuffers[1]);
 }
 
 async function writeOgImages() {
@@ -132,7 +133,7 @@ async function main() {
   console.log('  WebP logos:', LOGO_SIZES.map((s) => `logo-${s}.webp`).join(', '));
   console.log('  Maskable:', MASKABLE_SIZES.map((s) => `logo-${s}-maskable.webp`).join(', '));
   console.log('  PNG: logo-64.png');
-  console.log('  Favicon: favicon.ico');
+  console.log('  Favicon: favicon.ico, favicon.png');
   console.log('  Social: og-image.webp, og-image.png, og-share.webp');
 }
 

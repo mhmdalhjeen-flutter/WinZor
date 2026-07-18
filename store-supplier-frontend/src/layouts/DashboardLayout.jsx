@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Menu, X } from "lucide-react";
 import "../styles/dashboard.css";
 import useDashboardBadges from "../hooks/useDashboardBadges";
 import useStoreOwnerPermissions from "../hooks/useStoreOwnerPermissions";
 import DashboardHeaderActions, { SidebarBadge, BottomNavBadge } from "../components/DashboardHeaderActions";
 import { BRAND_LOGO_64, BRAND_NAME, BRAND_TAGLINE } from "../utils/brandAssets";
 import StoreWelcomeModal from "../components/StoreWelcomeModal";
+import { usePwaInstall } from "../context/PwaInstallContext";
 import { getMyStore } from "../services/store.service";
 import { getStoredUser } from "../utils/safeStorage";
 import { logout as authLogout } from "../utils/auth";
@@ -14,6 +16,7 @@ export default function DashboardLayout() {
   const user = getStoredUser({});
   const navigate = useNavigate();
   const badges = useDashboardBadges();
+  const { canInstall, openInstallCard } = usePwaInstall();
   const { permissions: storePages, isStoreOwner } = useStoreOwnerPermissions();
 
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -45,6 +48,13 @@ export default function DashboardLayout() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle("sidebar-open", menuOpen);
+    return () => document.body.classList.remove("sidebar-open");
+  }, [menuOpen]);
+
+  const toggleMenu = () => setMenuOpen((open) => !open);
 
   const logout = async () => {
     await authLogout();
@@ -108,6 +118,19 @@ export default function DashboardLayout() {
       <NavLink to={`${baseRoute}/support`} onClick={() => setMenuOpen(false)}>🎧 <span>الدعم الفني</span></NavLink>
       <NavLink to={`${baseRoute}/profile`} onClick={() => setMenuOpen(false)}>👤 <span>الملف الشخصي</span></NavLink>
 
+      {canInstall && (
+        <button
+          type="button"
+          className="logout-link sidebar-install-btn"
+          onClick={() => {
+            setMenuOpen(false);
+            openInstallCard();
+          }}
+        >
+          📲 <span>تثبيت التطبيق</span>
+        </button>
+      )}
+
       <button type="button" className="logout-link" onClick={logout}>
         🚪 <span>تسجيل الخروج</span>
       </button>
@@ -151,14 +174,13 @@ export default function DashboardLayout() {
             <button
               type="button"
               className="menu-toggle"
-              aria-label="فتح القائمة"
-              onClick={() => setMenuOpen(true)}
+              aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
+              aria-expanded={menuOpen}
+              onClick={toggleMenu}
             >
-              ☰
+              {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
             </button>
-            {storeData?.logo ? (
-              <img src={storeData.logo} alt="" className="topbar-store-logo" />
-            ) : null}
+            <img src={BRAND_LOGO_64} alt={BRAND_NAME} className="topbar-brand-logo" width={36} height={36} />
             <span>مرحباً {user?.name} 👋</span>
           </div>
 
@@ -192,8 +214,8 @@ export default function DashboardLayout() {
           <span className="nav-label">الدردشات</span>
           <BottomNavBadge count={badges.chats} />
         </NavLink>
-        <button type="button" onClick={() => setMenuOpen(true)}>
-          <span className="nav-icon">☰</span>
+        <button type="button" className={menuOpen ? "is-active" : ""} onClick={toggleMenu}>
+          <span className="nav-icon">{menuOpen ? <X size={18} /> : <Menu size={18} />}</span>
           <span className="nav-label">المزيد</span>
         </button>
       </nav>

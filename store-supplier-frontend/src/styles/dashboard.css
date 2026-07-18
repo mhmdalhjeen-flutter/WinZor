@@ -139,10 +139,12 @@ body { font-family: 'Cairo', sans-serif; background-color: var(--bg-body); color
     width: min(280px, 85vw);
     transform: translateX(100%);
     box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+    visibility: hidden;
   }
 
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .sidebar .logo,
@@ -275,7 +277,8 @@ body { font-family: 'Cairo', sans-serif; background-color: var(--bg-body); color
   border-radius: 10px;
 }
 
-.bottom-nav a.active {
+.bottom-nav a.active,
+.bottom-nav button.is-active {
   color: #38bdf8;
   background: #1e293b;
 }
@@ -423,6 +426,10 @@ body { font-family: 'Cairo', sans-serif; background-color: var(--bg-body); color
   border: 2px solid #fff;
 }
 
+.sidebar-install-btn {
+  color: #38bdf8 !important;
+}
+
 .sidebar-badge {
   margin-inline-start: auto;
   background: #ef4444;
@@ -439,6 +446,21 @@ body { font-family: 'Cairo', sans-serif; background-color: var(--bg-body); color
   border-radius: 10px;
   object-fit: cover;
   border: 2px solid #e2e8f0;
+}
+
+.topbar-brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: #fff;
+  padding: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+body.sidebar-open {
+  overflow: hidden;
 }
 
 .welcome-msg {

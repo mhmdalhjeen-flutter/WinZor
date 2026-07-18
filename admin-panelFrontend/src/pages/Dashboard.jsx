@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users,
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 import axios from '../api/axios';
 import GrowthChart from '../components/dashboard/GrowthChart';
-import AdminQuickNav from '../components/dashboard/AdminQuickNav';
 import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import '../style/index.css';
@@ -27,16 +25,16 @@ import '../style/index.css';
 const DASHBOARD_DAYS = 30;
 
 const CARD_DEFS = [
-  { key: 'users', label: 'المستخدمون', icon: Users, color: '#6366f1', path: '/users' },
-  { key: 'stores', label: 'المتاجر', icon: Store, color: '#22c55e', path: '/stores' },
-  { key: 'suppliers', label: 'الموردون', icon: Truck, color: '#14b8a6', path: '/stores' },
-  { key: 'products', label: 'المنتجات', icon: Package, color: '#f59e0b', path: '/stores' },
-  { key: 'offers', label: 'العروض', icon: Tag, color: '#ef4444', path: '/stores' },
-  { key: 'competitions', label: 'المسابقات', icon: Trophy, color: '#a855f7', path: '/competitions' },
-  { key: 'prizes', label: 'الجوائز', icon: Gift, color: '#ec4899', path: '/wheel-winners' },
-  { key: 'codes', label: 'الأكواد', icon: Ticket, color: '#0ea5e9', path: '/promo-codes' },
-  { key: 'pointsDistributed', label: 'النقاط الموزعة', icon: Coins, color: '#fbbf24', path: '/analytics' },
-  { key: 'referrals', label: 'الدعوات', icon: UserPlus, color: '#818cf8', path: '/settings' },
+  { key: 'users', label: 'المستخدمون', icon: Users, color: '#6366f1' },
+  { key: 'stores', label: 'المتاجر', icon: Store, color: '#22c55e' },
+  { key: 'suppliers', label: 'الموردون', icon: Truck, color: '#14b8a6' },
+  { key: 'products', label: 'المنتجات', icon: Package, color: '#f59e0b' },
+  { key: 'offers', label: 'العروض', icon: Tag, color: '#ef4444' },
+  { key: 'competitions', label: 'المسابقات', icon: Trophy, color: '#a855f7' },
+  { key: 'prizes', label: 'الجوائز', icon: Gift, color: '#ec4899' },
+  { key: 'codes', label: 'الأكواد', icon: Ticket, color: '#0ea5e9' },
+  { key: 'pointsDistributed', label: 'النقاط الموزعة', icon: Coins, color: '#fbbf24' },
+  { key: 'referrals', label: 'الدعوات', icon: UserPlus, color: '#818cf8' },
 ];
 
 const formatRelativeTime = (dateStr) => {
@@ -90,19 +88,16 @@ const Dashboard = () => {
       <div className="admin-header flex-col gap-4 sm:flex-row">
         <div className="admin-title">
           <h1>لوحة المتابعة</h1>
-          <p>نقطة انطلاقك — وصول سريع لكل الصفحات + نظرة على أداء المنصة</p>
+          <p>نظرة عامة على أداء المنصة — استخدم القائمة الجانبية للتنقل</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {data?.security?.count > 0 && (
-            <Link
-              to="/security"
-              className="admin-card flex items-center gap-2 border-warning/30 bg-warning/10 py-2 px-4"
-            >
+            <div className="admin-card flex items-center gap-2 border-warning/30 bg-warning/10 py-2 px-4">
               <ShieldAlert size={18} className="text-warning" />
               <span className="text-sm font-bold text-warning">
                 {data.security.count} تنبيه أمني
               </span>
-            </Link>
+            </div>
           )}
           <button
             type="button"
@@ -116,61 +111,37 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <AdminQuickNav />
-
       {isLoading && !data && (
         <LightLoadingHint label="جاري تحميل لوحة التحكم..." />
       )}
 
-      {/* Stat cards — اضغط للانتقال */}
-      <p className="mb-3 text-xs font-bold text-muted">إحصائيات سريعة — اضغط على البطاقة للانتقال</p>
+      <p className="mb-3 text-xs font-bold text-muted">إحصائيات المنصة</p>
       <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
-        {CARD_DEFS.map(({ key, label, icon: Icon, color, path }) => {
-          const inner = (
-            <>
-              <div
-                className="shrink-0 rounded-2xl p-3 sm:p-4"
-                style={{ backgroundColor: `${color}18`, color }}
-              >
-                <Icon size={22} />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-muted sm:text-sm">{label}</p>
-                {isLoading && !data ? (
-                  <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-white/10 sm:h-8 sm:w-20" />
-                ) : (
-                  <h2 className="mt-0.5 text-xl font-extrabold sm:text-2xl">
-                    {(cards[key] ?? 0).toLocaleString('ar')}
-                  </h2>
-                )}
-              </div>
-            </>
-          );
-
-          if (path) {
-            return (
-              <Link
-                key={key}
-                to={path}
-                className="admin-card flex items-center gap-3 p-4 transition hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 sm:gap-4 sm:p-5"
-              >
-                {inner}
-              </Link>
-            );
-          }
-
-          return (
+        {CARD_DEFS.map(({ key, label, icon: Icon, color }) => (
+          <div
+            key={key}
+            className="admin-card flex items-center gap-3 p-4 sm:gap-4 sm:p-5"
+          >
             <div
-              key={key}
-              className="admin-card flex items-center gap-3 p-4 sm:gap-4 sm:p-5"
+              className="shrink-0 rounded-2xl p-3 sm:p-4"
+              style={{ backgroundColor: `${color}18`, color }}
             >
-              {inner}
+              <Icon size={22} />
             </div>
-          );
-        })}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-muted sm:text-sm">{label}</p>
+              {isLoading && !data ? (
+                <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-white/10 sm:h-8 sm:w-20" />
+              ) : (
+                <h2 className="mt-0.5 text-xl font-extrabold sm:text-2xl">
+                  {(cards[key] ?? 0).toLocaleString('ar')}
+                </h2>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Charts */}
       <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
         {isLoading && !data ? (
           [1, 2, 3].map((i) => (
@@ -203,16 +174,12 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Secondary insights */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="admin-card lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-lg font-bold">
               <Clock size={20} className="text-secondary" /> آخر النشاطات
             </h3>
-            <Link to="/activity" className="text-sm font-bold text-secondary hover:underline">
-              عرض الكل
-            </Link>
           </div>
           <div className="space-y-3">
             {(data?.recentActivity || []).length === 0 ? (

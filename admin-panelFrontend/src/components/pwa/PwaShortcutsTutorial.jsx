@@ -1,0 +1,44 @@
+import { X, Settings } from 'lucide-react';
+import { BRAND_LOGO_64, BRAND_NAME } from '../../utils/brandAssets';
+
+const SHORTCUTS = [
+  { icon: Settings, label: 'الإعدادات', color: '#ef4444' },
+];
+
+export default function PwaShortcutsTutorial({ onClose }) {
+  return (
+    <div className="pwa-tutorial-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-tutorial-title" dir="rtl">
+      <button type="button" className="pwa-install-overlay__backdrop" aria-label="إغلاق" onClick={onClose} />
+      <div className="pwa-tutorial-card">
+        <button type="button" className="pwa-install-card__close" onClick={onClose} aria-label="إغلاق">
+          <X size={18} />
+        </button>
+
+        <div className="pwa-tutorial-illustration" aria-hidden>
+          <div className="pwa-tutorial-illustration__home">
+            <div className="pwa-tutorial-illustration__app-icon">
+              <img src={BRAND_LOGO_64} alt="" width={40} height={40} />
+            </div>
+            <span className="pwa-tutorial-illustration__press-hint">اضغط مطولًا</span>
+            <div className="pwa-tutorial-illustration__menu">
+              {SHORTCUTS.map(({ icon: Icon, label, color }) => (
+                <div key={label} className="pwa-tutorial-illustration__menu-item">
+                  <span style={{ color }}><Icon size={14} /></span>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <h2 id="pwa-tutorial-title" className="pwa-tutorial-card__title">هل تعلم؟</h2>
+        <p className="pwa-tutorial-card__body">
+          يمكنك الضغط مطولًا على أيقونة {BRAND_NAME} للوصول السريع إلى الإعدادات.
+        </p>
+        <button type="button" className="pwa-install-card__btn pwa-install-card__btn--primary pwa-tutorial-card__ok" onClick={onClose}>
+          فهمت
+        </button>
+      </div>
+    </div>
+  );
+}

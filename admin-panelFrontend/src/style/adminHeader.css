@@ -18,10 +18,10 @@
   max-width: 1800px;
   margin: auto;
   padding: 0 24px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 /* ===== Brand ===== */
@@ -137,6 +137,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  position: relative;
 }
 
 .action-btn:hover {
@@ -268,6 +269,17 @@
   color: #94a3b8;
 }
 
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ===== Status Bar ===== */
 .header-status-bar {
   background: #f8fafc;
@@ -289,8 +301,14 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .search-wrapper, .brand-subtitle { display: none; }
-  .nav-item span { display: none; }
-  .nav-item { padding: 10px; }
+@media (max-width: 1023px) {
+  .brand-subtitle { display: none; }
+  .profile-info { display: none; }
+  .header-status-bar .last-login { display: none; }
+}
+
+@media (min-width: 1024px) {
+  .admin-menu-toggle {
+    display: none !important;
+  }
 }

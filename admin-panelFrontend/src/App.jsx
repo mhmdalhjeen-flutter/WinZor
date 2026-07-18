@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminLayout from './components/AdminLayout';
@@ -8,6 +8,8 @@ import SensitiveGate from './components/SensitiveGate';
 import LightLoadingHint from './shared/LightLoadingHint';
 import PwaHost from './components/pwa/PwaHost';
 import PwaShortcutHandler from './components/pwa/PwaShortcutHandler';
+import BrandSplashGate from './components/BrandSplashGate';
+import { PwaInstallProvider } from './context/PwaInstallContext';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
@@ -49,15 +51,16 @@ const PromoCodesProtected = () => (
 );
 
 
-function App() {
+function AdminRoutes() {
+  const location = useLocation();
+  const splashActive = location.pathname === '/dashboard';
+
   return (
-    <>
-      <Router>
-        <PwaShortcutHandler />
-        <Routes>
+    <BrandSplashGate active={splashActive}>
+      <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        
+
         <Route path="/" element={
           <ProtectedRoute>
             <AdminLayout />
@@ -90,10 +93,20 @@ function App() {
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+      </Routes>
+    </BrandSplashGate>
+  );
+}
+
+function App() {
+  return (
+    <PwaInstallProvider>
+      <Router>
+        <PwaShortcutHandler />
+        <AdminRoutes />
       </Router>
       <PwaHost />
-    </>
+    </PwaInstallProvider>
   );
 }
 

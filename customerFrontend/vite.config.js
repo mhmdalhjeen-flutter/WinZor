@@ -2,31 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const API_MEDIA_PATH =
-  /\/api\/(offers|products|stores)\/[^/]+\/(image|logo|cover)(\/|\?|$)/i
-
-const API_HOSTS = new Set(['winzor.onrender.com', 'localhost', '127.0.0.1'])
-const API_MEDIA_HOSTS = API_HOSTS
-
-function isApiMediaImage(url, request) {
-  if (request.method !== 'GET') return false
-  if (!API_MEDIA_HOSTS.has(url.hostname)) return false
-  return API_MEDIA_PATH.test(url.pathname)
-}
-
-function isCacheablePublicApiGet(url, request) {
-  if (request.method !== 'GET') return false
-  if (!API_HOSTS.has(url.hostname)) return false
-  const path = url.pathname
-  return (
-    /^\/api\/offers\/reels/.test(path)
-    || /^\/api\/categories\/tree/.test(path)
-    || /^\/api\/regions(\/?|$)/.test(path)
-    || /^\/api\/stores\/browse/.test(path)
-    || /^\/api\/bazaar\/?$/.test(path)
-  )
-}
-
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -36,7 +11,7 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: [
         'brand/**/*',
-        'fonts-init.js',
+        'fonts/**/*',
         'robots.txt',
         'og-image.webp',
       ],
@@ -126,24 +101,6 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'winzor-google-fonts-css',
-              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'winzor-google-fonts-files',
-              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
             urlPattern: ({ url, sameOrigin }) =>
               sameOrigin && /\.(webp|png|svg|ico|woff2?)$/i.test(url.pathname),
             handler: 'StaleWhileRevalidate',
@@ -163,7 +120,22 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ url, request }) => isCacheablePublicApiGet(url, request),
+            // Logic must be inlined — vite-plugin-pwa does not emit external helpers into sw.js
+            urlPattern: ({ url, request }) => {
+              if (request.method !== 'GET') return false
+              const host = url.hostname
+              if (host !== 'winzor.onrender.com' && host !== 'localhost' && host !== '127.0.0.1') {
+                return false
+              }
+              const path = url.pathname
+              return (
+                /^\/api\/offers\/reels/.test(path)
+                || /^\/api\/categories\/tree/.test(path)
+                || /^\/api\/regions(\/?|$)/.test(path)
+                || /^\/api\/stores\/browse/.test(path)
+                || /^\/api\/bazaar\/?$/.test(path)
+              )
+            },
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'winzor-api-readonly',
@@ -172,7 +144,16 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ url, request }) => isApiMediaImage(url, request),
+            urlPattern: ({ url, request }) => {
+              if (request.method !== 'GET') return false
+              const host = url.hostname
+              if (host !== 'winzor.onrender.com' && host !== 'localhost' && host !== '127.0.0.1') {
+                return false
+              }
+              return /\/api\/(offers|products|stores)\/[^/]+\/(image|logo|cover)(\/|\?|$)/i.test(
+                url.pathname,
+              )
+            },
             handler: 'CacheFirst',
             options: {
               cacheName: 'winzor-api-media-images',

@@ -158,6 +158,7 @@ export default function StartupSplashGate({ active, children }) {
                 width={112}
                 height={112}
                 loading="eager"
+                fetchpriority="high"
                 decoding="async"
               />
             </div>

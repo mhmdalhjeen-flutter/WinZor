@@ -1,5 +1,5 @@
-import { Wrench, Sparkles } from 'lucide-react';
-import { BRAND_NAME } from '../utils/brandAssets';
+import { Sparkles } from 'lucide-react';
+import { BRAND_LOGO_128, BRAND_NAME } from '../utils/brandAssets';
 import '../styles/Maintenance.css';
 
 export default function Maintenance({ message }) {
@@ -10,7 +10,13 @@ export default function Maintenance({ message }) {
 
       <div className="maintenance-card">
         <div className="maintenance-icon-wrap">
-          <Wrench size={42} strokeWidth={2} />
+          <img
+            src={BRAND_LOGO_128}
+            alt={BRAND_NAME}
+            className="maintenance-logo"
+            width={72}
+            height={72}
+          />
         </div>
 
         <div className="maintenance-badge">

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowLeft } from 'lucide-react';
-import { BRAND_NAME } from '../../utils/brandAssets';
+import { BRAND_LOGO_128, BRAND_NAME } from '../../utils/brandAssets';
 import WelcomeBackground from './WelcomeBackground';
 
 const AuthShell = ({
@@ -39,6 +39,17 @@ const AuthShell = ({
         transition={{ duration: 0.45 }}
         className="mb-5 text-center"
       >
+        <div className="mb-4 flex justify-center">
+          <img
+            src={BRAND_LOGO_128}
+            alt={BRAND_NAME}
+            className="h-20 w-20 object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.35)] sm:h-24 sm:w-24"
+            width={96}
+            height={96}
+            loading="eager"
+            decoding="async"
+          />
+        </div>
         {badge && (
           <span className="mb-3 inline-block rounded-full bg-amber-400/15 px-4 py-1.5 text-[10px] font-black tracking-wide text-amber-200">
             {badge}

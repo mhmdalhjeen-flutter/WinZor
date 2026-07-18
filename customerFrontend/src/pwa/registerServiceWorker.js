@@ -15,7 +15,7 @@ export function activatePwaUpdate() {
 export function initPwaServiceWorker() {
   if (typeof window === 'undefined') return;
 
-  registerSW({
+  refreshHandler = registerSW({
     immediate: true,
     onNeedRefresh() {
       window.dispatchEvent(new CustomEvent(PWA_UPDATE_READY));
@@ -31,7 +31,5 @@ export function initPwaServiceWorker() {
         }, 60 * 60 * 1000);
       }
     },
-  }).then((refresh) => {
-    refreshHandler = refresh;
-  }).catch(() => {});
+  });
 }

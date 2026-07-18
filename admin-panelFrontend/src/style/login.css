@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at top right, #1e293b, #0f172a);
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   padding: 1.5rem;
 }
 
@@ -12,9 +12,9 @@
   max-width: 420px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 2rem;
+  border-radius: 1.25rem;
   padding: 3rem 2.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
   animation: fadeIn 0.6s ease-out;
 }
 
@@ -26,7 +26,7 @@
 .login-logo h2 {
   font-size: 1.8rem;
   font-weight: 800;
-  color: white;
+  color: var(--text-main);
   letter-spacing: -0.5px;
 }
 
@@ -60,11 +60,11 @@
 
 .login-input {
   width: 100%;
-  background: var(--bg-dark);
+  background: #f8fafc;
   border: 1px solid var(--border-color);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   padding: 0.85rem 2.8rem 0.85rem 1rem;
-  color: white;
+  color: var(--text-main);
   transition: var(--transition);
 }
 

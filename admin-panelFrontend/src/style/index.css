@@ -3,30 +3,31 @@
 @import './brand-loading.css';
 
 :root {
-  --bg-dark: #0f172a;
-  --bg-card: #1e293b;
-  --bg-input: #0f172a;
+  --bg-dark: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
   --primary: #ef4444; 
   --primary-hover: #dc2626;
   --secondary: #6366f1;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border-color: #334155;
-  --success: #22c55e;
-  --warning: #f59e0b;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --success: #16a34a;
+  --warning: #d97706;
   --danger: #ef4444;
-  --radius-lg: 1.25rem;
+  --radius-lg: 1rem;
   --radius-md: 0.75rem;
-  --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --header-height: 105px; /* ارتفاع الهيدر الإجمالي */
-  --sidebar-width: 256px; /* عرض السايد بار w-64 */
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-hover: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --header-height: 105px;
+  --sidebar-width: 256px;
 }
 
 * {
   font-family: 'Cairo', sans-serif;
   scrollbar-width: thin;
-  scrollbar-color: var(--primary) var(--bg-dark);
+  scrollbar-color: #cbd5e1 #f1f5f9;
   box-sizing: border-box;
 }
 
@@ -51,14 +52,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-dark);
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #cbd5e1;
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  background: #94a3b8;
 }
 
 .admin-header {
@@ -69,12 +70,11 @@ body {
 }
 
 .admin-title h1 {
-  font-size: 2rem;
+  font-size: 1.875rem;
   font-weight: 800;
-  background: linear-gradient(to right, #fff, var(--text-muted));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .admin-title p {
@@ -93,8 +93,8 @@ body {
 }
 
 .admin-card:hover {
-  border-color: var(--secondary);
-  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-hover);
 }
 
 /* الجداول */
@@ -113,7 +113,7 @@ body {
 }
 
 .admin-table thead {
-  background: rgba(15, 23, 42, 0.5);
+  background: #f8fafc;
 }
 
 .admin-table th {
@@ -133,7 +133,7 @@ body {
 }
 
 .admin-table tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: #f8fafc;
 }
 
 /* الأزرار والمدخلات */
@@ -155,8 +155,14 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0.75rem 1rem;
-  color: white;
+  color: var(--text-main);
   transition: var(--transition);
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 @keyframes fadeIn {
@@ -219,15 +225,15 @@ body {
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.25);
   border: none;
   cursor: pointer;
 }
 
 .admin-sidebar {
   width: 16rem;
-  background: var(--bg-card);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -236,6 +242,7 @@ body {
   height: calc(100vh - 105px);
   z-index: 9999;
   transition: transform 0.3s ease, visibility 0.3s ease;
+  box-shadow: -4px 0 24px rgba(15, 23, 42, 0.04);
 }
 
 .admin-sidebar-brand {
@@ -243,7 +250,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 1rem 1rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .admin-sidebar-brand__logo {
@@ -251,7 +258,8 @@ body {
   height: 48px;
   border-radius: 12px;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.95);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
   padding: 4px;
 }
 
@@ -259,7 +267,7 @@ body {
   margin: 0;
   font-size: 14px;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .admin-sidebar-brand__tagline {
@@ -313,22 +321,23 @@ body {
 }
 
 .admin-sidebar-link--idle:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: #f1f5f9;
+  color: var(--text-main);
 }
 
 .admin-sidebar-link--active {
-  background: var(--primary);
-  color: #fff;
+  background: #fef2f2;
+  color: var(--primary);
   font-weight: 700;
-  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);
-  transform: translateX(-4px);
+  box-shadow: none;
+  transform: none;
+  border: 1px solid #fecaca;
 }
 
 .admin-sidebar-footer {
   padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--border-color);
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -342,8 +351,8 @@ body {
   padding: 0.75rem 1rem;
   border: none;
   border-radius: 0.75rem;
-  background: rgba(59, 130, 246, 0.12);
-  color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -385,7 +394,7 @@ body.admin-sidebar-open {
     width: min(280px, 85vw);
     transform: translateX(100%);
     visibility: hidden;
-    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
+    box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
   }
 
   .admin-sidebar--open {

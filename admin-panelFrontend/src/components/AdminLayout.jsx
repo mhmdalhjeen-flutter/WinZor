@@ -20,10 +20,7 @@ const AdminLayout = () => {
   const toggleMenu = () => setMenuOpen((open) => !open);
 
   return (
-    <div className="min-h-screen bg-[#0a0c12] flex flex-col font-['Cairo'] relative overflow-x-hidden" dir="rtl">
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-['Cairo'] relative overflow-x-hidden" dir="rtl">
       <AdminHeader menuOpen={menuOpen} onToggleMenu={toggleMenu} />
 
       <div className="flex flex-1">
@@ -34,7 +31,7 @@ const AdminLayout = () => {
         </main>
       </div>
 
-      <footer className="py-8 pr-0 lg:pr-64 border-t border-white/5 bg-[#111827]/50 backdrop-blur-md relative z-10">
+      <footer className="py-8 pr-0 lg:pr-64 border-t border-slate-200 bg-white relative z-10">
         <div className="max-w-[1550px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start">
             <p className="text-[11px] font-black tracking-[4px] text-primary uppercase mb-1">Command Center</p>
@@ -43,7 +40,7 @@ const AdminLayout = () => {
 
           <div className="flex gap-8 text-[11px] font-black uppercase tracking-widest text-muted">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-success rounded-full shadow-[0_0_10px_#22c55e] animate-pulse" />
+              <span className="w-2 h-2 bg-success rounded-full" />
               <span>الخادم: متصل</span>
             </div>
             <span className="hover:text-primary cursor-pointer transition-all">الدعم الفني</span>

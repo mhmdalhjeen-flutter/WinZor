@@ -131,7 +131,7 @@ const Dashboard = () => {
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-muted sm:text-sm">{label}</p>
               {isLoading && !data ? (
-                <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-white/10 sm:h-8 sm:w-20" />
+                <div className="mt-2 h-7 w-16 animate-pulse rounded-lg bg-slate-100 sm:h-8 sm:w-20" />
               ) : (
                 <h2 className="mt-0.5 text-xl font-extrabold sm:text-2xl">
                   {(cards[key] ?? 0).toLocaleString('ar')}
@@ -145,7 +145,7 @@ const Dashboard = () => {
       <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
         {isLoading && !data ? (
           [1, 2, 3].map((i) => (
-            <div key={i} className="admin-card h-64 animate-pulse bg-white/5" />
+            <div key={i} className="admin-card h-64 animate-pulse bg-slate-50" />
           ))
         ) : (
           <>
@@ -188,7 +188,7 @@ const Dashboard = () => {
               data.recentActivity.map((log) => (
                 <div
                   key={log._id}
-                  className="flex items-start gap-3 rounded-xl border border-border-color/50 bg-dark/30 p-3 sm:p-4"
+                  className="flex items-start gap-3 rounded-xl border border-border-color bg-slate-50 p-3 sm:p-4"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-sm font-black text-secondary">
                     {(log.user?.name || 'ن').charAt(0)}

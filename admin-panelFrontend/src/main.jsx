@@ -6,6 +6,9 @@ import { ToastProvider } from './shared/Toast.jsx'
 import ErrorBoundary from './shared/ErrorBoundary'
 import { queryClient } from './lib/queryClient'
 import './style/index.css'
+import { initPwaServiceWorker } from './pwa/registerServiceWorker'
+
+initPwaServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

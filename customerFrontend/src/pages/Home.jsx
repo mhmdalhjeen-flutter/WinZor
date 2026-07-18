@@ -11,10 +11,14 @@ import ProgressiveCategoryReels from '../components/home/ProgressiveCategoryReel
 import DeferredMount from '../components/DeferredMount';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
+import { usePointsLeaderboard } from '../hooks/usePointsLeaderboard';
+import { useAuth } from '../context/AuthContext';
 import { normalizeCategoryReels, buildCategoryMaps } from '../utils/categoryDisplay';
+import '../styles/pointsBalance.css';
 
 const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
 const HomeSearchCards = lazy(() => import('../components/home/HomeSearchCards'));
+const PointsLeaderboardSection = lazy(() => import('../components/points/PointsLeaderboardSection'));
 
 async function fetchFavoritesPayload() {
   const { data } = await api.get('/activity/favorites');
@@ -25,10 +29,25 @@ async function fetchFavoritesPayload() {
 }
 
 const Home = () => {
+  const { user } = useAuth();
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
   const [deferSecondary, setDeferSecondary] = useState(false);
+
+  const currentUserId = user?._id || user?.id;
+  const {
+    data: leaderboard,
+    isLoading: lbLoading,
+    isError: lbError,
+  } = usePointsLeaderboard(deferSecondary, currentUserId);
+
+  const currentUser = leaderboard?.me || (user ? {
+    id: currentUserId,
+    name: user.name,
+    avatar: user.avatar,
+    points: user.points ?? 0,
+  } : null);
 
   // Let first paint + LCP image compete without search/categories network contention
   useEffect(() => {
@@ -168,7 +187,45 @@ const Home = () => {
       <div className="relative z-10 space-y-4 sm:space-y-5 pb-20">
         <HomeHero />
 
-        {/* Offers first — LCP element is the first offer card image */}
+        {/* الفلترة و البحث */}
+        <Suspense fallback={searchPlaceholder}>
+          {deferSecondary ? (
+            <HomeSearchCards
+              regionTree={regionTree}
+              regionPath={regionPath}
+              onRegionPathChange={setRegionPath}
+              regionsLoading={regionsLoading}
+              regionsError={regionsError}
+              onRegionsRetry={refetchRegions}
+              categoryTree={categories}
+              categoryPath={categoryPath}
+              onCategoryPathChange={setCategoryPath}
+              categoriesLoading={categoriesLoading}
+              categoriesError={categoriesError}
+              onCategoriesRetry={refetchCategories}
+            />
+          ) : (
+            searchPlaceholder
+          )}
+        </Suspense>
+
+        {/* Leaderboard / Ranking */}
+        <DeferredMount rootMargin="40px" placeholder={null}>
+          <div className="max-w-6xl mx-auto px-1.5 sm:px-2">
+            <Suspense fallback={null}>
+              <PointsLeaderboardSection
+                top={leaderboard?.top || []}
+                myRank={leaderboard?.myRank}
+                currentUser={currentUser}
+                currentUserId={currentUserId}
+                isLoading={lbLoading}
+                isError={lbError}
+              />
+            </Suspense>
+          </div>
+        </DeferredMount>
+
+        {/* Offers */}
         <div id="home-offers" data-onboarding="home" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
           <div className="flex items-center justify-between gap-2 px-1.5 sm:px-2">
             <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
@@ -203,28 +260,6 @@ const Home = () => {
             </div>
           )}
         </div>
-
-        {/* Filters / search — deferred so they don't compete with LCP offer image */}
-        <Suspense fallback={searchPlaceholder}>
-          {deferSecondary ? (
-            <HomeSearchCards
-              regionTree={regionTree}
-              regionPath={regionPath}
-              onRegionPathChange={setRegionPath}
-              regionsLoading={regionsLoading}
-              regionsError={regionsError}
-              onRegionsRetry={refetchRegions}
-              categoryTree={categories}
-              categoryPath={categoryPath}
-              onCategoryPathChange={setCategoryPath}
-              categoriesLoading={categoriesLoading}
-              categoriesError={categoriesError}
-              onCategoriesRetry={refetchCategories}
-            />
-          ) : (
-            searchPlaceholder
-          )}
-        </Suspense>
 
         {/* Competitions — below fold, mount when near viewport */}
         <DeferredMount rootMargin="40px" placeholder={null}>

@@ -6,6 +6,8 @@ import AdminLayout from './components/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import SensitiveGate from './components/SensitiveGate';
 import LightLoadingHint from './shared/LightLoadingHint';
+import PwaHost from './components/pwa/PwaHost';
+import PwaShortcutHandler from './components/pwa/PwaShortcutHandler';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
@@ -49,8 +51,10 @@ const PromoCodesProtected = () => (
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <>
+      <Router>
+        <PwaShortcutHandler />
+        <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         
@@ -86,8 +90,10 @@ function App() {
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+      <PwaHost />
+    </>
   );
 }
 

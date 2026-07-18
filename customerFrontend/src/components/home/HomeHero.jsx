@@ -1,6 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { BookOpen, Play, X } from 'lucide-react';
-import { BRAND_LOGO_128 } from '../../utils/brandAssets';
 
 const PointsGuideModal = lazy(() => import('../PointsGuideModal'));
 
@@ -78,22 +77,7 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
           <div className="relative z-10 home-hero__content py-3.5 sm:py-4 px-3 sm:px-4">
-            <div className="home-hero__brand" aria-label="Win GoldenStore">
-              <span className="home-hero__brand-logo-wrap">
-                <img
-                  src={BRAND_LOGO_128}
-                  alt=""
-                  className="home-hero__brand-logo"
-                  width={44}
-                  height={44}
-                  loading="eager"
-                  fetchpriority="high"
-                  decoding="async"
-                />
-              </span>
-            </div>
-
-            <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center mt-2.5">
+            <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center">
               اجمع نقاطك من المتاجر المعتمدة
             </p>
 

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, ShieldCheck, Loader2 } from 'lucide-react';
 import api from '../api/axios';
 import { getDeviceId } from '../utils/deviceId';
+import { completePendingPwaAction } from '../pwa/pwaShortcutActions';
 import '../style/login.css';
 
 const Login = () => {
@@ -32,6 +33,7 @@ const Login = () => {
                 localStorage.setItem('adminUser', JSON.stringify(data.user));
                 if (data.refreshToken) localStorage.setItem('adminRefreshToken', data.refreshToken);
                 if (data.deviceId) localStorage.setItem('adminDeviceId', data.deviceId);
+                if (completePendingPwaAction(navigate)) return;
                 navigate('/dashboard');
             } else {
                 setError('عذراً، لا تملك صلاحيات الوصول للوحة التحكم');

@@ -21,8 +21,8 @@ export default defineConfig({
         short_name: 'عروض تك',
         description:
           'تسوّق من متاجر موثوقة، اجمع نقاطاً، شارك في المسابقات واكتشف عروض يومية وجوائز حقيقية.',
-        theme_color: '#dc2626',
-        background_color: '#f7f5f2',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
         scope: '/',

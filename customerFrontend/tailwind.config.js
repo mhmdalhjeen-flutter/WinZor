@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#b91c1c", // الأحمر الملكي
-          light: "#ef4444",
-          dark: "#7f1d1d",
+          DEFAULT: "#1e3a8a",
+          light: "#3b82f6",
+          dark: "#172554",
         },
         rank: {
           bronze: "#cd7f32",
@@ -28,7 +28,7 @@ export default {
         body: ["Tajawal", "sans-serif"],
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(185, 28, 28, 0.1)',
+        'glass': '0 8px 32px 0 rgba(30, 58, 138, 0.08)',
         'premium': '0 10px 50px -12px rgba(0, 0, 0, 0.25)',
       }
     },

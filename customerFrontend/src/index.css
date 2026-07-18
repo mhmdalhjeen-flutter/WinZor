@@ -7,21 +7,18 @@
 /* ===== Base ===== */
 @layer base {
   :root {
-    --primary: #b91c1c;
-    --bg-soft: #f9fafb;
+    --primary: #1e3a8a;
+    --primary-light: #3b82f6;
+    --primary-dark: #172554;
+    --accent-gold: #d97706;
+    --bg-soft: #ffffff;
   }
 
 body {
   @apply text-gray-900 font-body antialiased select-none;
   font-weight: 400;
   line-height: 1.6;
-  background: linear-gradient(
-    165deg,
-    #f8f6f3 0%,
-    #f3f1ee 40%,
-    #faf9f7 70%,
-    #f0eeeb 100%
-  );
+  background: #ffffff;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -231,7 +228,7 @@ body::before {
   position: absolute;
   top: 0.625rem;
   right: 0.625rem;
-  background: #b91c1c;
+  background: var(--primary);
   color: #fff;
   font-size: 0.625rem;
   font-weight: 900;
@@ -417,7 +414,7 @@ body::before {
   right: -2px;
   top: 50%;
   height: 2px;
-  background: #ef4444;
+  background: var(--primary-light);
   transform: rotate(-8deg);
 }
 
@@ -968,20 +965,20 @@ body.offer-viewer-open {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
   color: #fff;
   font-size: 0.8125rem;
   font-weight: 900;
   padding: 0.75rem 1.25rem;
   border-radius: 9999px;
-  box-shadow: 0 8px 24px rgba(185, 28, 28, 0.45);
+  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.35);
   white-space: nowrap;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .offer-reel-slide__order-btn:hover {
   transform: scale(1.04);
-  box-shadow: 0 12px 32px rgba(185, 28, 28, 0.6);
+  box-shadow: 0 12px 32px rgba(30, 58, 138, 0.45);
 }
 
 .offer-reel-slide__order-btn:disabled {
@@ -990,7 +987,7 @@ body.offer-viewer-open {
 
 .offer-reel-slide__discount-badge {
   display: inline-block;
-  background: #b91c1c;
+  background: var(--primary);
   color: #fff;
   font-size: 0.6875rem;
   font-weight: 900;
@@ -1126,7 +1123,7 @@ body.offer-viewer-open {
   right: -2px;
   top: 50%;
   height: 2px;
-  background: #ef4444;
+  background: var(--primary-light);
   transform: rotate(-8deg);
 }
 
@@ -1264,25 +1261,45 @@ body.offer-viewer-open {
 
 /* Compact rewards badge in header */
 .home-rewards-badge {
-  max-height: 2.75rem;
+  max-height: 3.35rem;
+  box-shadow:
+    0 4px 14px -4px rgba(30, 58, 138, 0.18),
+    0 2px 6px rgba(251, 191, 36, 0.12);
 }
 
 @media (max-width: 639px) {
   .home-rewards-badge {
-    max-height: 2.35rem;
+    max-height: 2.95rem;
   }
 }
 
 .home-rewards-badge__gradient {
   background: linear-gradient(
-    135deg,
-    #fecdd3 0%,
-    #bfdbfe 38%,
-    #bbf7d0 72%,
-    #fecdd3 100%
+    145deg,
+    #fef9c3 0%,
+    #fde68a 18%,
+    #e9d5ff 42%,
+    #bae6fd 72%,
+    #bbf7d0 100%
   );
-  background-size: 200% 200%;
-  animation: homeRewardsWavy 8s ease-in-out infinite;
+  background-size: 220% 220%;
+  animation: homeRewardsWavy 10s ease-in-out infinite;
+}
+
+.home-rewards-badge__glow {
+  filter: blur(2px);
+}
+
+.home-rewards-badge__glow--gold {
+  background: rgba(251, 191, 36, 0.28);
+}
+
+.home-rewards-badge__glow--sky {
+  background: rgba(125, 211, 252, 0.32);
+}
+
+.home-rewards-badge__glow--mint {
+  background: rgba(110, 231, 183, 0.22);
 }
 
 @keyframes homeRewardsWavy {
@@ -1350,7 +1367,7 @@ body.offer-viewer-open {
 }
 
 .home-hero__cta {
-  background: linear-gradient(135deg, var(--color-primary, #dc2626) 0%, #9333ea 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #2563eb 55%, var(--accent-gold) 100%);
 }
 
 .home-hero__actions {
@@ -1762,7 +1779,7 @@ body.offer-viewer-open {
 .direct-order-modal__unit-price {
   font-size: 1.125rem;
   font-weight: 900;
-  color: #b91c1c;
+  color: var(--primary);
   margin-top: 0.375rem;
 }
 
@@ -1855,7 +1872,7 @@ body.offer-viewer-open {
 .direct-order-modal__total-value {
   font-size: 1.375rem;
   font-weight: 900;
-  color: #b91c1c;
+  color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1873,7 +1890,7 @@ body.offer-viewer-open {
   gap: 0.5rem;
   padding: 0.875rem;
   border-radius: 1rem;
-  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
   color: #fff;
   font-size: 0.9375rem;
   font-weight: 900;
@@ -2367,8 +2384,8 @@ body.offer-viewer-open {
 
 .pwa-install-card__btn--primary {
   color: #fff;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.28);
+  background: linear-gradient(135deg, var(--primary), #2563eb);
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.22);
 }
 
 .pwa-install-card__btn:disabled {
@@ -2441,10 +2458,10 @@ body.offer-viewer-open {
   height: 3.1rem;
   border-radius: 0.85rem;
   background: #fff;
-  border: 2px solid #dc2626;
+  border: 2px solid var(--primary);
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.18);
+  box-shadow: 0 8px 18px rgba(30, 58, 138, 0.14);
 }
 
 .pwa-tutorial-illustration__app-icon img {

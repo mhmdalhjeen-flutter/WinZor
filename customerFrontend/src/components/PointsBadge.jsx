@@ -33,7 +33,7 @@ function useAnimatedCounter(target, duration = 650) {
 }
 
 /**
- * Header rewards badge — soft wavy gradient, «تسوق واربح» + points (matches Flutter).
+ * Header rewards badge — points box first, then «تسوق واربح».
  */
 export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const displayPoints = useAnimatedCounter(points);
@@ -46,40 +46,41 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       onClick={onClick}
       id="points-header-anchor"
       data-onboarding="points"
-      aria-label={`تسوق واربح ${displayPoints.toLocaleString('en-US')} نقطة`}
-      className={`flex items-center gap-2 sm:gap-2.5 min-w-0 max-w-[58%] sm:max-w-none active:scale-95 transition-transform ${
+      aria-label={`${displayPoints.toLocaleString('en-US')} نقطة — تسوق واربح`}
+      className={`flex items-center gap-2.5 sm:gap-3 min-w-0 max-w-[68%] sm:max-w-none active:scale-95 transition-transform ${
         isUp || isDown ? 'animate-pulse' : ''
       }`}
+      dir="rtl"
     >
-      <span className="text-[11px] sm:text-xs font-black text-gray-900 tracking-tight whitespace-nowrap shrink-0">
-        تسوق واربح
-      </span>
-
       <span
-        className={`relative flex items-center justify-center min-w-[3.25rem] sm:min-w-[3.75rem] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl overflow-hidden border border-white/55 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem] shrink-0 ${
+        className={`relative flex items-center justify-center min-w-[4.25rem] sm:min-w-[5rem] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl overflow-hidden border border-white/80 shadow-md home-rewards-badge shrink-0 ${
           isUp || isDown ? 'animate-pulse' : ''
         }`}
       >
         <span className="pointer-events-none absolute inset-0 home-rewards-badge__gradient" aria-hidden />
         <span
-          className="pointer-events-none absolute -left-2 -bottom-2.5 w-10 h-7 rounded-full bg-red-400/20 blur-[1px]"
+          className="pointer-events-none absolute -left-3 -bottom-3 w-12 h-9 rounded-full home-rewards-badge__glow home-rewards-badge__glow--gold"
           aria-hidden
         />
         <span
-          className="pointer-events-none absolute -right-1.5 -top-2 w-9 h-6 rounded-full bg-blue-400/20 blur-[1px]"
+          className="pointer-events-none absolute -right-2 -top-2.5 w-10 h-8 rounded-full home-rewards-badge__glow home-rewards-badge__glow--sky"
           aria-hidden
         />
         <span
-          className="pointer-events-none absolute right-3 -bottom-1.5 w-7 h-5 rounded-full bg-green-400/15 blur-[1px]"
+          className="pointer-events-none absolute right-4 -bottom-2 w-8 h-6 rounded-full home-rewards-badge__glow home-rewards-badge__glow--mint"
           aria-hidden
         />
         <span
-          className={`relative text-[14px] sm:text-[16px] font-black tabular-nums tracking-tight leading-none ${
-            isDown ? 'text-red-700' : 'text-gray-900'
+          className={`relative text-[17px] sm:text-[19px] font-black tabular-nums tracking-tight leading-none ${
+            isDown ? 'text-rose-700' : 'text-[#1e3a8a]'
           }`}
         >
           {displayPoints.toLocaleString('en-US')}
         </span>
+      </span>
+
+      <span className="text-[12px] sm:text-[13px] font-black text-gray-900 tracking-tight whitespace-nowrap shrink-0">
+        تسوق واربح
       </span>
     </button>
   );

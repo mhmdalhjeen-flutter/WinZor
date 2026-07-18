@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Store, Gift, ShoppingBag } from 'lucide-react';
+import { Home, Store, ShoppingBag } from 'lucide-react';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 
 function RewardsNavIcon({ size = 24, active = false }) {
@@ -26,13 +26,13 @@ function RewardsNavIcon({ size = 24, active = false }) {
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      <circle cx="8.25" cy="17.75" r="1.15" fill={active ? '#ef4444' : '#94a3b8'} />
+      <circle cx="8.25" cy="17.75" r="1.15" fill={active ? '#d97706' : '#94a3b8'} />
       <circle cx="15.75" cy="17.75" r="1.15" fill={active ? '#3b82f6' : '#94a3b8'} />
       <defs>
         <linearGradient id="rewardsNavBg" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#7c3aed" />
-          <stop offset="0.55" stopColor="#dc2626" />
-          <stop offset="1" stopColor="#f59e0b" />
+          <stop stopColor="#1e3a8a" />
+          <stop offset="0.55" stopColor="#2563eb" />
+          <stop offset="1" stopColor="#d97706" />
         </linearGradient>
       </defs>
     </svg>
@@ -47,7 +47,6 @@ const BottomNav = () => {
     { to: '/', icon: Home, label: 'الرئيسية', show: true, onboardingId: null },
     { to: '/explore', icon: Store, label: 'المتاجر', show: true, onboardingId: null },
     { to: '/marketplace', icon: ShoppingBag, label: 'السوق المفتوح', show: features.marketplace !== false, onboardingId: 'marketplace-nav' },
-    { to: '/draws', icon: Gift, label: 'الجوائز', show: features.draws !== false, onboardingId: null },
     { to: '/center', label: 'نقاطي', customIcon: 'rewards', show: true, onboardingId: 'profile-nav' },
   ].filter((item) => item.show);
 

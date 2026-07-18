@@ -8,7 +8,7 @@ import {
   DEFAULT_STORES_BROWSE_KEY,
 } from '../lib/cacheConfig';
 import { warmOfferReelImages, warmStoreBrowseImages } from '../utils/cacheImages';
-import { BRAND_LOGO_256 } from '../utils/brandAssets';
+import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 
 const SPLASH_DONE_KEY = 'app-startup-splash-done';
 const MIN_VISIBLE_MS = 5000;
@@ -140,7 +140,7 @@ export default function StartupSplashGate({ active, children }) {
       {children}
       {visible && (
         <div
-          className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#f7f5f2] transition-opacity duration-[420ms] ease-out ${
+          className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white transition-opacity duration-[420ms] ease-out ${
             fading ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
           dir="rtl"
@@ -164,7 +164,7 @@ export default function StartupSplashGate({ active, children }) {
             </div>
 
             <h1 className="text-[28px] font-black tracking-wide text-gray-900 leading-tight">
-              Shop &amp; Win
+              {BRAND_NAME}
             </h1>
 
             <div className="mt-5 h-12 flex items-center justify-center">

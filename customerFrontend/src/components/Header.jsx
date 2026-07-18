@@ -11,7 +11,7 @@ import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
-import { BRAND_LOGO_64 } from '../utils/brandAssets';
+import { BRAND_LOGO_64, BRAND_NAME } from '../utils/brandAssets';
 import { usePwaInstall } from '../context/PwaInstallContext';
 
 const PointsBalanceModal = lazy(() => import('./PointsBalanceModal'));
@@ -304,7 +304,7 @@ const Header = () => {
                 fetchpriority="high"
                 decoding="async"
               />
-              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">Win GoldenStore</span>
+              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">{BRAND_NAME}</span>
             </button>
           )}
 

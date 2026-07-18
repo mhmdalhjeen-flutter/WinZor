@@ -8,17 +8,12 @@ import { queryClient, queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import HomeHero from '../components/home/HomeHero';
 import ProgressiveCategoryReels from '../components/home/ProgressiveCategoryReels';
-import DeferredMount from '../components/DeferredMount';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useRegionTree } from '../hooks/useRegionTree';
-import { usePointsLeaderboard } from '../hooks/usePointsLeaderboard';
-import { useAuth } from '../context/AuthContext';
 import { normalizeCategoryReels, buildCategoryMaps } from '../utils/categoryDisplay';
-import '../styles/pointsBalance.css';
 
 const FeaturedCompetitions = lazy(() => import('../components/home/FeaturedCompetitions'));
 const HomeSearchCards = lazy(() => import('../components/home/HomeSearchCards'));
-const PointsLeaderboardSection = lazy(() => import('../components/points/PointsLeaderboardSection'));
 
 async function fetchFavoritesPayload() {
   const { data } = await api.get('/activity/favorites');
@@ -29,25 +24,10 @@ async function fetchFavoritesPayload() {
 }
 
 const Home = () => {
-  const { user } = useAuth();
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
   const [deferSecondary, setDeferSecondary] = useState(false);
-
-  const currentUserId = user?._id || user?.id;
-  const {
-    data: leaderboard,
-    isLoading: lbLoading,
-    isError: lbError,
-  } = usePointsLeaderboard(deferSecondary, currentUserId);
-
-  const currentUser = leaderboard?.me || (user ? {
-    id: currentUserId,
-    name: user.name,
-    avatar: user.avatar,
-    points: user.points ?? 0,
-  } : null);
 
   // Let first paint + LCP image compete without search/categories network contention
   useEffect(() => {
@@ -180,12 +160,24 @@ const Home = () => {
     <div className="max-w-6xl mx-auto px-1.5 sm:px-2 h-14 rounded-2xl bg-white/70 border border-gray-100 animate-pulse" />
   );
 
+  const competitionsPlaceholder = (
+    <div className="max-w-6xl mx-auto px-1.5 sm:px-2 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+      <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
+    </div>
+  );
+
   return (
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0 home-premium-bg" aria-hidden />
 
       <div className="relative z-10 space-y-4 sm:space-y-5 pb-20">
         <HomeHero />
+
+        {/* Competitions — directly below hero */}
+        <Suspense fallback={competitionsPlaceholder}>
+          <FeaturedCompetitions />
+        </Suspense>
 
         {/* الفلترة و البحث */}
         <Suspense fallback={searchPlaceholder}>
@@ -208,22 +200,6 @@ const Home = () => {
             searchPlaceholder
           )}
         </Suspense>
-
-        {/* Leaderboard / Ranking */}
-        <DeferredMount rootMargin="40px" placeholder={null}>
-          <div className="max-w-6xl mx-auto px-1.5 sm:px-2">
-            <Suspense fallback={null}>
-              <PointsLeaderboardSection
-                top={leaderboard?.top || []}
-                myRank={leaderboard?.myRank}
-                currentUser={currentUser}
-                currentUserId={currentUserId}
-                isLoading={lbLoading}
-                isError={lbError}
-              />
-            </Suspense>
-          </div>
-        </DeferredMount>
 
         {/* Offers */}
         <div id="home-offers" data-onboarding="home" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
@@ -260,13 +236,6 @@ const Home = () => {
             </div>
           )}
         </div>
-
-        {/* Competitions — below fold, mount when near viewport */}
-        <DeferredMount rootMargin="40px" placeholder={null}>
-          <Suspense fallback={null}>
-            <FeaturedCompetitions />
-          </Suspense>
-        </DeferredMount>
       </div>
     </div>
   );

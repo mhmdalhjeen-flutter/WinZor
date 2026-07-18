@@ -20,8 +20,8 @@ export default defineConfig({
       includeAssets: ['brand/**/*', 'fonts/**/*', 'favicon.svg'],
       manifest: {
         id: '/',
-        name: 'عروض تك | لوحة المحل والمورد',
-        short_name: 'لوحة المحل',
+        name: 'Win Gold | لوحة المحل والمورد',
+        short_name: 'Win Gold',
         description: 'إدارة المنتجات والعروض والطلبيات لأصحاب المتاجر والموردين.',
         theme_color: '#2563eb',
         background_color: '#f1f5f9',

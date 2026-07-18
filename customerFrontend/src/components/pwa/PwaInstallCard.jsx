@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Download, Smartphone, X, Zap, Clock, HardDrive, Wifi } from 'lucide-react';
-import { BRAND_LOGO_128 } from '../../utils/brandAssets';
+import { BRAND_LOGO_128, BRAND_NAME } from '../../utils/brandAssets';
 
 const BENEFITS = [
   { icon: Clock, text: 'يثبت خلال ثوانٍ.' },
@@ -30,7 +30,7 @@ export default function PwaInstallCard({ installing, onInstall, onLater, onClose
             <div className="pwa-install-card__phone-notch" />
             <div className="pwa-install-card__phone-screen">
               <img src={BRAND_LOGO_128} alt="" width={56} height={56} className="pwa-install-card__logo" />
-              <span className="pwa-install-card__phone-label">عروض تك</span>
+              <span className="pwa-install-card__phone-label">{BRAND_NAME}</span>
             </div>
           </div>
           <span className="pwa-install-card__badge">
@@ -40,7 +40,7 @@ export default function PwaInstallCard({ installing, onInstall, onLater, onClose
         </div>
 
         <h2 id="pwa-install-heading" className="pwa-install-card__title">
-          ثبت عروض تك على جهازك
+          ثبت {BRAND_NAME} على جهازك
         </h2>
         <p className="pwa-install-card__desc">استمتع بتجربة أسرع مثل التطبيقات.</p>
 

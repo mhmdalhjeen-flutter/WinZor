@@ -11,7 +11,7 @@ import { useSocialAuth } from '../hooks/useSocialAuth';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import api from '../api/axios';
-import { BRAND_LOGO_256 } from '../utils/brandAssets';
+import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import {
   getReferralCode,
@@ -333,7 +333,7 @@ const Register = () => {
             />
             <img
               src={BRAND_LOGO_256}
-              alt="WinGoldenStore"
+              alt={BRAND_NAME}
               className="relative z-[1] h-[7.5rem] w-[7.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[9rem] sm:w-[9rem]"
               width={144}
               height={144}

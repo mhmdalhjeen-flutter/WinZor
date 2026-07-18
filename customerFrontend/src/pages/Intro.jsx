@@ -13,7 +13,7 @@ import {
   loginPathWithRef,
   registerPathWithRef,
 } from '../utils/referralStorage';
-import { BRAND_LOGO_256 } from '../utils/brandAssets';
+import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 
 const HorizontalSwipe = lazy(() => import('../components/ui/HorizontalSwipe'));
@@ -45,7 +45,7 @@ const IntroHeroLogo = () => (
       />
       <img
         src={BRAND_LOGO_256}
-        alt="WinGoldenStore"
+        alt={BRAND_NAME}
         className="relative z-[1] h-[8.5rem] w-[8.5rem] object-contain drop-shadow-[0_18px_40px_rgba(15,23,42,0.14)] sm:h-[10.5rem] sm:w-[10.5rem] md:h-[12rem] md:w-[12rem]"
         width={192}
         height={192}
@@ -227,7 +227,7 @@ const Intro = () => {
       <div className="relative z-20 flex items-center justify-between px-4 pt-5 sm:px-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 shadow-sm backdrop-blur-md">
           <Sparkles size={14} className="text-amber-500" />
-          <span className="text-[11px] font-black text-gray-800">Win GoldenStore</span>
+          <span className="text-[11px] font-black text-gray-800">{BRAND_NAME}</span>
         </div>
         <button
           type="button"

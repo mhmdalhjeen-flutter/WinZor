@@ -3,7 +3,8 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../styles/dashboard.css";
 import useDashboardBadges from "../hooks/useDashboardBadges";
 import useStoreOwnerPermissions from "../hooks/useStoreOwnerPermissions";
-import DashboardHeaderActions, { SidebarBadge } from "../components/DashboardHeaderActions";
+import DashboardHeaderActions, { SidebarBadge, BottomNavBadge } from "../components/DashboardHeaderActions";
+import { BRAND_LOGO_64, BRAND_NAME, BRAND_TAGLINE } from "../utils/brandAssets";
 import StoreWelcomeModal from "../components/StoreWelcomeModal";
 import { getMyStore } from "../services/store.service";
 import { getStoredUser } from "../utils/safeStorage";
@@ -134,7 +135,13 @@ export default function DashboardLayout() {
       )}
 
       <aside className={`sidebar${menuOpen ? " open" : ""}`}>
-        <h2 className="logo">{isSupplier ? "لوحة التاجر" : "لوحة المحل"}</h2>
+        <div className="sidebar-brand">
+          <img src={BRAND_LOGO_64} alt={BRAND_NAME} width={48} height={48} className="sidebar-brand__logo" />
+          <div>
+            <h2 className="logo">{BRAND_NAME}</h2>
+            <p className="sidebar-brand__tagline">{isSupplier ? "لوحة التاجر" : BRAND_TAGLINE}</p>
+          </div>
+        </div>
         <nav>{renderNavLinks()}</nav>
       </aside>
 
@@ -178,10 +185,12 @@ export default function DashboardLayout() {
         <NavLink to={`${baseRoute}/orders`}>
           <span className="nav-icon">📋</span>
           <span className="nav-label">الطلبيات</span>
+          <BottomNavBadge count={badges.orders} />
         </NavLink>
         <NavLink to={`${baseRoute}/chats`}>
           <span className="nav-icon">💬</span>
           <span className="nav-label">الدردشات</span>
+          <BottomNavBadge count={badges.chats} />
         </NavLink>
         <button type="button" onClick={() => setMenuOpen(true)}>
           <span className="nav-icon">☰</span>

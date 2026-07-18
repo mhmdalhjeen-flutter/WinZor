@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Share2, Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
+import { BRAND_NAME } from '../utils/brandAssets';
 
 const ReferralCardsModal = ({ open, onClose }) => {
   const { user } = useAuth();
@@ -18,7 +19,7 @@ const ReferralCardsModal = ({ open, onClose }) => {
   const share = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Win GoldenStore', text: 'انضم عبر رابطي واحصل على مزايا!', url: link });
+        await navigator.share({ title: BRAND_NAME, text: 'انضم عبر رابطي واحصل على مزايا!', url: link });
       } catch { /* cancelled */ }
     } else {
       copy();

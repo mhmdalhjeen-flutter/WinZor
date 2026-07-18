@@ -1,4 +1,4 @@
-import React from 'react';
+import { BRAND_NAME } from '../utils/brandAssets';
 import { Outlet } from 'react-router-dom';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
@@ -29,7 +29,7 @@ const AdminLayout = () => {
                 <div className="max-w-[1550px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex flex-col items-center md:items-start">
                         <p className="text-[11px] font-black tracking-[4px] text-primary uppercase mb-1">Command Center</p>
-                        <p className="text-muted text-[11px] font-bold">© {new Date().getFullYear()} عروض تك | v6.0.1</p>
+                        <p className="text-muted text-[11px] font-bold">© {new Date().getFullYear()} {BRAND_NAME} | v6.0.1</p>
                     </div>
                     
                     <div className="flex gap-8 text-[11px] font-black uppercase tracking-widest text-muted">

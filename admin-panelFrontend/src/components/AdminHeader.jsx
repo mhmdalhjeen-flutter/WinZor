@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    Bell,
     User,
     Search,
     LayoutDashboard,
@@ -11,10 +10,11 @@ import {
     Activity,
     ShieldCheck,
     Users,
-    MessageCircle,
 } from 'lucide-react';
 import useAdminChatUnread from '../hooks/useAdminChatUnread';
 import { adminLogout } from '../utils/adminLogout';
+import AdminHeaderAlerts from './AdminHeaderAlerts';
+import { BRAND_LOGO_64, BRAND_NAME, BRAND_TAGLINE } from '../utils/brandAssets';
 
 import '../style/adminHeader.css';
 
@@ -45,17 +45,12 @@ const AdminHeader = () => {
                 {/* الشعار */}
                 <div className="brand-section">
                     <div className="brand-logo">
-                        <ShieldCheck size={28} />
+                        <img src={BRAND_LOGO_64} alt={BRAND_NAME} width={45} height={45} />
                     </div>
 
                     <div className="brand-texts">
-                        <h1 className="brand-title">
-                            عروض<span className="brand-highlight">تك</span>
-                        </h1>
-
-                        <p className="brand-subtitle">
-                            Central Admin
-                        </p>
+                        <h1 className="brand-title">{BRAND_NAME}</h1>
+                        <p className="brand-subtitle">{BRAND_TAGLINE}</p>
                     </div>
                 </div>
 
@@ -89,30 +84,7 @@ const AdminHeader = () => {
                         />
                     </div>
 
-                    {/* التواصل / الدردشة */}
-                    <NavLink
-                        to="/chats"
-                        className={({ isActive }) =>
-                            `action-btn chat-header-btn ${isActive ? 'is-active' : ''}`
-                        }
-                        title="مركز التواصل"
-                    >
-                        <MessageCircle size={20} />
-                        {chatUnread > 0 && (
-                            <span className="notification-badge">
-                                {chatUnread > 99 ? '99+' : chatUnread}
-                            </span>
-                        )}
-                    </NavLink>
-
-                    {/* الإشعارات */}
-                    <button className="action-btn notification-btn">
-                        <Bell size={20} />
-
-                        {hasAlerts && (
-                            <span className="notification-badge"></span>
-                        )}
-                    </button>
+                    <AdminHeaderAlerts chatUnread={chatUnread} hasAlerts={hasAlerts} />
 
                     {/* الحساب */}
                     <div className="profile-card">

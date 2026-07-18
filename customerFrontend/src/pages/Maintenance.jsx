@@ -1,4 +1,5 @@
 import { Wrench, Sparkles } from 'lucide-react';
+import { BRAND_NAME } from '../utils/brandAssets';
 import '../styles/Maintenance.css';
 
 export default function Maintenance({ message }) {
@@ -14,7 +15,7 @@ export default function Maintenance({ message }) {
 
         <div className="maintenance-badge">
           <Sparkles size={14} />
-          <span>Win GoldenStore</span>
+          <span>{BRAND_NAME}</span>
         </div>
 
         <h1>الموقع تحت الصيانة حالياً</h1>

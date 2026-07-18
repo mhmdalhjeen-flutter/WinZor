@@ -20,9 +20,9 @@ export default defineConfig({
       includeAssets: ['brand/**/*', 'fonts/**/*'],
       manifest: {
         id: '/',
-        name: 'عروض تك | لوحة الأدمن',
-        short_name: 'أدمن',
-        description: 'لوحة التحكم الإدارية لمنصة عروض تك.',
+        name: 'Win Gold | لوحة الأدمن',
+        short_name: 'Win Gold',
+        description: 'لوحة التحكم الإدارية لمنصة Win Gold.',
         theme_color: '#ef4444',
         background_color: '#0f172a',
         display: 'standalone',

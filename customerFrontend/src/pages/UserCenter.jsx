@@ -28,6 +28,7 @@ import { uploadImage } from '../utils/imageUpload';
 import { resolveImageUrl } from '../utils/mediaUrl';
 import { resetAllOnboardingTours, ONBOARDING_RESET_EVENT } from '../utils/onboardingTour';
 import api from '../api/axios';
+import { BRAND_NAME } from '../utils/brandAssets';
 
 function useAnimatedCounter(target, duration = 700) {
   const [display, setDisplay] = useState(target);
@@ -978,7 +979,7 @@ const UserCenter = () => {
               </div>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{legal[legalTab] || '—'}</p>
               <p className="mt-4 text-xs text-amber-700 bg-amber-50 p-3 rounded-xl font-bold leading-relaxed">
-                Win GoldenStore منصة تسويقية تربط العملاء بالمتاجر. الجوائز والمكافآت تُقدَّم ضمن البلد فقط ولا تُرسل خارج البلد.
+                {BRAND_NAME} منصة تسويقية تربط العملاء بالمتاجر. الجوائز والمكافآت تُقدَّم ضمن البلد فقط ولا تُرسل خارج البلد.
               </p>
             </div>
           </motion.div>

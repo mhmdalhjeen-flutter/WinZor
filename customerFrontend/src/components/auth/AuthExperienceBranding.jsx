@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BRAND_LOGO_128 } from '../../utils/brandAssets';
+import { BRAND_LOGO_128, BRAND_NAME } from '../../utils/brandAssets';
 
 const AuthExperienceBranding = ({ size = 'default', className = '' }) => {
   const isLarge = size === 'large';
@@ -34,7 +34,7 @@ const AuthExperienceBranding = ({ size = 'default', className = '' }) => {
           isLarge ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'
         }`}
       >
-        WinGoldenStore
+        {BRAND_NAME}
       </p>
     </motion.div>
   );

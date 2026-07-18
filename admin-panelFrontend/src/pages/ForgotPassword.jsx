@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Mail, ShieldCheck, Loader2, KeyRound } from 'lucide-react';
+import { Lock, Mail, Loader2, KeyRound } from 'lucide-react';
+import { BRAND_LOGO_128, BRAND_NAME } from '../utils/brandAssets';
 import { requestPasswordReset, resetPassword, validatePasswordReset } from '../services/passwordService';
 import '../style/login.css';
 
@@ -63,9 +64,13 @@ const ForgotPassword = () => {
       <div className="login-card">
         <div className="login-logo">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-              <ShieldCheck size={32} color="white" />
-            </div>
+            <img
+              src={BRAND_LOGO_128}
+              alt={BRAND_NAME}
+              width={80}
+              height={80}
+              className="w-20 h-20 rounded-2xl object-contain shadow-lg"
+            />
           </div>
           <h2>استعادة كلمة المرور</h2>
           <p className="text-muted text-sm mt-2">لوحة التحكم الإدارية</p>

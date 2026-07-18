@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { X, Ticket, ShoppingBag, Store, Medal } from 'lucide-react';
-import { BRAND_LOGO_64 } from '../../utils/brandAssets';
+import { BRAND_LOGO_64, BRAND_NAME } from '../../utils/brandAssets';
 
 const SHORTCUTS = [
   { icon: Ticket, label: 'إدخال الكود', color: '#1e3a8a' },
@@ -50,7 +50,7 @@ export default function PwaShortcutsTutorial({ onClose }) {
 
         <h2 id="pwa-tutorial-title" className="pwa-tutorial-card__title">هل تعلم؟</h2>
         <p className="pwa-tutorial-card__body">
-          يمكنك الضغط مطولًا على أيقونة عروض تك للوصول السريع إلى:
+          يمكنك الضغط مطولًا على أيقونة {BRAND_NAME} للوصول السريع إلى:
         </p>
         <ul className="pwa-tutorial-list">
           {SHORTCUTS.map(({ label }) => (

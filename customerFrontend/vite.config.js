@@ -17,8 +17,8 @@ export default defineConfig({
       ],
       manifest: {
         id: '/',
-        name: 'WinZor | عروض، نقاط وجوائز',
-        short_name: 'عروض تك',
+        name: 'Win Gold | عروض، نقاط وجوائز',
+        short_name: 'Win Gold',
         description:
           'تسوّق من متاجر موثوقة، اجمع نقاطاً، شارك في المسابقات واكتشف عروض يومية وجوائز حقيقية.',
         theme_color: '#ffffff',

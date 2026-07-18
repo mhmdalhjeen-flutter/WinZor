@@ -258,7 +258,8 @@ class ExplorePage extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            height: 240,
+            // Match larger StoreCard (220×132 logo + body)
+            height: 320,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),

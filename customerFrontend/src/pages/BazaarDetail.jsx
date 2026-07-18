@@ -16,6 +16,7 @@ import PhoneDisplay from '../components/PhoneDisplay';
 import { getPhoneCarrier } from '../utils/phoneValidation';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { recordRecentlyViewed } from '../utils/recentlyViewed';
 
 const BazaarDetail = () => {
   const { id } = useParams();
@@ -43,6 +44,18 @@ const BazaarDetail = () => {
       setActiveImage(listing.mainImageIndex);
     }
   }, [listing?._id, listing?.mainImageIndex]);
+
+  React.useEffect(() => {
+    if (!listing?._id) return;
+    const thumb = listing.mainImage || listing.images?.[0] || '';
+    recordRecentlyViewed({
+      type: 'bazaar',
+      id: listing._id,
+      title: listing.title,
+      image: thumb,
+      price: formatListingPrice(listing),
+    });
+  }, [listing?._id, listing?.title, listing?.mainImage, listing?.images]);
 
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر التحميل' : '');
 

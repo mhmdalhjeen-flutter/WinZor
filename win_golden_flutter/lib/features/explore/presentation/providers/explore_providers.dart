@@ -13,6 +13,7 @@ final exploreCategoryPathProvider = StateProvider<List<String>>((ref) => []);
 final exploreSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final storeBrowseProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  ref.keepAlive();
   final repo = ref.watch(exploreRepositoryProvider);
   final regionPath = ref.watch(exploreRegionPathProvider);
   final categoryPath = ref.watch(exploreCategoryPathProvider);
@@ -25,6 +26,9 @@ final storeBrowseProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     query: query,
     regionId: regionId,
     categoryId: categoryId,
+    onBackgroundRefresh: (_) {
+      ref.invalidateSelf();
+    },
   );
 });
 

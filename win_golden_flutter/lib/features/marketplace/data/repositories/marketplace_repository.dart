@@ -19,9 +19,7 @@ class MarketplaceRepository {
 
     final response = await _apiClient.dio.get('/bazaar', queryParameters: params);
     final List<dynamic> data = response.data['listings'] ?? [];
-    return data
-        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
-        .toList();
+    return data.map(_tryParseListing).whereType<BazaarListingModel>().toList();
   }
 
   Future<BazaarListingModel> getListing(String id) async {
@@ -34,17 +32,22 @@ class MarketplaceRepository {
   Future<List<BazaarListingModel>> getMyListings() async {
     final response = await _apiClient.dio.get('/bazaar/my');
     final List<dynamic> data = response.data['listings'] ?? [];
-    return data
-        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
-        .toList();
+    return data.map(_tryParseListing).whereType<BazaarListingModel>().toList();
   }
 
   Future<List<BazaarListingModel>> getFavoriteListings() async {
     final response = await _apiClient.dio.get('/bazaar/favorites');
     final List<dynamic> data = response.data['listings'] ?? [];
-    return data
-        .map((json) => BazaarListingModel.fromJson(Map<String, dynamic>.from(json as Map)))
-        .toList();
+    return data.map(_tryParseListing).whereType<BazaarListingModel>().toList();
+  }
+
+  BazaarListingModel? _tryParseListing(dynamic json) {
+    try {
+      if (json is! Map) return null;
+      return BazaarListingModel.fromJson(Map<String, dynamic>.from(json));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> getBazaarMeta() async {

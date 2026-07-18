@@ -12,6 +12,7 @@ import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { BRAND_LOGO_256 } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
+import { completePendingPwaAction } from '../pwa/pwaShortcutActions';
 import { registerPathWithRef, saveReferralCode } from '../utils/referralStorage';
 
 function LoginLightField({
@@ -72,6 +73,7 @@ const Login = () => {
   }, [searchParams]);
 
   const redirectByRole = useCallback((role) => {
+    if (completePendingPwaAction(navigate)) return;
     const routes = {
       admin: '/admin',
       store: '/store-dashboard',

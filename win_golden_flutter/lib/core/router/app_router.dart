@@ -11,6 +11,7 @@ import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/store_detail_page.dart';
 import '../../features/offers/presentation/pages/offer_detail_page.dart';
 import '../../features/offers/presentation/pages/offer_reel_page.dart';
+import '../../features/offers/models/reel_viewer_item.dart';
 import '../../features/marketplace/presentation/pages/marketplace_page.dart';
 import '../../features/marketplace/presentation/pages/bazaar_detail_page.dart';
 import '../../features/marketplace/presentation/pages/marketplace_publish_page.dart';
@@ -140,9 +141,12 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
-        final offers = extra?['offers'] as List<OfferModel>? ?? [];
+        final items = extra?['items'] as List<ReelViewerItem>?;
         final initialIndex = extra?['initialIndex'] as int? ?? 0;
-        return OfferReelPage(offers: offers, initialIndex: initialIndex);
+        if (items != null && items.isNotEmpty) {
+          return OfferReelPage(items: items, initialIndex: initialIndex);
+        }
+        return const OfferReelPage(items: [], initialIndex: 0);
       },
     ),
     GoRoute(

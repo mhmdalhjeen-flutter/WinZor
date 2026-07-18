@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../core/onboarding/onboarding_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/phone_validation.dart';
 import '../../../../core/widgets/app_image.dart';
@@ -191,6 +192,11 @@ class _UserCenterPageState extends ConsumerState<UserCenterPage> {
                       onSupport: () => _contactAdmin(),
                       onLegal: () => _openLegal(center.legal),
                       onPrefs: () => _openPrefs(center),
+                      onOnboardingReset: () async {
+                        await resetAllOnboardingTours(ref);
+                        if (!context.mounted) return;
+                        context.go('/');
+                      },
                     ),
                     const SizedBox(height: 12),
                     _ActionButton(
@@ -1610,12 +1616,14 @@ class _OptionsSection extends StatelessWidget {
   final VoidCallback onSupport;
   final VoidCallback onLegal;
   final VoidCallback onPrefs;
+  final VoidCallback onOnboardingReset;
 
   const _OptionsSection({
     required this.onSuggest,
     required this.onSupport,
     required this.onLegal,
     required this.onPrefs,
+    required this.onOnboardingReset,
   });
 
   @override
@@ -1625,6 +1633,7 @@ class _OptionsSection extends StatelessWidget {
       (LucideIcons.headphones, 'الدعم الفني', 'تواصل مع فريق المساعدة', onSupport, const Color(0xFF0EA5E9)),
       (LucideIcons.scrollText, 'الشروط والأحكام', 'الخصوصية وإخلاء المسؤولية', onLegal, const Color(0xFF64748B)),
       (LucideIcons.tags, 'تخصيص أفضل العروض', 'اضبط اهتماماتك وتفضيلاتك', onPrefs, const Color(0xFF8B5CF6)),
+      (LucideIcons.compass, 'جولة التعريف', 'إعادة عرض دليل استخدام التطبيق', onOnboardingReset, const Color(0xFF7C3AED)),
     ];
 
     return Column(

@@ -1,19 +1,42 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext';
 import { VerificationGateProvider } from './context/VerificationGateContext';
 import { ToastProvider } from './shared/Toast';
 import { queryClient } from './lib/queryClient';
+import { persistOptions } from './lib/queryPersister';
 import ErrorBoundary from './shared/ErrorBoundary';
 import './index.css';
+import { initPwaServiceWorker } from './pwa/registerServiceWorker';
+
+initPwaServiceWorker();
+
+onlineManager.setEventListener((setOnline) => {
+  const onOnline = () => setOnline(true);
+  const onOffline = () => setOnline(false);
+  window.addEventListener('online', onOnline);
+  window.addEventListener('offline', onOffline);
+  setOnline(navigator.onLine);
+  return () => {
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('offline', onOffline);
+  };
+});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+        onSuccess={() => {
+          queryClient.resumePausedMutations().catch(() => {});
+        }}
+      >
         <BrowserRouter
           future={{
             v7_startTransition: true,
@@ -28,7 +51,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             </VerificationGateProvider>
           </AuthProvider>
         </BrowserRouter>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

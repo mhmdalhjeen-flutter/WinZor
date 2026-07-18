@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../core/auth/google_auth_service.dart';
+import '../../../../core/config/app_auth_config.dart';
 import '../../../../core/theme/app_brand_assets.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_styles.dart';
+import '../../../../core/utils/auth_error_utils.dart';
 import '../../../../core/utils/phone_validation.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_repository_provider.dart';
@@ -251,8 +254,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Column(
       children: [
         if (_error != null) _buildErrorAlert(),
-        _buildGoogleButton(),
-        const SizedBox(height: 12),
+        if (AppAuthConfig.isGoogleAuthAvailable) ...[
+          _buildGoogleButton(),
+          const SizedBox(height: 12),
+        ],
         _buildPhoneToggleButton(),
         AnimatedSize(
           duration: const Duration(milliseconds: 400),
@@ -261,6 +266,41 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _handleGoogleRegister() async {
+    if (_loading || !AppAuthConfig.isGoogleAuthAvailable) return;
+    setState(() {
+      _error = null;
+      _loading = true;
+    });
+
+    try {
+      final idToken = await GoogleAuthService.signInForIdToken();
+      if (idToken == null) return;
+
+      final data = await ref.read(authRepositoryProvider).googleAuth(
+            credential: idToken,
+          );
+
+      if (data['token'] != null && data['user'] != null) {
+        await ref.read(authProvider.notifier).login(
+              Map<String, dynamic>.from(data['user'] as Map),
+              data['token'] as String,
+              refreshToken: data['refreshToken']?.toString(),
+            );
+        if (mounted) context.go('/');
+      } else {
+        setState(() => _error = 'استجابة غير صالحة من الخادم');
+      }
+    } catch (e) {
+      setState(() => _error = authErrorMessage(
+            e,
+            'تعذّر التسجيل عبر Google',
+          ));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Widget _buildVerifyStep() {
@@ -384,38 +424,35 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFDBEAFE), width: 2),
-              ),
+      child: ElevatedButton(
+        onPressed: _loading ? null : _handleGoogleRegister,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF1F2937),
+          disabledBackgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(21)),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          elevation: 0,
+          side: const BorderSide(color: Color(0xFFDBEAFE), width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_loading)
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Icon(LucideIcons.globe, size: 24, color: Color(0xFF4285F4)),
+            const SizedBox(width: 12),
+            const Text(
+              'المتابعة باستخدام Google',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () {}, 
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF1F2937),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(21)),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              elevation: 0,
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(LucideIcons.chrome, size: 24, color: Color(0xFF4285F4)),
-                SizedBox(width: 12),
-                Text(
-                  'المتابعة باستخدام Google',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

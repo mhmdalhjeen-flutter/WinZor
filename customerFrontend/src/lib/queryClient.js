@@ -3,9 +3,11 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000,       // بيانات طازجة لدقيقة
-      gcTime: 10 * 60 * 1000,   // تبقى في الذاكرة 10 دقائق
+      staleTime: 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      networkMode: 'offlineFirst',
       retry: 1,
     },
   },

@@ -17,8 +17,8 @@ class ApiClient {
   ApiClient()
       : _dio = Dio(BaseOptions(
           baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: const Duration(seconds: 60), // زيادة وقت الاتصال إلى 60 ثانية
+          receiveTimeout: const Duration(seconds: 60), // زيادة وقت الاستقبال إلى 60 ثانية
         )) {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -50,8 +50,8 @@ class ApiClient {
               // Bare client (no interceptors) — same as React using raw axios.post.
               final refreshDio = Dio(BaseOptions(
                 baseUrl: baseUrl,
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 15),
+                connectTimeout: const Duration(seconds: 60),
+                receiveTimeout: const Duration(seconds: 60),
               ));
               final refreshResponse = await refreshDio.post(
                 '/auth/refresh',
@@ -92,9 +92,15 @@ class ApiClient {
           final path = original.path;
           final onAuthEndpoint = path.contains('/auth/login') ||
               path.contains('/auth/refresh') ||
-              path.contains('/auth/register');
+              path.contains('/auth/register') ||
+              path.contains('/auth/google');
 
-          if (!onAuthEndpoint) {
+          // Only expire a real session. Guests hitting auth-only routes (e.g.
+          // /bazaar/my) must NOT be forced to /login — that caused tab crashes
+          // and repeated login attempts ("محاولات دخول كثيرة").
+          final hadToken = (await _storage.read(key: 'token')) != null;
+
+          if (!onAuthEndpoint && hadToken) {
             await _storage.delete(key: 'token');
             await _storage.delete(key: 'refreshToken');
             await _storage.delete(key: 'user');

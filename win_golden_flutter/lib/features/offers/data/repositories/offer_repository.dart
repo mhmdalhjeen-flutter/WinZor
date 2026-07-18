@@ -1,4 +1,7 @@
 import '../../../../core/api/api_client.dart';
+import '../../../../core/cache/cache_keys.dart';
+import '../../../../core/cache/cached_fetch.dart';
+import '../../../../core/cache/local_cache_service.dart';
 import '../../../home/data/models/offer_model.dart';
 
 class OfferRepository {
@@ -6,13 +9,25 @@ class OfferRepository {
 
   OfferRepository(this._apiClient);
 
-  Future<OfferModel> getOfferDetail(String id) async {
-    try {
-      final response = await _apiClient.dio.get('/offers/$id');
-      return OfferModel.fromJson(response.data['offer']);
-    } catch (e) {
-      rethrow;
-    }
+  Future<OfferModel> getOfferDetail(String id, {bool forceNetwork = false}) async {
+    final cacheKey = CacheKeys.offerDetail(id);
+    return CachedFetch.load<OfferModel>(
+      key: cacheKey,
+      forceNetwork: forceNetwork,
+      staleAfter: const Duration(minutes: 30),
+      network: () async {
+        final response = await _apiClient.dio.get('/offers/$id');
+        final offer = OfferModel.fromJson(response.data['offer']);
+        await LocalCacheService.rememberRecentOffer(offer.toJson());
+        return offer;
+      },
+      fromCache: (raw) {
+        final map = raw is Map ? Map<String, dynamic>.from(raw) : {'offer': raw};
+        final offerJson = map['offer'] ?? map;
+        return OfferModel.fromJson(Map<String, dynamic>.from(offerJson as Map));
+      },
+      toCache: (offer) => {'offer': offer.toJson()},
+    );
   }
 
   Future<String?> getStoreOwnerId(String id) async {

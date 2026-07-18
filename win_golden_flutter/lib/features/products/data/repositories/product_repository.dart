@@ -1,4 +1,7 @@
 import '../../../../core/api/api_client.dart';
+import '../../../../core/cache/cache_keys.dart';
+import '../../../../core/cache/cached_fetch.dart';
+import '../../../../core/cache/local_cache_service.dart';
 import '../models/product_model.dart';
 
 class ProductRepository {
@@ -6,17 +9,32 @@ class ProductRepository {
 
   ProductRepository(this._apiClient);
 
-  Future<ProductModel> getProduct(String id) async {
-    final response = await _apiClient.dio.get('/products/$id');
-    final data = response.data;
-    final product = data is Map ? data['product'] : null;
-    if (product is! Map) {
-      throw StateError('المنتج غير موجود');
-    }
-    return ProductModel.fromJson(Map<String, dynamic>.from(product));
+  Future<ProductModel> getProduct(String id, {bool forceNetwork = false}) async {
+    final cacheKey = CacheKeys.productDetail(id);
+    return CachedFetch.load<ProductModel>(
+      key: cacheKey,
+      forceNetwork: forceNetwork,
+      staleAfter: const Duration(minutes: 30),
+      network: () async {
+        final response = await _apiClient.dio.get('/products/$id');
+        final data = response.data;
+        final product = data is Map ? data['product'] : null;
+        if (product is! Map) {
+          throw StateError('المنتج غير موجود');
+        }
+        final model = ProductModel.fromJson(Map<String, dynamic>.from(product));
+        await LocalCacheService.rememberRecentProduct(model.toJson());
+        return model;
+      },
+      fromCache: (raw) {
+        final map = raw is Map ? Map<String, dynamic>.from(raw) : {'product': raw};
+        final productJson = map['product'] ?? map;
+        return ProductModel.fromJson(Map<String, dynamic>.from(productJson as Map));
+      },
+      toCache: (product) => {'product': product.toJson()},
+    );
   }
 
-  /// Fire-and-forget — matches React `logActivity('view_product', …)`.
   Future<void> logView(ProductModel product) async {
     try {
       await _apiClient.dio.post('/activity', data: {

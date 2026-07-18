@@ -15,6 +15,7 @@ import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveOfferImage, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 import { formatPrice } from '../utils/currency';
+import { recordRecentlyViewed } from '../utils/recentlyViewed';
 
 const badge = (offer) => {
   switch (offer?.offerType) {
@@ -62,6 +63,13 @@ const OfferDetail = () => {
         if (!mounted) return;
         setOffer(data.offer);
         recordOfferView(data.offer?._id);
+        recordRecentlyViewed({
+          type: 'offer',
+          id: data.offer?._id,
+          title: data.offer?.title || data.offer?.name,
+          image: resolveOfferImage(data.offer),
+          price: badge(data.offer),
+        });
         logActivity('open_offer', {
           targetType: 'Offer',
           targetId: data.offer?._id,

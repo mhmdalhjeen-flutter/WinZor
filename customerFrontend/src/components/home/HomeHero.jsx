@@ -78,7 +78,7 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
           <div className="relative z-10 home-hero__content py-3.5 sm:py-4 px-3 sm:px-4">
-            <div className="home-hero__brand" aria-label="WinGolden">
+            <div className="home-hero__brand" aria-label="Win GoldenStore">
               <span className="home-hero__brand-logo-wrap">
                 <img
                   src={BRAND_LOGO_128}
@@ -91,7 +91,6 @@ export default function HomeHero() {
                   decoding="async"
                 />
               </span>
-              <span className="home-hero__brand-name">WinGolden</span>
             </div>
 
             <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center mt-2.5">

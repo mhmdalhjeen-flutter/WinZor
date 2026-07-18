@@ -289,20 +289,33 @@ class AchievementMilestone {
 class PlatformSettings {
   final bool referralProgram;
   final bool storeCompetitions;
+  final bool marketplace;
+  /// Admin “الجوائز” / rewards module (`features.draws`).
+  final bool draws;
   final bool wheel;
+  final bool wheelHeaderPlacement;
   final bool wheelUserCenterPlacement;
+  final bool wheelInventoryPlacement;
   /// Raw `settings.verification` from `GET /settings/public`.
   final Map<String, dynamic>? verification;
 
   const PlatformSettings({
     this.referralProgram = true,
     this.storeCompetitions = true,
+    this.marketplace = true,
+    this.draws = true,
     this.wheel = true,
+    this.wheelHeaderPlacement = true,
     this.wheelUserCenterPlacement = true,
+    this.wheelInventoryPlacement = true,
     this.verification,
   });
 
   bool get showWheelBtn => wheel && wheelUserCenterPlacement;
+  bool get showWheelInHeader => wheel && wheelHeaderPlacement;
+  bool get showCompetitions => storeCompetitions;
+  bool get showMarketplace => marketplace;
+  bool get showRewards => draws;
 
   factory PlatformSettings.fromJson(Map<String, dynamic>? settings) {
     if (settings == null) return const PlatformSettings();
@@ -319,11 +332,17 @@ class PlatformSettings {
         ? Map<String, dynamic>.from(settings['verification'] as Map)
         : null;
 
+    final wheelEnabled = features['wheel'] != false && wheelCfg['enabled'] != false;
+
     return PlatformSettings(
       referralProgram: features['referralProgram'] != false,
       storeCompetitions: features['storeCompetitions'] != false,
-      wheel: features['wheel'] != false,
+      marketplace: features['marketplace'] != false,
+      draws: features['draws'] != false,
+      wheel: wheelEnabled,
+      wheelHeaderPlacement: placements['header'] != false,
       wheelUserCenterPlacement: placements['userCenter'] != false,
+      wheelInventoryPlacement: placements['inventory'] != false,
       verification: verification,
     );
   }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   Bell, MessageCircle, ShoppingCart, CircleDot, Medal,
-  BarChart3, Settings, LogOut, X,
+  BarChart3, Settings, LogOut, X, Heart, Store, Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { queryKeys } from '../lib/queryClient';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
 import { BRAND_LOGO_64 } from '../utils/brandAssets';
+import { usePwaInstall } from '../context/PwaInstallContext';
 
 const PointsBalanceModal = lazy(() => import('./PointsBalanceModal'));
 
@@ -30,12 +31,13 @@ const HEADER_ICON_THEMES = {
   },
 };
 
-const HeaderIconBtn = ({ icon: Icon, label, onClick, badge, theme }) => {
+const HeaderIconBtn = ({ icon: Icon, label, onClick, badge, theme, onboardingId }) => {
   const t = HEADER_ICON_THEMES[theme];
   return (
     <button
       type="button"
       onClick={onClick}
+      data-onboarding={onboardingId}
       className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl active:scale-95 transition-transform shrink-0"
       aria-label={label}
     >
@@ -55,6 +57,7 @@ const MoreMenuBtn = ({ onClick }) => (
   <button
     type="button"
     onClick={onClick}
+    data-onboarding="more"
     className="relative flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl active:scale-95 transition-transform shrink-0 bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200/70 shadow-sm"
     aria-label="المزيد"
   >
@@ -204,7 +207,16 @@ const Header = () => {
     };
   }, []);
 
+  const { canInstall, openInstallCard } = usePwaInstall();
+
   const moreItems = useMemo(() => [
+    {
+      icon: Heart,
+      label: 'المفضلة',
+      iconBg: 'bg-rose-100',
+      iconColor: 'text-rose-600',
+      onClick: () => navigate('/favorites'),
+    },
     showWheel && {
       icon: CircleDot,
       label: 'عجلة الحظ',
@@ -227,11 +239,25 @@ const Header = () => {
       onClick: () => navigate('/honor'),
     },
     {
+      icon: Store,
+      label: 'متاجر النقاط',
+      iconBg: 'bg-indigo-100',
+      iconColor: 'text-indigo-600',
+      onClick: () => navigate('/stores/points'),
+    },
+    {
       icon: Settings,
       label: 'الإعدادات',
       iconBg: 'bg-slate-100',
       iconColor: 'text-slate-700',
       onClick: () => navigate('/center'),
+    },
+    canInstall && {
+      icon: Download,
+      label: 'تثبيت التطبيق',
+      iconBg: 'bg-violet-100',
+      iconColor: 'text-violet-600',
+      onClick: () => openInstallCard(),
     },
     {
       icon: LogOut,
@@ -241,7 +267,7 @@ const Header = () => {
       danger: true,
       onClick: () => logout(),
     },
-  ].filter(Boolean), [showWheel, showCompetitions, navigate, logout]);
+  ].filter(Boolean), [showWheel, showCompetitions, navigate, logout, canInstall, openInstallCard]);
 
   const openPoints = useCallback(() => setPointsOpen(true), []);
   const closePoints = useCallback(() => setPointsOpen(false), []);
@@ -289,12 +315,14 @@ const Header = () => {
                 label="إشعارات"
                 theme="bell"
                 badge={notifCount}
+                onboardingId="notifications"
                 onClick={() => navigate('/notifications')}
               />
               <HeaderIconBtn
                 icon={ShoppingCart}
                 label="طلباتي"
                 theme="cart"
+                onboardingId="cart"
                 onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
               />
               <HeaderIconBtn
@@ -302,6 +330,7 @@ const Header = () => {
                 label="رسائل"
                 theme="message"
                 badge={unreadCount}
+                onboardingId="chat"
                 onClick={() => navigate('/chat')}
               />
               <MoreMenuBtn onClick={() => setMoreOpen(true)} />

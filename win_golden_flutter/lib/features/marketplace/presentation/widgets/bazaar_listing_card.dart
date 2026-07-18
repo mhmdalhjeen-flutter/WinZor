@@ -52,17 +52,17 @@ class BazaarListingCard extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image Section
-                _buildImageSection(img, isWanted),
-                const SizedBox(width: 12),
-                // Info Section
-                Expanded(
-                  child: _buildInfoSection(showPrice, isWanted),
-                ),
-              ],
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildImageSection(img, isWanted),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildInfoSection(showPrice, isWanted),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -181,130 +181,121 @@ class BazaarListingCard extends StatelessWidget {
   }
 
   Widget _buildInfoSection(bool showPrice, bool isWanted) {
+    // Parent IntrinsicHeight + stretch bounds this Column to the thumb height.
+    // spaceBetween pins meta to the bottom without Flex/Spacer in a ListView item.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          listing.title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
-            height: 1.2,
-            fontFamily: 'Cairo',
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 6),
-        if (showPrice)
-          Text(
-            _formatListingPrice(),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: AppColors.primary,
-              fontFamily: 'Cairo',
-            ),
-          )
-        else if (isWanted)
-          const Text(
-            'طلب شراء',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFEA580C),
-              fontFamily: 'Cairo',
-            ),
-          ),
-        
-        const Spacer(),
-
-        if (listing.condition.isNotEmpty && listing.transactionType != 'custom')
-          Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: BazaarConstants.getConditionColor(listing.condition).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              BazaarConstants.getConditionLabel(listing.condition),
-              style: TextStyle(
-                fontSize: 10,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              listing.title,
+              style: const TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
-                color: BazaarConstants.getConditionColor(listing.condition),
+                color: Color(0xFF111827),
+                height: 1.2,
                 fontFamily: 'Cairo',
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-
-        Row(
-          children: [
-            if (listing.category.isNotEmpty) ...[
-              const Icon(LucideIcons.folderOpen, size: 11, color: Color(0xFF7C3AED)),
-              const SizedBox(width: 4),
+            const SizedBox(height: 6),
+            if (showPrice)
               Text(
-                BazaarConstants.getCategoryLabel(listing.category),
+                _formatListingPrice(),
                 style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF7C3AED),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                  fontFamily: 'Cairo',
+                ),
+              )
+            else if (isWanted)
+              const Text(
+                'طلب شراء',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFEA580C),
+                  fontFamily: 'Cairo',
                 ),
               ),
-            ],
           ],
         ),
-        const SizedBox(height: 4),
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(LucideIcons.mapPin, size: 11, color: Color(0xFF10B981)),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                _getRegionLabel(),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6B7280),
+            if (listing.condition.isNotEmpty &&
+                listing.transactionType != 'custom')
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: BazaarConstants.getConditionColor(listing.condition)
+                        .withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    BazaarConstants.getConditionLabel(listing.condition),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: BazaarConstants.getConditionColor(
+                          listing.condition),
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
+            if (listing.category.isNotEmpty)
+              Row(
+                children: [
+                  const Icon(LucideIcons.folderOpen,
+                      size: 11, color: Color(0xFF7C3AED)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      BazaarConstants.getCategoryLabel(listing.category),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7C3AED),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(LucideIcons.mapPin,
+                    size: 11, color: Color(0xFF10B981)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _getRegionLabel(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6B7280),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        if (listing.keywords.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: listing.keywords.take(2).map((kw) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.tag, size: 9, color: Color(0xFF6B7280)),
-                    const SizedBox(width: 2),
-                    Text(
-                      kw,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
       ],
     );
   }

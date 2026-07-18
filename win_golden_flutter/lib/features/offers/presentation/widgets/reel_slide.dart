@@ -5,23 +5,26 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/api/api_client.dart';
+import '../../../../core/cache/app_image_cache.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/chat_context_store.dart';
 import '../../../home/data/models/offer_model.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../../orders/presentation/widgets/direct_order_sheet.dart';
+import '../../models/reel_viewer_item.dart';
 import '../providers/offer_detail_providers.dart';
 
-/// React `OfferReelViewer` ReelSlide — order / like / chat / share.
+/// React `OfferReelViewer` ReelSlide — order / like / chat / share for offers & products.
 class ReelSlide extends ConsumerStatefulWidget {
-  final OfferModel offer;
+  final ReelViewerItem item;
   final bool isActive;
 
   const ReelSlide({
     super.key,
-    required this.offer,
+    required this.item,
     required this.isActive,
   });
 
@@ -34,9 +37,50 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
   bool _chatBusy = false;
   bool _shareBusy = false;
 
-  OfferModel get offer => widget.offer;
+  ReelViewerItem get item => widget.item;
+  bool get isProduct => item.type == ReelItemType.product;
+  Map<String, dynamic> get raw => item.raw;
+
+  OfferModel? get _offerModel {
+    if (isProduct) return null;
+    try {
+      return OfferModel.fromJson(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? get _imageUrl {
+    if (isProduct) return resolveProductImage(raw);
+    return resolveOfferImage(raw) ?? raw['image']?.toString();
+  }
+
+  int get _views {
+    return int.tryParse(raw['views']?.toString() ?? '') ?? 0;
+  }
+
+  String? get _description => raw['description']?.toString();
 
   Future<void> _orderNow() async {
+    if (isProduct) {
+      final price = double.tryParse(raw['price']?.toString() ?? '') ?? 0;
+      final currency = raw['currency']?.toString() ?? 'ILS';
+      await showDirectOrderSheet(
+        context: context,
+        ref: ref,
+        itemId: item.id,
+        itemType: 'Product',
+        title: item.title,
+        unitPrice: price,
+        currency: currency,
+        imageUrl: _imageUrl,
+        storeName: item.store?['name']?.toString(),
+      );
+      return;
+    }
+
+    final offer = _offerModel;
+    if (offer == null) return;
     final pricing = offer.pricing;
     final unit = pricing?['finalPrice'] ?? offer.finalPrice ?? 0;
     final currency =
@@ -46,7 +90,7 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
       context: context,
       ref: ref,
       itemId: offer.id,
-      itemType: 'offer',
+      itemType: 'Offer',
       title: offer.title,
       unitPrice: double.tryParse(unit.toString()) ?? 0,
       currency: currency,
@@ -59,9 +103,9 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
     setState(() => _liked = !_liked);
     try {
       await ref.read(apiClientProvider).dio.post('/activity', data: {
-        'type': 'like_offer',
-        'targetType': 'Offer',
-        'targetId': offer.id,
+        'type': isProduct ? 'like_product' : 'like_offer',
+        'targetType': isProduct ? 'Product' : 'Offer',
+        'targetId': item.id,
       });
     } catch (_) {}
   }
@@ -76,8 +120,19 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
 
     setState(() => _chatBusy = true);
     try {
-      final ownerId =
-          await ref.read(offerRepositoryProvider).getStoreOwnerId(offer.id);
+      String? ownerId;
+      if (isProduct) {
+        final store = item.store;
+        final owner = store?['owner'];
+        if (owner is Map) {
+          ownerId = (owner['_id'] ?? owner['id'])?.toString();
+        } else if (owner != null) {
+          ownerId = owner.toString();
+        }
+      } else {
+        ownerId = await ref.read(offerRepositoryProvider).getStoreOwnerId(item.id);
+      }
+
       if (ownerId == null || ownerId.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,14 +145,16 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
         );
         return;
       }
+
+      final itemPath = isProduct ? '/product/${item.id}' : '/offer/${item.id}';
       await ChatContextStore.save({
         'recipientId': ownerId,
         'context': {
-          'itemId': offer.id,
-          'itemType': 'Offer',
-          'itemName': offer.title,
-          if (offer.image != null) 'itemImage': offer.image,
-          'itemUrl': '/offer/${offer.id}',
+          'itemId': item.id,
+          'itemType': isProduct ? 'Product' : 'Offer',
+          'itemName': item.title,
+          if (_imageUrl != null) 'itemImage': _imageUrl,
+          'itemUrl': itemPath,
         },
       });
       if (!mounted) return;
@@ -120,17 +177,21 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
   Future<void> _share() async {
     if (_shareBusy) return;
     setState(() => _shareBusy = true);
-    final storeName = offer.storeObject?.name ?? 'عرض مميز';
-    final text = '${offer.title} — $storeName\n/offer/${offer.id}';
+    final storeName = item.store?['name']?.toString() ??
+        (isProduct ? 'منتج' : 'عرض مميز');
+    final path = isProduct ? '/product/${item.id}' : '/offer/${item.id}';
+    final text = '${item.title} — $storeName\n$path';
     try {
       await Clipboard.setData(ClipboardData(text: text));
-      await ref.read(offerRepositoryProvider).recordShare(offer.id);
+      if (!isProduct) {
+        await ref.read(offerRepositoryProvider).recordShare(item.id);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'تم نسخ رابط العرض',
-            style: TextStyle(fontFamily: 'Cairo'),
+            isProduct ? 'تم نسخ رابط المنتج' : 'تم نسخ رابط العرض',
+            style: const TextStyle(fontFamily: 'Cairo'),
           ),
         ),
       );
@@ -141,18 +202,15 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
 
   @override
   Widget build(BuildContext context) {
-    final image = offer.image;
-    final views = offer.views;
-
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildMedia(image),
+        _buildMedia(_imageUrl),
         _buildContent(),
         Positioned(
           left: 12,
           bottom: 100,
-          child: _buildActionsSidebar(views, _liked),
+          child: _buildActionsSidebar(_views, _liked),
         ),
       ],
     );
@@ -173,6 +231,7 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
       children: [
         CachedNetworkImage(
           imageUrl: image,
+          cacheManager: AppImageCache.manager,
           fit: BoxFit.cover,
           errorWidget: (context, url, error) => const SizedBox.shrink(),
         ),
@@ -180,6 +239,7 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
         Center(
           child: CachedNetworkImage(
             imageUrl: image,
+            cacheManager: AppImageCache.manager,
             fit: BoxFit.contain,
             placeholder: (context, url) =>
                 const Center(child: CircularProgressIndicator()),
@@ -210,27 +270,29 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                _getBadgeText(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: 'Cairo',
+            if (!isProduct) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  _getOfferBadgeText(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Cairo',
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
             _buildPriceDisplay(),
             const SizedBox(height: 8),
-            if (offer.description != null)
-              _DescriptionBlock(text: offer.description!),
+            if (_description != null && _description!.isNotEmpty)
+              _DescriptionBlock(text: _description!),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _orderNow,
@@ -259,7 +321,9 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
     );
   }
 
-  String _getBadgeText() {
+  String _getOfferBadgeText() {
+    final offer = _offerModel;
+    if (offer == null) return 'عرض';
     switch (offer.offerType) {
       case 'discount':
         return offer.value != null ? 'خصم ${offer.value!.toInt()}%' : 'خصم';
@@ -273,6 +337,22 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
   }
 
   Widget _buildPriceDisplay() {
+    if (isProduct) {
+      final price = double.tryParse(raw['price']?.toString() ?? '');
+      final currency = raw['currency']?.toString() ?? 'ILS';
+      if (price == null) return const SizedBox.shrink();
+      return Text(
+        CurrencyUtils.formatPrice(price, currency),
+        style: const TextStyle(
+          fontSize: 20,
+          color: Color(0xFFFECACA),
+          fontWeight: FontWeight.w900,
+        ),
+      );
+    }
+
+    final offer = _offerModel;
+    if (offer == null) return const SizedBox.shrink();
     final pricing = offer.pricing;
     final oldPrice = pricing?['originalPrice'] ?? offer.originalPrice;
     final newPrice = pricing?['finalPrice'] ?? offer.finalPrice;

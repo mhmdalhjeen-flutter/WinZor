@@ -3,11 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/api/api_client.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/startup_splash_gate.dart';
+import 'core/cache/local_cache_service.dart';
+import 'core/cache/app_image_cache.dart';
+import 'core/cache/background_sync_host.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/verification/presentation/widgets/verification_gate_host.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Local Cache (Hive)
+  await LocalCacheService.init();
+  AppImageCache.configure();
 
   final container = ProviderContainer();
 
@@ -42,7 +50,11 @@ class MyApp extends StatelessWidget {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: VerificationGateHost(
-            child: child ?? const SizedBox.shrink(),
+          child: BackgroundSyncHost(
+            child: StartupSplashGate(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
           ),
         );
       },

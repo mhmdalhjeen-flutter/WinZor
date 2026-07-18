@@ -13,6 +13,12 @@ const MarketplaceTabNav = ({ activeTab, onTabChange }) => (
           <button
             key={id}
             type="button"
+            data-onboarding={
+              id === 'sellExchange' ? 'mp-buy'
+                : id === 'rent' ? 'mp-rent'
+                  : id === 'wanted' ? 'mp-wanted'
+                    : undefined
+            }
             onClick={() => onTabChange(id)}
             aria-current={active ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-1 py-2 px-2 min-w-[4.25rem] rounded-2xl transition-all duration-200 snap-start shrink-0 ${

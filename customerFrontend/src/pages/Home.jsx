@@ -169,7 +169,7 @@ const Home = () => {
         <HomeHero />
 
         {/* Offers first — LCP element is the first offer card image */}
-        <div id="home-offers" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
+        <div id="home-offers" data-onboarding="home" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
           <div className="flex items-center justify-between gap-2 px-1.5 sm:px-2">
             <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
               <Sparkles className="text-primary w-4 h-4 sm:w-[18px] sm:h-[18px]" /> العروض
@@ -194,11 +194,13 @@ const Home = () => {
           )}
 
           {hasOffers && (
-            <ProgressiveCategoryReels
-              reels={displayReels}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={handleToggleFavorite}
-            />
+            <div data-onboarding="reel-viewer">
+              <ProgressiveCategoryReels
+                reels={displayReels}
+                favoriteIds={favoriteIds}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            </div>
           )}
         </div>
 

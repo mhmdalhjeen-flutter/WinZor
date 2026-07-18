@@ -380,7 +380,7 @@ class _StoreQuickSearchPageState extends ConsumerState<StoreQuickSearchPage> {
                                 const SizedBox(height: 10),
                                 if (stores.isNotEmpty)
                                   SizedBox(
-                                    height: 260,
+                                    height: 320,
                                     child: ListView.builder(
                                       scrollDirection: Axis.horizontal,
                                       itemCount: stores.length,
@@ -427,7 +427,7 @@ class _StoreQuickSearchPageState extends ConsumerState<StoreQuickSearchPage> {
                                         ),
                                         const SizedBox(height: 8),
                                         SizedBox(
-                                          height: 260,
+                                          height: 320,
                                           child: ListView.builder(
                                             scrollDirection:
                                                 Axis.horizontal,

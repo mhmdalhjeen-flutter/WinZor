@@ -4,10 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_brand_assets.dart';
+import '../onboarding/onboarding_target.dart';
+import '../onboarding/onboarding_targets.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/notifications/presentation/providers/notifications_providers.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
 import '../../features/honor/presentation/widgets/points_balance_sheet.dart';
+import '../../features/profile/data/models/user_center_models.dart';
+import '../../features/profile/presentation/providers/user_center_providers.dart';
 
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final bool isAuth;
@@ -24,9 +28,12 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
     return AppBar(
       title: showAuth
-          ? GestureDetector(
-              onTap: () => showPointsBalanceSheet(context),
-              child: _buildPointsBadge(auth.user),
+          ? OnboardingTarget(
+              targetKey: OnboardingTargets.points,
+              child: GestureDetector(
+                onTap: () => showPointsBalanceSheet(context),
+                child: _buildPointsBadge(auth.user),
+              ),
             )
           : _buildLogoTitle(),
       actions: showAuth
@@ -42,37 +49,117 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     );
   }
 
+  /// Soft red + blue + green wavy gradient, matching React points celebration bg.
   Widget _buildPointsBadge(Map<String, dynamic>? user) {
     final points = user?['points'] ?? 0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      constraints: const BoxConstraints(maxHeight: 42),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.55)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
+        gradient: const LinearGradient(
+          begin: Alignment(-1.0, -0.8),
+          end: Alignment(1.0, 1.0),
+          colors: [
+            Color(0xFFFECDD3), // soft red / rose
+            Color(0xFFBFDBFE), // soft blue
+            Color(0xFFBBF7D0), // soft green
+            Color(0xFFFDE68A),
+            Color(0xFFFBCFE8),
+          ],
+          stops: [0.0, 0.28, 0.52, 0.78, 1.0],
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          const BrandLogo.compact(width: 22, height: 22),
-          const SizedBox(width: 4),
-          Text(
-            '$points',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMain,
+          Positioned(
+            left: -8,
+            bottom: -10,
+            child: Container(
+              width: 40,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFEF4444).withOpacity(0.18),
+              ),
             ),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.add_circle, color: AppColors.primary, size: 16),
+          Positioned(
+            right: -6,
+            top: -8,
+            child: Container(
+              width: 36,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF3B82F6).withOpacity(0.2),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 28,
+            bottom: -6,
+            child: Container(
+              width: 28,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF22C55E).withOpacity(0.14),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withOpacity(0.5)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: const BrandLogo.compact(width: 28, height: 28),
+              ),
+              const SizedBox(width: 6),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'تسوق واربح',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F2937),
+                      fontFamily: 'Cairo',
+                      height: 1.1,
+                    ),
+                  ),
+                  Text(
+                    '$points',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.add_circle, color: AppColors.primary, size: 16),
+            ],
+          ),
         ],
       ),
     );
@@ -122,29 +209,32 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
       _buildIconButton(
         context,
         Icons.notifications_none,
-        Colors.red,
+        const Color(0xFFDC2626),
+        const Color(0xFFFFF1F2),
+        const Color(0xFFFEE2E2),
         notifCount,
+        tourKey: OnboardingTargets.notifications,
         onTap: () => context.push('/notifications'),
       ),
       _buildIconButton(
         context,
-        Icons.favorite_border,
-        Colors.pink,
+        LucideIcons.shoppingCart,
+        const Color(0xFFD97706),
+        const Color(0xFFFFFBEB),
+        const Color(0xFFFED7AA),
         0,
-        onTap: () => context.push('/favorites'),
-      ),
-      _buildIconButton(
-        context,
-        Icons.receipt_long_outlined,
-        Colors.amber,
-        0,
+        tourKey: OnboardingTargets.cart,
         onTap: () => context.push('/orders'),
       ),
       _buildIconButton(
         context,
-        Icons.chat_bubble_outline,
-        Colors.blue,
+        LucideIcons.messageCircle,
+        const Color(0xFF2563EB),
+        const Color(0xFFF0F9FF),
+        const Color(0xFFBFDBFE),
         chatCount,
+        filled: true,
+        tourKey: OnboardingTargets.chat,
         onTap: () => context.push('/chat'),
       ),
       _buildMoreButton(context, ref),
@@ -155,11 +245,15 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   Widget _buildIconButton(
     BuildContext context,
     IconData icon,
-    Color color,
+    Color iconColor,
+    Color bgFrom,
+    Color bgTo,
     int badge, {
+    GlobalKey? tourKey,
     VoidCallback? onTap,
+    bool filled = false,
   }) {
-    return Padding(
+    final button = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: InkWell(
         onTap: onTap,
@@ -171,11 +265,33 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.6)),
               ),
-              child: Icon(icon, color: color, size: 22),
+              padding: const EdgeInsets.all(4),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [bgFrom, bgTo.withOpacity(0.85)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withOpacity(0.6)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 22,
+                  fill: filled ? 0.2 : 0.0,
+                ),
+              ),
             ),
             if (badge > 0)
               Positioned(
@@ -203,14 +319,24 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
     );
+
+    if (tourKey == null) return button;
+    return OnboardingTarget(targetKey: tourKey, child: button);
   }
 
   Widget _buildMoreButton(BuildContext context, WidgetRef ref) {
+    final settings =
+        ref.watch(platformSettingsProvider).asData?.value ??
+            const PlatformSettings();
+
     return PopupMenuButton<String>(
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       onSelected: (value) async {
         switch (value) {
+          case 'favorites':
+            context.push('/favorites');
+            break;
           case 'wheel':
             context.push('/wheel');
             break;
@@ -237,13 +363,19 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(
-          value: 'wheel',
-          child: _MoreItem(icon: LucideIcons.circleDot, label: 'عجلة الحظ', color: Color(0xFFDB2777)),
+          value: 'favorites',
+          child: _MoreItem(icon: LucideIcons.heart, label: 'المفضلة', color: Color(0xFFDB2777)),
         ),
-        const PopupMenuItem(
-          value: 'competitions',
-          child: _MoreItem(icon: LucideIcons.medal, label: 'مسابقات', color: Color(0xFF7C3AED)),
-        ),
+        if (settings.showWheelInHeader)
+          const PopupMenuItem(
+            value: 'wheel',
+            child: _MoreItem(icon: LucideIcons.circleDot, label: 'عجلة الحظ', color: Color(0xFFDB2777)),
+          ),
+        if (settings.showCompetitions)
+          const PopupMenuItem(
+            value: 'competitions',
+            child: _MoreItem(icon: LucideIcons.medal, label: 'مسابقات', color: Color(0xFF7C3AED)),
+          ),
         const PopupMenuItem(
           value: 'honor',
           child: _MoreItem(icon: LucideIcons.trophy, label: 'لوحة الشرف', color: Color(0xFFB45309)),
@@ -252,10 +384,11 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           value: 'pointsStores',
           child: _MoreItem(icon: LucideIcons.store, label: 'متاجر النقاط', color: Color(0xFF4F46E5)),
         ),
-        const PopupMenuItem(
-          value: 'chests',
-          child: _MoreItem(icon: LucideIcons.gift, label: 'صناديق الجوائز', color: Color(0xFFD97706)),
-        ),
+        if (settings.showRewards)
+          const PopupMenuItem(
+            value: 'chests',
+            child: _MoreItem(icon: LucideIcons.gift, label: 'صناديق الجوائز', color: Color(0xFFD97706)),
+          ),
         const PopupMenuItem(
           value: 'center',
           child: _MoreItem(icon: LucideIcons.settings, label: 'الإعدادات', color: Color(0xFF475569)),
@@ -266,43 +399,46 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           child: _MoreItem(icon: LucideIcons.logOut, label: 'تسجيل الخروج', color: Color(0xFFDC2626)),
         ),
       ],
-      child: Container(
-        margin: const EdgeInsets.only(left: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'المزيد',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1F2937),
-              ),
+      child: OnboardingTarget(
+        targetKey: OnboardingTargets.more,
+        child: Container(
+          margin: const EdgeInsets.only(left: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
             ),
-            const SizedBox(width: 4),
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1F2937),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: const Center(
-                child: Text(
-                  '+',
-                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'المزيد',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1F2937),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F2937),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Center(
+                  child: Text(
+                    '+',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

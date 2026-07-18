@@ -25,9 +25,40 @@ class AuthRepository {
           headers: {'x-device-id': deviceId},
         ),
       );
-      return response.data;
+      await _persistDeviceIdFromAuthResponse(response.data);
+      return Map<String, dynamic>.from(response.data as Map);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// `POST /auth/google` — body matches React `googleAuth(credential)`.
+  Future<Map<String, dynamic>> googleAuth({
+    required String credential,
+    String? referralCode,
+  }) async {
+    final deviceId = await DeviceUtils.getDeviceId();
+    final payload = <String, dynamic>{
+      'credential': credential,
+      'deviceId': deviceId,
+    };
+    if (referralCode != null && referralCode.trim().isNotEmpty) {
+      payload['referralCode'] = referralCode.trim();
+    }
+
+    final response = await _apiClient.dio.post(
+      '/auth/google',
+      data: payload,
+      options: Options(headers: {'x-device-id': deviceId}),
+    );
+    await _persistDeviceIdFromAuthResponse(response.data);
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> _persistDeviceIdFromAuthResponse(dynamic data) async {
+    if (data is Map && data['deviceId'] is String) {
+      final id = (data['deviceId'] as String).trim();
+      if (id.isNotEmpty) await DeviceUtils.setDeviceId(id);
     }
   }
 
@@ -106,9 +137,10 @@ class AuthRepository {
       );
     } catch (_) {
       // Ignore server failure on logout
-    } finally {
-      await DeviceUtils.clearDeviceId();
     }
+    // Do not clear deviceId — matches stable multi-device sessions (web clears
+    // local id but Flutter SharedPreferences UUID is per-install; clearing it
+    // caused unnecessary new sessions and auth churn).
   }
 
   /// `POST /auth/password/change` — auth required.

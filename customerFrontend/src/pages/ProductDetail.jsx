@@ -12,6 +12,7 @@ import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveProductImage } from '../utils/mediaUrl';
 import { formatPrice } from '../utils/currency';
+import { recordRecentlyViewed } from '../utils/recentlyViewed';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -28,6 +29,13 @@ const ProductDetail = () => {
     api.get(`/products/${id}`)
       .then(({ data }) => {
         setProduct(data.product);
+        recordRecentlyViewed({
+          type: 'product',
+          id: data.product?._id,
+          title: data.product?.name || data.product?.title,
+          image: resolveProductImage(data.product),
+          price: formatPrice(data.product?.price, data.product?.currency),
+        });
         logActivity('view_product', {
           targetType: 'Product',
           targetId: data.product?._id,

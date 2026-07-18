@@ -25,6 +25,7 @@ class StoreDetailPage extends ConsumerWidget {
     final activeTab = ref.watch(storeDetailTabProvider);
     final isAuth = ref.watch(authProvider).isAuth;
     final joining = ref.watch(joiningStoreProvider);
+    final notifEnabled = ref.watch(storeNotificationEnabledProvider(id));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -224,6 +225,65 @@ class StoreDetailPage extends ConsumerWidget {
                       const SizedBox(width: 8),
                       _buildSquareAction(LucideIcons.phone, () {}),
                     ],
+                  ),
+                ),
+              ),
+
+              // Store notifications toggle
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          notifEnabled ? LucideIcons.bellRing : LucideIcons.bellOff,
+                          size: 20,
+                          color: notifEnabled ? AppColors.primary : Colors.grey,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'إشعارات المتجر',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Cairo',
+                                ),
+                              ),
+                              Text(
+                                'عروض ومنتجات جديدة من هذا المتجر فقط',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: notifEnabled,
+                          activeColor: AppColors.primary,
+                          onChanged: (value) {
+                            if (!isAuth) {
+                              context.push('/login');
+                              return;
+                            }
+                            ref.read(storeNotificationEnabledProvider(id).notifier).setEnabled(value);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

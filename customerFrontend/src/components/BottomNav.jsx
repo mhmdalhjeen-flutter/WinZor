@@ -44,17 +44,17 @@ const BottomNav = () => {
   const features = settings?.features || {};
 
   const navItems = [
-    { to: '/', icon: Home, label: 'الرئيسية', show: true },
-    { to: '/explore', icon: Store, label: 'المتاجر', show: true },
-    { to: '/marketplace', icon: ShoppingBag, label: 'السوق المفتوح', show: features.marketplace !== false },
-    { to: '/draws', icon: Gift, label: 'الجوائز', show: features.draws !== false },
-    { to: '/center', label: 'نقاطي', customIcon: 'rewards', show: true },
+    { to: '/', icon: Home, label: 'الرئيسية', show: true, onboardingId: null },
+    { to: '/explore', icon: Store, label: 'المتاجر', show: true, onboardingId: null },
+    { to: '/marketplace', icon: ShoppingBag, label: 'السوق المفتوح', show: features.marketplace !== false, onboardingId: 'marketplace-nav' },
+    { to: '/draws', icon: Gift, label: 'الجوائز', show: features.draws !== false, onboardingId: null },
+    { to: '/center', label: 'نقاطي', customIcon: 'rewards', show: true, onboardingId: 'profile-nav' },
   ].filter((item) => item.show);
 
   return (
     <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-200/80 px-1 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.06)] max-w-2xl mx-auto">
       {navItems.map((item) => (
-        <NavLink key={item.to} to={item.to} className="flex-1 max-w-[5rem]">
+        <NavLink key={item.to} to={item.to} className="flex-1 max-w-[5rem]" data-onboarding={item.onboardingId || undefined}>
           {({ isActive }) => (
             <div
               className={`app-bottom-nav__item flex flex-col items-center justify-center gap-0.5 py-0.5 px-1 rounded-2xl transition-all duration-200 ${

@@ -34,8 +34,7 @@ function useAnimatedCounter(target, duration = 650) {
 }
 
 /**
- * Premium compact rewards badge — Arabic label, English digit points.
- * CSS-only feedback (no framer-motion) for a lighter Home critical path.
+ * Header rewards badge — soft wavy gradient, «تسوق واربح» + points (matches Flutter).
  */
 export default function PointsBadge({ points = 0, onClick, pulse = null }) {
   const displayPoints = useAnimatedCounter(points);
@@ -47,21 +46,27 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       type="button"
       onClick={onClick}
       id="points-header-anchor"
-      aria-label={`نقاطك ${displayPoints.toLocaleString('en-US')}`}
-      className={`relative flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/50 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem] active:scale-95 transition-transform ${
+      data-onboarding="points"
+      aria-label={`تسوق واربح ${displayPoints.toLocaleString('en-US')} نقطة`}
+      className={`relative flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl min-w-0 max-w-[48%] sm:max-w-none overflow-hidden border border-white/55 shadow-md home-rewards-badge max-h-[2.55rem] sm:max-h-[3rem] active:scale-95 transition-transform ${
         isUp || isDown ? 'animate-pulse' : ''
       }`}
     >
+      <span className="pointer-events-none absolute inset-0 home-rewards-badge__gradient" aria-hidden />
       <span
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400"
+        className="pointer-events-none absolute -left-2 -bottom-2.5 w-10 h-7 rounded-full bg-red-400/20 blur-[1px]"
         aria-hidden
       />
       <span
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/5"
+        className="pointer-events-none absolute -right-1.5 -top-2 w-9 h-6 rounded-full bg-blue-400/20 blur-[1px]"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute right-7 -bottom-1.5 w-7 h-5 rounded-full bg-green-400/15 blur-[1px]"
         aria-hidden
       />
 
-      <span className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-sm border border-white/40 shadow-sm shrink-0 overflow-hidden">
+      <span className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-white/35 backdrop-blur-sm border border-white/50 shadow-sm shrink-0 overflow-hidden">
         <img
           src={BRAND_LOGO_64}
           alt=""
@@ -74,14 +79,12 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       </span>
 
       <div className="relative flex flex-col items-start leading-none min-w-0">
-        <span className="text-[9px] sm:text-[10px] font-bold text-white tracking-tight">
-          نقاطك
+        <span className="text-[9px] sm:text-[10px] font-bold text-gray-800 tracking-tight">
+          تسوق واربح
         </span>
         <span
           className={`text-[14px] sm:text-[16px] font-black tabular-nums tracking-tight truncate max-w-full leading-none ${
-            isDown
-              ? 'text-red-100'
-              : 'text-white [text-shadow:0_0_12px_rgba(255,255,255,0.65),0_1px_0_rgba(255,255,255,0.9),0_0_24px_rgba(251,191,36,0.35)]'
+            isDown ? 'text-red-700' : 'text-gray-900'
           }`}
         >
           {displayPoints.toLocaleString('en-US')}

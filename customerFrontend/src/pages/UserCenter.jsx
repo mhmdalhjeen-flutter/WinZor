@@ -5,10 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera, Star, Trophy, Users, Store, Ticket, Gift, LogOut, Copy, Check,
   Lightbulb, Pencil, Phone, Mail, X, Headphones, ScrollText, Tags,
-  Medal, Image as ImageIcon, Lock, ChevronLeft, CircleDot,
+  Medal, Image as ImageIcon, Lock, ChevronLeft, CircleDot, Compass,
   Coins, Clock, CheckCircle2, Loader2,
 } from 'lucide-react';
-import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCategoryTree } from '../hooks/useCategories';
@@ -27,6 +26,8 @@ import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import { uploadImage } from '../utils/imageUpload';
 import { resolveImageUrl } from '../utils/mediaUrl';
+import { resetAllOnboardingTours, ONBOARDING_RESET_EVENT } from '../utils/onboardingTour';
+import api from '../api/axios';
 
 function useAnimatedCounter(target, duration = 700) {
   const [display, setDisplay] = useState(target);
@@ -737,6 +738,18 @@ const UserCenter = () => {
               hint: 'اضبط اهتماماتك وتفضيلاتك',
               icon: Tags,
               onClick: () => setShowPrefs(true),
+              tone: 'violet',
+            },
+            {
+              id: 'onboarding',
+              label: 'جولة التعريف',
+              hint: 'إعادة عرض دليل استخدام التطبيق',
+              icon: Compass,
+              onClick: () => {
+                resetAllOnboardingTours();
+                window.dispatchEvent(new Event(ONBOARDING_RESET_EVENT));
+                navigate('/');
+              },
               tone: 'violet',
             },
           ].map((option, index) => (

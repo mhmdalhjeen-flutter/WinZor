@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../home/presentation/providers/home_providers.dart';
+import '../../../../core/cache/store_notification_filter.dart';
 import '../../data/models/notification_model.dart';
 import '../providers/notifications_providers.dart';
 
@@ -56,6 +57,7 @@ class _NotificationListenerHostState extends ConsumerState<NotificationListenerH
       var hasNewPoint = false;
 
       for (final NotificationModel n in list) {
+        if (!StoreNotificationFilter.shouldDisplay(n)) continue;
         if (!_pointNotifTypes.contains(n.type) || _seenIds.contains(n.id)) {
           continue;
         }

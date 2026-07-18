@@ -1,5 +1,5 @@
 import '../styles/marketplacePage.css';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
@@ -19,6 +19,7 @@ import { unwrapList } from '../utils/unwrapList';
 import EmptyState from '../shared/EmptyState';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import MarketplaceTabNav from '../components/marketplace/MarketplaceTabNav';
+import MarketplaceOnboardingTourHost from '../components/onboarding/MarketplaceOnboardingTourHost';
 import MarketplaceFilters from '../components/marketplace/MarketplaceFilters';
 import PublishBottomSheet from '../components/marketplace/PublishBottomSheet';
 import MarketplaceImagePicker from '../components/marketplace/MarketplaceImagePicker';
@@ -37,6 +38,7 @@ import PriceCurrencyInput from '../components/PriceCurrencyInput';
 import { DEFAULT_CURRENCY } from '../utils/currency';
 import { BAZAAR_CATEGORIES } from '../utils/bazaarCategories';
 import { BAZAAR_CONDITIONS } from '../utils/bazaarConditions';
+import { getRecentlyViewed } from '../utils/recentlyViewed';
 
 const EMPTY_FORM = {
   title: '',
@@ -121,6 +123,7 @@ const Marketplace = () => {
   const filterRegionId = getEffectiveRegionId(regionPath);
   const formRegionPath = pathFromRegionIds(form.regionId, form.subRegionId, regionTree);
   const browseFilters = { filterRegionId, filterCondition, filterCategory };
+  const recentlyViewedBazaar = useMemo(() => getRecentlyViewed('bazaar'), []);
 
   const {
     data: browseListings = [],
@@ -664,6 +667,7 @@ const Marketplace = () => {
 
   return (
     <div className="pb-20 bg-gray-50 min-h-screen text-right marketplace-page" dir="rtl">
+      <MarketplaceOnboardingTourHost activePage />
       <div className="px-2 pt-3 pb-2 text-center">
         <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug font-cairo">
           السوق المفتوح
@@ -677,6 +681,7 @@ const Marketplace = () => {
         <div className="px-2 pb-2">
           <button
             type="button"
+            data-onboarding="mp-sell"
             onClick={openPublishSheet}
             className="marketplace-publish-cta w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm text-white shadow-lg shadow-primary/25 active:scale-[0.99] transition-transform"
           >
@@ -691,6 +696,43 @@ const Marketplace = () => {
       <div className="px-1.5 sm:px-2 py-2">
         {BROWSE_TAB_IDS.includes(activeTab) && (
           <div className="space-y-3">
+            {recentlyViewedBazaar.length > 0 && !hasBrowseFilters && (
+              <section className="rounded-2xl border border-gray-100 bg-white p-3">
+                <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+                  <span className="text-xs font-black text-gray-800">شاهدت مؤخراً</span>
+                  <span className="text-[10px] font-bold text-gray-400">محفوظ محلياً</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {recentlyViewedBazaar.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => navigate(`/marketplace/${item.id}`)}
+                      className="shrink-0 w-[7.5rem] rounded-xl border border-gray-100 bg-gray-50 text-right active:scale-[0.98] transition-transform"
+                    >
+                      {item.image ? (
+                        <img
+                          src={resolveImageUrl(item.image, { width: 240 })}
+                          alt=""
+                          className="h-20 w-full rounded-t-xl object-cover bg-gray-100"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="h-20 w-full rounded-t-xl bg-gray-100" />
+                      )}
+                      <div className="p-2">
+                        <p className="line-clamp-2 text-[10px] font-black text-gray-800">{item.title || 'إعلان'}</p>
+                        {item.price && (
+                          <p className="mt-1 truncate text-[10px] font-bold text-primary">{item.price}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <div className="flex items-center justify-between gap-2 px-0.5">
               <span className="text-xs font-bold text-gray-500">تصفية الإعلانات</span>
               {hasBrowseFilters && (

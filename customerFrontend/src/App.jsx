@@ -11,12 +11,19 @@ import Home from './pages/Home';
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Maintenance from './pages/Maintenance';
 import useMaintenanceMode from './hooks/useMaintenanceMode';
+import StartupSplashGate from './components/StartupSplashGate';
+import BackgroundRefreshHost from './components/cache/BackgroundRefreshHost';
+import useBrowserBackGuard from './hooks/useBrowserBackGuard';
+import PwaHost from './components/pwa/PwaHost';
+import PwaShortcutHandler from './components/pwa/PwaShortcutHandler';
+import { PwaInstallProvider } from './context/PwaInstallContext';
 
 // Deferred — must not land in the initial Home JS graph
 const NotificationListener = lazy(() => import('./components/NotificationListener'));
 const AuthWelcomeEffects = lazy(() => import('./components/auth/AuthWelcomeEffects'));
 const PointsFloatLayer = lazy(() => import('./components/PointsFloatLayer'));
 const FloatingCodeButton = lazy(() => import('./components/FloatingCodeButton'));
+const OnboardingTourHost = lazy(() => import('./components/onboarding/OnboardingTourHost'));
 const Intro = lazy(() => import('./pages/Intro'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -53,6 +60,8 @@ const AUTH_SHELL_ROUTES = ['/login', '/register', '/intro', '/forgot-password'];
 function AppShell() {
   const { isAuth } = useAuth();
   const location = useLocation();
+  useBrowserBackGuard(isAuth);
+  const splashActive = isAuth && location.pathname === '/';
   const isGuestIntro =
     !isAuth && (location.pathname === '/' || location.pathname === '/intro');
   const isAuthShell = AUTH_SHELL_ROUTES.some(
@@ -102,7 +111,7 @@ function AppShell() {
     && (location.pathname === '/' || location.pathname === '/explore');
 
   return (
-    <>
+    <StartupSplashGate active={splashActive}>
       {deferChrome && (
         <Suspense fallback={null}>
           <AuthWelcomeEffects />
@@ -113,6 +122,7 @@ function AppShell() {
           <NotificationListener />
         </Suspense>
       )}
+      {deferChrome && <BackgroundRefreshHost />}
       {isAuth && (
         <Suspense fallback={null}>
           <PointsFloatLayer />
@@ -181,7 +191,13 @@ function AppShell() {
         {/* شريط التنقل السفلي */}
         {isAuth && !hideBottomNav && <BottomNav />}
       </div>
-    </>
+      {isAuth && deferChrome && !hideOverlayChrome && (
+        <Suspense fallback={null}>
+          <OnboardingTourHost enabled={!offerViewerOpen && !pointsGuideOpen} />
+        </Suspense>
+      )}
+      <PwaHost />
+    </StartupSplashGate>
   );
 }
 
@@ -197,7 +213,12 @@ function App() {
     );
   }
 
-  return <AppShell />;
+  return (
+    <PwaInstallProvider>
+      <AppShell />
+      <PwaShortcutHandler />
+    </PwaInstallProvider>
+  );
 }
 
 export default App;

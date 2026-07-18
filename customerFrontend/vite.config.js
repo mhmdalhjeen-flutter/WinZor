@@ -1,9 +1,211 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
+
+const API_MEDIA_PATH =
+  /\/api\/(offers|products|stores)\/[^/]+\/(image|logo|cover)(\/|\?|$)/i
+
+const API_HOSTS = new Set(['winzor.onrender.com', 'localhost', '127.0.0.1'])
+const API_MEDIA_HOSTS = API_HOSTS
+
+function isApiMediaImage(url, request) {
+  if (request.method !== 'GET') return false
+  if (!API_MEDIA_HOSTS.has(url.hostname)) return false
+  return API_MEDIA_PATH.test(url.pathname)
+}
+
+function isCacheablePublicApiGet(url, request) {
+  if (request.method !== 'GET') return false
+  if (!API_HOSTS.has(url.hostname)) return false
+  const path = url.pathname
+  return (
+    /^\/api\/offers\/reels/.test(path)
+    || /^\/api\/categories\/tree/.test(path)
+    || /^\/api\/regions(\/?|$)/.test(path)
+    || /^\/api\/stores\/browse/.test(path)
+    || /^\/api\/bazaar\/?$/.test(path)
+  )
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'prompt',
+      injectRegister: false,
+      includeAssets: [
+        'brand/**/*',
+        'fonts-init.js',
+        'robots.txt',
+        'og-image.webp',
+      ],
+      manifest: {
+        id: '/',
+        name: 'WinZor | عروض، نقاط وجوائز',
+        short_name: 'عروض تك',
+        description:
+          'تسوّق من متاجر موثوقة، اجمع نقاطاً، شارك في المسابقات واكتشف عروض يومية وجوائز حقيقية.',
+        theme_color: '#dc2626',
+        background_color: '#f7f5f2',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        scope: '/',
+        start_url: '/',
+        lang: 'ar',
+        dir: 'rtl',
+        categories: ['shopping', 'lifestyle'],
+        shortcuts: [
+          {
+            name: 'إدخال الكود',
+            short_name: 'الكود',
+            description: 'افتح شاشة إدخال الكود مباشرة',
+            url: '/?pwaAction=code',
+            icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
+          },
+          {
+            name: 'السوق المفتوح',
+            short_name: 'السوق',
+            description: 'تصفّح السوق المفتوح',
+            url: '/marketplace',
+            icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
+          },
+          {
+            name: 'المتاجر',
+            short_name: 'المتاجر',
+            description: 'استكشف المتاجر',
+            url: '/explore',
+            icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
+          },
+          {
+            name: 'مسابقاتي',
+            short_name: 'مسابقات',
+            description: 'مسابقاتي ومشاركاتي',
+            url: '/competitions',
+            icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
+          },
+        ],
+        icons: [
+          {
+            src: '/brand/logo-64.webp',
+            sizes: '64x64',
+            type: 'image/webp',
+            purpose: 'any',
+          },
+          {
+            src: '/brand/logo-128.webp',
+            sizes: '128x128',
+            type: 'image/webp',
+            purpose: 'any',
+          },
+          {
+            src: '/brand/logo-256.webp',
+            sizes: '256x256',
+            type: 'image/webp',
+            purpose: 'any',
+          },
+          {
+            src: '/brand/logo-256.webp',
+            sizes: '256x256',
+            type: 'image/webp',
+            purpose: 'maskable',
+          },
+          {
+            src: '/brand/logo-64.png',
+            sizes: '64x64',
+            type: 'image/png',
+            purpose: 'any',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,webp,png,svg,ico,woff,woff2,txt}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: false,
+        clientsClaim: true,
+        navigateFallback: '/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'winzor-google-fonts-css',
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'winzor-google-fonts-files',
+              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && /\.(webp|png|svg|ico|woff2?)$/i.test(url.pathname),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'winzor-static-assets',
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'winzor-cloudinary-images',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ url, request }) => isCacheablePublicApiGet(url, request),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'winzor-api-readonly',
+              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 6 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ url, request }) => isApiMediaImage(url, request),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'winzor-api-media-images',
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'winzor-viewed-images',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'winzor-pages',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 32, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        enabled: false,
+      },
+    }),
+  ],
   server: {
     port: 5173,
     // يمنع Vite من التبديل إلى 5174 — يجب أن يطابق Authorized JavaScript origins في Google

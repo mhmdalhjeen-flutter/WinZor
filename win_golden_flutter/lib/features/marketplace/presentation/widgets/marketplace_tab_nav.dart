@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/onboarding/onboarding_target.dart';
+import '../../../../core/onboarding/onboarding_targets.dart';
+
 class MarketplaceTabConfig {
   final String id;
   final IconData icon;
@@ -97,7 +100,14 @@ class MarketplaceTabNav extends StatelessWidget {
         child: Row(
           children: marketplaceTabs.values.map((tab) {
             final bool isActive = activeTab == tab.id;
-            return Padding(
+            final GlobalKey? tourKey = switch (tab.id) {
+              'sellExchange' => OnboardingTargets.marketplaceBuy,
+              'rent' => OnboardingTargets.marketplaceRent,
+              'wanted' => OnboardingTargets.marketplaceWanted,
+              _ => null,
+            };
+
+            final tabButton = Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: GestureDetector(
                 onTap: () => onTabChange(tab.id),
@@ -143,6 +153,11 @@ class MarketplaceTabNav extends StatelessWidget {
                 ),
               ),
             );
+
+            if (tourKey != null) {
+              return OnboardingTarget(targetKey: tourKey, child: tabButton);
+            }
+            return tabButton;
           }).toList(),
         ),
       ),

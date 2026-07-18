@@ -29,7 +29,8 @@ class StoreCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/store/${store.id}'),
       child: Container(
-        width: 200,
+        // React StoreCard: 196px mobile / 208px sm — slightly larger for Flutter mobile
+        width: 220,
         margin: const EdgeInsets.only(left: 14),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -47,9 +48,9 @@ class StoreCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Logo area
+            // Logo area — React ~108–116px; increased for less compressed feel
             Container(
-              height: 116,
+              height: 132,
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -98,7 +99,7 @@ class StoreCard extends StatelessWidget {
 
             // Info area
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -109,10 +110,10 @@ class StoreCard extends StatelessWidget {
                         child: Text(
                           store.name,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF111827),
-                            height: 1.2,
+                            height: 1.25,
                             fontFamily: 'Cairo',
                           ),
                           maxLines: 2,
@@ -123,15 +124,15 @@ class StoreCard extends StatelessWidget {
                   ),
                   if (store.isVerifiedStore)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
+                      padding: const EdgeInsets.only(top: 6.0),
                       child: _buildVerifiedBadge(),
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   if (categoryLabel != null)
                     Text(
                       categoryLabel,
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
                         color: AppColors.primary,
                         fontFamily: 'Cairo',
@@ -139,16 +140,16 @@ class StoreCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(LucideIcons.mapPin, size: 11, color: Color(0xFF9CA3AF)),
+                      const Icon(LucideIcons.mapPin, size: 12, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           location,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: Color(0xFF6B7280),
                             fontWeight: FontWeight.bold,
                           ),
@@ -158,27 +159,27 @@ class StoreCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const Icon(LucideIcons.star, size: 12, color: Colors.amber, fill: 1.0),
+                          const Icon(LucideIcons.star, size: 13, color: Colors.amber, fill: 1.0),
                           const SizedBox(width: 4),
                           Text(
                             store.ratingAvg.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
                           ),
                         ],
                       ),
                       Row(
                         children: [
-                          const Icon(LucideIcons.users, size: 12, color: Color(0xFF9CA3AF)),
+                          const Icon(LucideIcons.users, size: 13, color: Color(0xFF9CA3AF)),
                           const SizedBox(width: 4),
                           Text(
                             store.customersCount.toString(),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF)),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF)),
                           ),
                         ],
                       ),
@@ -186,7 +187,7 @@ class StoreCard extends StatelessWidget {
                   ),
 
                   if (membershipStatus != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     _buildMembershipBadge(membershipStatus!),
                   ],
                 ],

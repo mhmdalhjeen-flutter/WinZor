@@ -104,4 +104,22 @@ class ProductModel {
       store: storeMap,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        '_id': id,
+        'name': name,
+        'description': description,
+        'price': price,
+        'currency': currency,
+        'image': image,
+        'hasImage': hasImage,
+        'ratingAvg': ratingAvg,
+        'ratingCount': ratingCount,
+        'category': category,
+        'isActive': isActive,
+        'views': views,
+        'stock': stock,
+        'freeDelivery': freeDelivery,
+        'store': store,
+      };
 }

@@ -223,7 +223,11 @@ exports.exportOrderCodes = async (req, res) => {
         res.send(pdfBuffer);
 
     } catch (err) {
-        safeLog("error", "code_order_export_failed", { message: err.message, userId: req.user?.id });
+        safeLog("error", "code_order_export_failed", {
+            message: err.message,
+            stack: err.stack,
+            userId: req.user?.id,
+        });
         res.status(500).json({ message: "تعذّر تصدير الأكواد" });
     }
 };

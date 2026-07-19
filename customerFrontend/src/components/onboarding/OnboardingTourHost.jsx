@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import SpotlightTour from './SpotlightTour';
@@ -17,9 +17,11 @@ export default function OnboardingTourHost({ enabled = true }) {
   const navigate = useNavigate();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const autoStartedRef = useRef(false);
 
   const tryStart = useCallback(() => {
     if (!enabled || !isAuth || isMainTourComplete()) return;
+    if (isGiftActivationFlowActive()) return;
     if (document.body.classList.contains('offer-viewer-open')) return;
     if (document.body.classList.contains('points-guide-open')) return;
     setStepIndex(0);
@@ -27,18 +29,26 @@ export default function OnboardingTourHost({ enabled = true }) {
   }, [enabled, isAuth]);
 
   useEffect(() => {
-    if (!enabled || !isAuth || isMainTourComplete()) return undefined;
+    if (!isAuth || isMainTourComplete() || autoStartedRef.current) return undefined;
     if (isGiftActivationFlowActive()) return undefined;
 
     const splashDone = sessionStorage.getItem('app-startup-splash-done') === '1';
     const delay = splashDone ? 900 : 5500;
-    const timer = window.setTimeout(tryStart, delay);
+    const timer = window.setTimeout(() => {
+      if (autoStartedRef.current || isMainTourComplete()) return;
+      if (isGiftActivationFlowActive()) return;
+      if (document.body.classList.contains('offer-viewer-open')) return;
+      if (document.body.classList.contains('points-guide-open')) return;
+      autoStartedRef.current = true;
+      tryStart();
+    }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [enabled, isAuth, tryStart]);
+  }, [isAuth, tryStart]);
 
   useEffect(() => {
     const onReset = () => {
+      autoStartedRef.current = false;
       setStepIndex(0);
       setActive(true);
     };

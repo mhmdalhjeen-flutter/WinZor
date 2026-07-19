@@ -2,7 +2,7 @@ export const MAIN_ONBOARDING_STEPS = [
   {
     id: 'current-page',
     target: 'current-page',
-    title: 'محتوى الصفحة',
+    title: 'شرح الصفحة الحالية',
     body: 'هنا يظهر محتوى الصفحة الحالية — تصفّح العروض والمسابقات والأقسام المتاحة لك.',
     scroll: false,
   },

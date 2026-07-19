@@ -66,8 +66,10 @@ function SpotlightTour({
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }
 
-    window.requestAnimationFrame(() => {
+    const updateRect = () => {
       const r = el.getBoundingClientRect();
+      if (r.width <= 0 && r.height <= 0) return;
+
       const box = clampRect({
         top: r.top - PAD,
         left: r.left - PAD,
@@ -92,6 +94,10 @@ function SpotlightTour({
         left,
         maxWidth: tooltipW,
       });
+    };
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(updateRect);
     });
   }, [open, step, clearActiveTarget]);
 

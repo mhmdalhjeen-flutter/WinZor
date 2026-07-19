@@ -1,70 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../api/axios';
-import { unwrapList } from '../../utils/unwrapList';
+import React, { useMemo } from 'react';
 import CompetitionCardItem from '../CompetitionCardItem';
 import { useAuth } from '../../context/AuthContext';
+import { useCompetitionsList } from '../../hooks/useCompetitionsList';
+import { useFeaturedCompetitions } from '../../hooks/useFeaturedCompetitions';
+
+function mergeFeaturedCompetitions(fromFeatured, list) {
+  const featuredFromList = list.filter((c) => c?.isFeatured);
+  const seen = new Set();
+  const merged = [];
+
+  for (const comp of fromFeatured) {
+    if (!comp?._id || merged.length >= 2) break;
+    merged.push(comp);
+    seen.add(String(comp._id));
+  }
+
+  for (const comp of featuredFromList) {
+    if (merged.length >= 2) break;
+    if (!seen.has(String(comp._id))) {
+      merged.push(comp);
+      seen.add(String(comp._id));
+    }
+  }
+
+  return merged.slice(0, 2);
+}
 
 export default function FeaturedCompetitions() {
   const { user, updateUser } = useAuth();
-  const [competitions, setCompetitions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: fromFeatured = [], isLoading: featuredLoading } = useFeaturedCompetitions();
+  const { data: list = [], isLoading: listLoading } = useCompetitionsList();
 
-  useEffect(() => {
-    let cancelled = false;
+  const competitions = useMemo(
+    () => mergeFeaturedCompetitions(fromFeatured, list),
+    [fromFeatured, list],
+  );
 
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [featuredRes, listRes] = await Promise.all([
-          api.get('/competitions/featured'),
-          api.get('/competitions'),
-        ]);
-
-        if (cancelled) return;
-
-        const fromFeatured = featuredRes.data?.competitions
-          || (featuredRes.data?.competition ? [featuredRes.data.competition] : []);
-        const list = unwrapList(listRes.data, ['competitions']);
-        const featuredFromList = list.filter((c) => c?.isFeatured);
-
-        const seen = new Set();
-        const merged = [];
-
-        for (const comp of fromFeatured) {
-          if (!comp?._id || merged.length >= 2) break;
-          merged.push(comp);
-          seen.add(String(comp._id));
-        }
-
-        for (const comp of featuredFromList) {
-          if (merged.length >= 2) break;
-          if (!seen.has(String(comp._id))) {
-            merged.push(comp);
-            seen.add(String(comp._id));
-          }
-        }
-
-        setCompetitions(merged.slice(0, 2));
-      } catch {
-        if (!cancelled) {
-          setCompetitions([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const loading = (featuredLoading || listLoading) && !competitions.length;
 
   const handleCompetitionUpdate = (updatedComp, userPoints) => {
-    if (updatedComp?._id) {
-      setCompetitions((prev) => prev.map((c) => (
-        String(c._id) === String(updatedComp._id) ? updatedComp : c
-      )));
-    }
     if (userPoints != null) updateUser({ points: userPoints });
   };
 

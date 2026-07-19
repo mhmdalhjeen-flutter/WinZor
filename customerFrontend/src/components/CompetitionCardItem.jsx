@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
 import { resolveImageUrl } from '../utils/mediaUrl';
+import { useSecondTick } from '../hooks/useSecondTick';
+import CompetitionCountdownLabel, { formatCompetitionCountdown } from './CompetitionCountdownLabel';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -40,6 +42,9 @@ export default function CompetitionCardItem({
   useEffect(() => {
     setUserPoints(initialUserPoints);
   }, [initialUserPoints]);
+
+  const showCountdown = Boolean(competition?.endDate) && !competition?.hasEnded;
+  useSecondTick(showCountdown);
 
   if (!competition) return null;
 
@@ -94,6 +99,7 @@ export default function CompetitionCardItem({
       setUserPoints(data.userPoints);
       commitPointsUpdate(updateUser, data.userPoints, { queryClient: qc });
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
+      qc.invalidateQueries({ queryKey: queryKeys.competitionsFeatured });
       qc.invalidateQueries({ queryKey: queryKeys.competitions });
       onUpdate?.(data.competition, data.userPoints);
       setSuccess(true);
@@ -223,13 +229,12 @@ export default function CompetitionCardItem({
             </div>
           </div>
 
-          {remaining && (
-            <div className="text-center bg-white/10 px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl border border-white/15 shrink-0 min-w-[3.25rem] sm:min-w-[3.75rem]">
-              <div className="text-2xl sm:text-3xl font-black text-white leading-none tabular-nums">{remaining.days}</div>
-              <div className="text-[9px] sm:text-[10px] text-white/75 font-bold mt-0.5">يوم</div>
-              <div className="text-xs sm:text-sm font-black text-amber-200 leading-none mt-1 flex items-center gap-0.5 justify-center tabular-nums">
-                <Clock size={11} className="shrink-0" /> {remaining.hours}س
-              </div>
+          {remaining && !remaining.ended && (
+            <div className="text-center shrink-0 min-w-[5.5rem] sm:min-w-[6.25rem] rounded-xl border border-amber-300/30 bg-gradient-to-br from-amber-500/25 via-orange-500/15 to-amber-600/10 px-2.5 py-2 sm:px-3 sm:py-2.5 shadow-[0_4px_14px_rgba(251,191,36,0.12)]">
+              <CompetitionCountdownLabel
+                variant="dark"
+                time={formatCompetitionCountdown(competition.endDate)}
+              />
             </div>
           )}
         </div>

@@ -11,6 +11,8 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
 import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
+import { useSecondTick } from '../hooks/useSecondTick';
+import CompetitionCountdownLabel, { formatCompetitionCountdown } from '../components/CompetitionCountdownLabel';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -48,6 +50,8 @@ const CompetitionDetail = () => {
   const competition = data?.competition;
   const userPoints = user?.points ?? 0;
 
+  useSecondTick(Boolean(competition?.endDate) && !competition?.hasEnded);
+
   const handleJoin = async () => {
     const cost = entries * (competition.pointsPerEntry || 1);
     const prevPoints = userPoints;
@@ -79,6 +83,7 @@ const CompetitionDetail = () => {
       }
       qc.invalidateQueries({ queryKey: queryKeys.competition(id) });
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
+      qc.invalidateQueries({ queryKey: queryKeys.competitionsFeatured });
     } catch (err) {
       updateUser({ points: prevPoints });
       if (competition) {
@@ -140,7 +145,13 @@ const CompetitionDetail = () => {
           <span className="flex items-center gap-1"><Users size={14} /> {competition.participantsCount || 0} مشارك</span>
           {competition.location && <span className="flex items-center gap-1"><MapPin size={14} /> {competition.location}</span>}
           {remaining && !remaining.ended && (
-            <span className="flex items-center gap-1"><Clock size={14} /> {remaining.days}ي {remaining.hours}س</span>
+            <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-2.5 py-1">
+              <Clock size={14} className="text-amber-600 shrink-0" />
+              <CompetitionCountdownLabel
+                time={formatCompetitionCountdown(competition.endDate)}
+                inline
+              />
+            </span>
           )}
         </div>
 

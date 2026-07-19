@@ -38,6 +38,7 @@ export const CACHE_LIMITS = {
   userCenter: { maxAgeMs: 6 * 60 * 60 * 1000 },
   favorites: { maxAgeMs: 2 * 60 * 60 * 1000 },
   notifications: { maxItems: 20, maxAgeMs: 60 * 60 * 1000 },
+  competitions: { maxItems: 20, maxAgeMs: 7 * 24 * 60 * 60 * 1000 },
 };
 
 /** Notification types worth surfacing immediately (no bulk offer preload). */
@@ -68,6 +69,7 @@ const PERSIST_ROOTS = new Set([
   'favorites',
   'notifications',
   'unreadNotifications',
+  'competitions',
 ]);
 
 function isDefaultObjectKey(obj, defaults) {
@@ -124,6 +126,8 @@ export function shouldPersistQuery(query) {
   if (root === 'favorites') return true;
 
   if (root === 'notifications' || root === 'unreadNotifications') return true;
+
+  if (root === 'competitions' && (key[1] === 'list' || key[1] === 'featured')) return true;
 
   return false;
 }
@@ -184,6 +188,16 @@ export function trimDehydratedState(dehydratedState) {
         state: {
           ...entry.state,
           data: entry.state.data.slice(0, CACHE_LIMITS.notifications.maxItems),
+        },
+      };
+    }
+
+    if (root === 'competitions' && Array.isArray(entry.state?.data)) {
+      return {
+        ...entry,
+        state: {
+          ...entry.state,
+          data: entry.state.data.slice(0, CACHE_LIMITS.competitions.maxItems),
         },
       };
     }

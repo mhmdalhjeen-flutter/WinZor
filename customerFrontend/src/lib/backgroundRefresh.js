@@ -7,6 +7,18 @@ import {
   DEFAULT_STORES_BROWSE_KEY,
 } from './cacheConfig';
 
+async function fetchCompetitionsList() {
+  const { data } = await api.get('/competitions');
+  const list = unwrapList(data, ['competitions']);
+  return list.filter((c) => c && c._id);
+}
+
+async function fetchFeaturedCompetitions() {
+  const { data } = await api.get('/competitions/featured');
+  const list = data.competitions || (data.competition ? [data.competition] : []);
+  return list.filter((c) => c && c._id);
+}
+
 /**
  * Background refresh on PWA open — never blocks UI.
  * Uses React Query refetch (conditional GET) so only changed payloads download.
@@ -19,7 +31,7 @@ export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
       queryClient.prefetchQuery({
         queryKey: queryKeys.offersReels(DEFAULT_HOME_FEED_KEY),
         queryFn: async () => {
-          const { data } = await api.get('/offers/reels', { params: { limit: 20 } });
+          const { data } = await api.get('/offers/reels', { params: {} });
           return data?.reels || [];
         },
         staleTime: 60 * 1000,
@@ -52,6 +64,16 @@ export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
           return unwrapList(data, ['listings']);
         },
         staleTime: 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.competitionsList,
+        queryFn: fetchCompetitionsList,
+        staleTime: 30 * 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.competitionsFeatured,
+        queryFn: fetchFeaturedCompetitions,
+        staleTime: 30 * 60 * 1000,
       }),
     ];
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -30,20 +30,36 @@ function SpotlightTour({
 }) {
   const [rect, setRect] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({ top: 0, left: 0, maxWidth: 320 });
+  const activeTargetRef = useRef(null);
 
   const isFirst = stepIndex <= 0;
   const isLast = stepIndex >= totalSteps - 1;
 
+  const clearActiveTarget = useCallback(() => {
+    if (activeTargetRef.current) {
+      activeTargetRef.current.classList.remove('onboarding-tour-target-active');
+      activeTargetRef.current = null;
+    }
+  }, []);
+
   const measure = useCallback(() => {
     if (!open || !step?.target) {
+      clearActiveTarget();
       setRect(null);
       return;
     }
 
     const el = document.querySelector(onboardingTarget(step.target));
     if (!el) {
+      clearActiveTarget();
       setRect(null);
       return;
+    }
+
+    if (activeTargetRef.current !== el) {
+      clearActiveTarget();
+      el.classList.add('onboarding-tour-target-active');
+      activeTargetRef.current = el;
     }
 
     if (step.scroll !== false) {
@@ -77,14 +93,17 @@ function SpotlightTour({
         maxWidth: tooltipW,
       });
     });
-  }, [open, step]);
+  }, [open, step, clearActiveTarget]);
 
   useLayoutEffect(() => {
     measure();
   }, [measure, stepIndex, open]);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      clearActiveTarget();
+      return undefined;
+    }
 
     const onReflow = () => measure();
     window.addEventListener('resize', onReflow);
@@ -95,8 +114,11 @@ function SpotlightTour({
       window.removeEventListener('resize', onReflow);
       window.removeEventListener('scroll', onReflow, true);
       window.clearTimeout(retry);
+      clearActiveTarget();
     };
-  }, [open, measure]);
+  }, [open, measure, clearActiveTarget]);
+
+  useEffect(() => () => clearActiveTarget(), [clearActiveTarget]);
 
   if (!open || !step) return null;
 

@@ -11,14 +11,16 @@ import { warmOfferReelImages, warmStoreBrowseImages } from '../utils/cacheImages
 import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 
 const SPLASH_DONE_KEY = 'app-startup-splash-done';
-const MIN_VISIBLE_MS = 5000;
 const SLOGAN_INTERVAL_MS = 2000;
+const SLOGAN_FADE_MS = 420;
 
 const SLOGANS = [
-  'تسوق • اجمع نقاط • اربح',
-  'أفضل العروض من المتاجر المعتمدة',
-  'جوائز • مسابقات • عروض يومية',
+  'تابع جميع أنواع العروض من مكان واحد',
+  'اطلب نقاطك في كل عملية شراء من المتاجر المشاركة',
+  'السوق العام لعرض وبيع وشراء الجديد والمستعمل والإيجارات',
 ];
+
+const MIN_VISIBLE_MS = SLOGANS.length * SLOGAN_INTERVAL_MS;
 
 function warmFromPersistedCache() {
   const reels = queryClient.getQueryData(queryKeys.offersReels(DEFAULT_HOME_FEED_KEY));
@@ -35,7 +37,7 @@ async function prefetchHomeData() {
     queryClient.prefetchQuery({
       queryKey: queryKeys.offersReels(DEFAULT_HOME_FEED_KEY),
       queryFn: async () => {
-        const { data } = await api.get('/offers/reels', { params: { limit: 20 } });
+        const { data } = await api.get('/offers/reels', { params: {} });
         return data?.reels || [];
       },
       staleTime: 60 * 1000,
@@ -77,6 +79,24 @@ async function prefetchHomeData() {
       },
       staleTime: 60 * 1000,
     }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.competitionsList,
+      queryFn: async () => {
+        const { data } = await api.get('/competitions');
+        const list = unwrapList(data, ['competitions']);
+        return list.filter((c) => c && c._id);
+      },
+      staleTime: 30 * 60 * 1000,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.competitionsFeatured,
+      queryFn: async () => {
+        const { data } = await api.get('/competitions/featured');
+        const list = data.competitions || (data.competition ? [data.competition] : []);
+        return list.filter((c) => c && c._id);
+      },
+      staleTime: 30 * 60 * 1000,
+    }),
   ]);
 
   warmFromPersistedCache();
@@ -90,6 +110,7 @@ export default function StartupSplashGate({ active, children }) {
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
   const [sloganIndex, setSloganIndex] = useState(0);
+  const [sloganVisible, setSloganVisible] = useState(true);
 
   useEffect(() => {
     if (!active) {
@@ -107,9 +128,14 @@ export default function StartupSplashGate({ active, children }) {
     setVisible(true);
     setFading(false);
     setSloganIndex(0);
+    setSloganVisible(true);
 
     const sloganTimer = window.setInterval(() => {
-      setSloganIndex((i) => (i + 1) % SLOGANS.length);
+      setSloganVisible(false);
+      window.setTimeout(() => {
+        setSloganIndex((i) => (i + 1) % SLOGANS.length);
+        setSloganVisible(true);
+      }, SLOGAN_FADE_MS);
     }, SLOGAN_INTERVAL_MS);
 
     let cancelled = false;
@@ -167,10 +193,11 @@ export default function StartupSplashGate({ active, children }) {
               {BRAND_NAME}
             </h1>
 
-            <div className="mt-5 h-12 flex items-center justify-center">
+            <div className="mt-5 h-14 flex items-center justify-center px-2">
               <p
-                key={sloganIndex}
-                className="max-w-xs text-[15px] font-extrabold leading-snug text-gray-600 animate-[fadeSlideUp_0.38s_ease-out]"
+                className={`max-w-sm text-[15px] font-extrabold leading-snug text-gray-600 transition-all duration-[420ms] ease-out ${
+                  sloganVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                }`}
               >
                 {SLOGANS[sloganIndex]}
               </p>

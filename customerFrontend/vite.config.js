@@ -39,9 +39,9 @@ export default defineConfig({
             icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
           },
           {
-            name: 'السوق المفتوح',
+            name: 'السوق العام',
             short_name: 'السوق',
-            description: 'تصفّح السوق المفتوح',
+            description: 'تصفّح السوق العام',
             url: '/marketplace',
             icons: [{ src: '/brand/logo-64.webp', sizes: '64x64', type: 'image/webp' }],
           },
@@ -158,6 +158,7 @@ export default defineConfig({
                 || /^\/api\/regions(\/?|$)/.test(path)
                 || /^\/api\/stores\/browse/.test(path)
                 || /^\/api\/bazaar\/?$/.test(path)
+                || /^\/api\/competitions(\/featured|\/?$)/.test(path)
               )
             },
             handler: 'StaleWhileRevalidate',

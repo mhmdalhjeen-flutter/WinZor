@@ -20,8 +20,10 @@ import ReferralCardsModal from '../components/ReferralCardsModal';
 import { getProgress } from '../shared/levels';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
+import { useSecondTick } from '../hooks/useSecondTick';
 import { useRecentPointSources } from '../hooks/useRecentPointSources';
 import { CompetitionModal, timeLeft } from './Competitions';
+import CompetitionCountdownLabel from '../components/CompetitionCountdownLabel';
 import { queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import { uploadImage } from '../utils/imageUpload';
@@ -109,6 +111,10 @@ const UserCenter = () => {
     isError: competitionsError,
     refetch: refetchCompetitions,
   } = useCompetitionsList({ enabled: showCompetitionsBtn });
+
+  useSecondTick(
+    showCompetitionsBtn && competitionsList.some((c) => c?.endDate && !c?.hasEnded),
+  );
 
   const {
     data: recentPointSources = [],
@@ -609,9 +615,12 @@ const UserCenter = () => {
                             <Coins size={11} />
                             {minPts}+ نقطة
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-xl bg-gray-100 px-2 py-1 text-[10px] font-black text-gray-600">
-                            <Clock size={11} />
-                            {timeLeft(comp.endDate)}
+                          <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-2 py-1 text-[10px] font-black text-amber-800">
+                            <Clock size={11} className="text-amber-600 shrink-0" />
+                            <CompetitionCountdownLabel
+                              time={timeLeft(comp.endDate)}
+                              inline
+                            />
                           </span>
                         </div>
                       </div>

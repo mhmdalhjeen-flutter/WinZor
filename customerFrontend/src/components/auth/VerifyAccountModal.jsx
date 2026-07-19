@@ -96,6 +96,7 @@ const VerifyAccountModal = ({ open, onClose, onVerified }) => {
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.me });
       queryClient.invalidateQueries({ queryKey: queryKeys.competitionsList });
+      queryClient.invalidateQueries({ queryKey: queryKeys.competitionsFeatured });
       window.dispatchEvent(
         new CustomEvent('user:verified', {
           detail: { bonusPoints, points: data.points },

@@ -6,18 +6,11 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCompetitionsList } from '../hooks/useCompetitionsList';
+import { useSecondTick } from '../hooks/useSecondTick';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
 import { resolveImageUrl, cloudinarySrcSet } from '../utils/mediaUrl';
-
-const timeLeft = (endDate) => {
-  if (!endDate) return '—';
-  const diff = new Date(endDate) - Date.now();
-  if (diff <= 0) return 'انتهت';
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  return d > 0 ? `${d} يوم ${h} س` : `${h} ساعة`;
-};
+import CompetitionCountdownLabel, { formatCompetitionCountdown } from '../components/CompetitionCountdownLabel';
 
 const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
   const [entries, setEntries] = useState(1);
@@ -52,6 +45,7 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
         commitPointsUpdate(updateUser, data.userPoints, { queryClient: qc });
       }
       qc.invalidateQueries({ queryKey: queryKeys.competitionsList });
+      qc.invalidateQueries({ queryKey: queryKeys.competitionsFeatured });
       onJoined?.(data.competition);
     } catch (err) {
       updateUser({ points: prevPoints });
@@ -94,7 +88,13 @@ const CompetitionModal = ({ competition, userPoints, onClose, onJoined }) => {
           <div className="flex flex-wrap gap-2 text-[11px] font-bold text-gray-500">
             <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1"><Coins size={12} /> {competition.minPoints}+ نقطة</span>
             <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1"><Users size={12} /> {competition.participantsCount ?? 0}</span>
-            <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1"><Clock size={12} /> {timeLeft(competition.endDate)}</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-3 py-1">
+              <Clock size={12} className="text-amber-600 shrink-0" />
+              <CompetitionCountdownLabel
+                time={formatCompetitionCountdown(competition.endDate)}
+                inline
+              />
+            </span>
             {competition.location && <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1"><MapPin size={12} /> {competition.location}</span>}
           </div>
 
@@ -153,6 +153,7 @@ const Competitions = () => {
   const { user } = useAuth();
   const { data: list = [], isLoading, isError, refetch } = useCompetitionsList();
   const userPoints = user?.points ?? 0;
+  useSecondTick(list.some((c) => c?.endDate && !c?.hasEnded));
 
   return (
     <div className="pb-24 space-y-5 text-right" dir="rtl">
@@ -217,9 +218,12 @@ const Competitions = () => {
                       <Users size={12} className="shrink-0" />
                       {c.participantsCount ?? 0} مشارك
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-xl bg-gray-100 px-2.5 py-1.5 text-[11px] font-black text-gray-600">
-                      <Clock size={12} className="shrink-0" />
-                      {timeLeft(c.endDate)}
+                    <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50 px-2.5 py-1.5 text-[11px] font-black text-amber-800">
+                      <Clock size={12} className="shrink-0 text-amber-600" />
+                      <CompetitionCountdownLabel
+                        time={formatCompetitionCountdown(c.endDate)}
+                        inline
+                      />
                     </span>
                   </div>
 
@@ -265,6 +269,6 @@ const Competitions = () => {
   );
 };
 
-export { CompetitionModal, timeLeft };
+export { CompetitionModal, formatCompetitionCountdown as timeLeft };
 
 export default Competitions;

@@ -23,6 +23,7 @@ export const queryKeys = {
   cart: ['cart'],
   honor: ['honor'],
   competitionsList: ['competitions', 'list'],
+  competitionsFeatured: ['competitions', 'featured'],
   competitions: ['competitions'],
   competition: (id) => ['competition', id],
   chats: ['chats'],

@@ -5,7 +5,7 @@ import { BRAND_LOGO_64, BRAND_NAME } from '../../utils/brandAssets';
 
 const SHORTCUTS = [
   { icon: Ticket, label: 'إدخال الكود', color: '#1e3a8a' },
-  { icon: ShoppingBag, label: 'السوق المفتوح', color: '#059669' },
+  { icon: ShoppingBag, label: 'السوق العام', color: '#059669' },
   { icon: Store, label: 'المتاجر', color: '#2563eb' },
   { icon: Medal, label: 'مسابقاتي', color: '#7c3aed' },
 ];

@@ -670,7 +670,7 @@ const Marketplace = () => {
       <MarketplaceOnboardingTourHost activePage />
       <div className="px-2 pt-3 pb-2 text-center">
         <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug font-cairo">
-          السوق المفتوح
+          السوق العام
         </h1>
         <p className="marketplace-subtitle mt-2.5 text-[13px] sm:text-sm text-gray-600 leading-relaxed max-w-lg mx-auto px-1">
           هنا يمكنك بيع أغراضك، شراء ما تبحث عنه، عرض أو استئجار العقارات والمركبات، ونشر طلباتك، كل ذلك في مكان واحد.

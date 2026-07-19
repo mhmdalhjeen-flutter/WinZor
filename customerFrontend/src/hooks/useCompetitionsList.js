@@ -12,7 +12,7 @@ export function useCompetitionsList(options = {}) {
       const list = unwrapList(data, ['competitions']);
       return list.filter((c) => c && c._id);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     ...options,
   });

@@ -20,20 +20,8 @@ export function mapProductForCard(product) {
   };
 }
 
-function CategoryCarousel({
-  reel,
-  onOfferClick,
-  onProductClick,
-  hideHeader = false,
-  priorityFirstImage = false,
-}) {
-  const trackRef = React.useRef(null);
-
-  const offers = reel?.offers || [];
-  const products = reel?.products || [];
-  const totalItems = offers.length + products.length;
-
-  const scrollByDir = (dir) => {
+function useRailScroll(trackRef) {
+  return (dir) => {
     const el = trackRef.current;
     if (!el) return;
 
@@ -56,13 +44,32 @@ function CategoryCarousel({
 
     const nextIdx = Math.max(0, Math.min(slides.length - 1, activeIdx + dir));
     el.scrollTo({
+      left: getSlideScrollTarget(el, slides[nextIdx]),
       behavior: 'smooth',
     });
   };
+}
+
+function CategoryCarousel({
+  reel,
+  onOfferClick,
+  onProductClick,
+  hideHeader = false,
+  priorityFirstImage = false,
+}) {
+  const offersTrackRef = React.useRef(null);
+  const productsTrackRef = React.useRef(null);
+  const scrollOffers = useRailScroll(offersTrackRef);
+  const scrollProducts = useRailScroll(productsTrackRef);
+
+  const offers = reel?.offers || [];
+  const products = reel?.products || [];
 
   const countLabel = products.length
     ? `${offers.length} عرض · ${products.length} منتج`
     : `${offers.length} عرض`;
+
+  const resetKey = String(reel.categoryId || reel.categoryName || 'category');
 
   return (
     <section className="category-reel">
@@ -73,12 +80,12 @@ function CategoryCarousel({
           </span>
           <h3 className="category-reel__title">{reel.categoryName}</h3>
           <span className="category-reel__count">{countLabel}</span>
-          {totalItems > 2 && (
+          {offers.length > 3 && (
             <button
               type="button"
               className="category-reel__scroll-hint"
-              onClick={() => scrollByDir(-1)}
-              aria-label="تمرير للخلف"
+              onClick={() => scrollOffers(1)}
+              aria-label="تمرير العروض"
             >
               <ChevronLeft size={16} />
             </button>
@@ -86,39 +93,48 @@ function CategoryCarousel({
         </header>
       )}
 
-      <OfferRailTrack
-        trackRef={trackRef}
-        resetKey={String(reel.categoryId || reel.categoryName || 'category')}
-      >
-        {offers.map((offer, idx) => (
-          <div key={offer._id} className="home-offers-rail__slide">
-            <MarketplaceOfferCard
-              offer={offer}
-              priority={priorityFirstImage && idx === 0}
-              onClick={() => onOfferClick(reel, idx)}
-            />
-          </div>
-        ))}
+      {offers.length > 0 && (
+        <OfferRailTrack trackRef={offersTrackRef} resetKey={`${resetKey}-offers`}>
+          {offers.map((offer, idx) => (
+            <div key={offer._id} className="home-offers-rail__slide">
+              <MarketplaceOfferCard
+                offer={offer}
+                priority={priorityFirstImage && idx === 0}
+                onClick={() => onOfferClick(reel, idx)}
+              />
+            </div>
+          ))}
+        </OfferRailTrack>
+      )}
 
-        {products.length > 0 && (
-          <div
-            className="home-offers-rail__slide home-offers-rail__slide--products-label"
-            aria-hidden="true"
-          >
-            <div className="category-reel__products-divider" />
-          </div>
-        )}
-
-        {products.map((product, idx) => (
-          <div key={product._id} className="home-offers-rail__slide">
-            <MarketplaceOfferCard
-              offer={mapProductForCard(product)}
-              topBadge={SHOPPING_BADGE}
-              onClick={() => onProductClick?.(reel, idx)}
-            />
-          </div>
-        ))}
-      </OfferRailTrack>
+      {products.length > 0 && (
+        <div className="category-reel__products-wrap category-reel__products-rail">
+          {products.length > 3 && (
+            <div className="category-reel__products-header">
+              <span className="category-reel__products-label">منتجات</span>
+              <button
+                type="button"
+                className="category-reel__scroll-hint"
+                onClick={() => scrollProducts(1)}
+                aria-label="تمرير المنتجات"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            </div>
+          )}
+          <OfferRailTrack trackRef={productsTrackRef} resetKey={`${resetKey}-products`}>
+            {products.map((product, idx) => (
+              <div key={product._id} className="home-offers-rail__slide">
+                <MarketplaceOfferCard
+                  offer={mapProductForCard(product)}
+                  topBadge={SHOPPING_BADGE}
+                  onClick={() => onProductClick?.(reel, idx)}
+                />
+              </div>
+            ))}
+          </OfferRailTrack>
+        </div>
+      )}
     </section>
   );
 }

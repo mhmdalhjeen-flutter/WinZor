@@ -276,17 +276,30 @@ const Header = () => {
   return (
     <>
       <header
+        data-onboarding="top-nav"
         className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/70 shadow-sm"
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
           {isAuth ? (
-            <PointsBadge
-              points={points}
-              pulse={pointsPulse}
-              onClick={openPoints}
-            />
+            <div className="flex items-center gap-2 min-w-0 shrink-0">
+              <img
+                src={BRAND_LOGO_64}
+                alt=""
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain shadow-sm shrink-0"
+                width={36}
+                height={36}
+                loading="eager"
+                fetchpriority="high"
+                decoding="async"
+              />
+              <PointsBadge
+                points={points}
+                pulse={pointsPulse}
+                onClick={openPoints}
+              />
+            </div>
           ) : (
             <button
               type="button"

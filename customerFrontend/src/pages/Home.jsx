@@ -111,7 +111,7 @@ const Home = () => {
   const { data: reelsData, isLoading: reelsLoading } = useQuery({
     queryKey: queryKeys.offersReels(feedKey),
     queryFn: async () => {
-      const params = { limit: 20 };
+      const params = {};
       if (selectedRegionId) params.region = selectedRegionId;
       const { data } = await api.get('/offers/reels', { params });
       return data?.reels || [];

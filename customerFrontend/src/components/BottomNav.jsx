@@ -46,12 +46,15 @@ const BottomNav = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'الرئيسية', show: true, onboardingId: null },
     { to: '/explore', icon: Store, label: 'المتاجر', show: true, onboardingId: null },
-    { to: '/marketplace', icon: ShoppingBag, label: 'السوق المفتوح', show: features.marketplace !== false, onboardingId: 'marketplace-nav' },
+    { to: '/marketplace', icon: ShoppingBag, label: 'السوق العام', show: features.marketplace !== false, onboardingId: 'marketplace-nav' },
     { to: '/center', label: 'نقاطي', customIcon: 'rewards', show: true, onboardingId: 'profile-nav' },
   ].filter((item) => item.show);
 
   return (
-    <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-200/80 px-1 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.06)] max-w-2xl mx-auto">
+    <nav
+      data-onboarding="bottom-nav"
+      className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-200/80 px-1 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.06)] max-w-2xl mx-auto"
+    >
       {navItems.map((item) => (
         <NavLink key={item.to} to={item.to} className="flex-1 max-w-[5rem]" data-onboarding={item.onboardingId || undefined}>
           {({ isActive }) => (

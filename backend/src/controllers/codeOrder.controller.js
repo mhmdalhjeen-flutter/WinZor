@@ -199,6 +199,18 @@ exports.markAsReceived = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // أدمن: تصدير Excel + QR
 // ─────────────────────────────────────────────────────────────────────────────
+const QR_DISPLAY_PX = 110;       // displayed size inside the cell (~90–120 px)
+const QR_RENDER_PX  = 440;       // high-res source for sharp print (4× display)
+const QR_ROW_HEIGHT = 96;        // points — keeps full QR visible without clipping
+const QR_COL_WIDTH  = 16;        // Excel char units ≈ ~110 px display width
+
+function excelColWidthForText(text, min = 12, max = 45) {
+    const len = String(text || "").length;
+    // Arabic glyphs need a bit more horizontal room than Latin
+    const approx = Math.ceil(len * 1.15) + 3;
+    return Math.min(Math.max(approx, min), max);
+}
+
 exports.exportOrderCodes = async (req, res) => {
     try {
         const id = requireObjectId(req.params.id, "id");
@@ -212,46 +224,109 @@ exports.exportOrderCodes = async (req, res) => {
             return res.status(400).json({ message: "لا توجد أكواد لهذا الطلب" });
 
         const workbook  = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("الأكواد");
+        const worksheet = workbook.addWorksheet("الأكواد", {
+            views: [{ rightToLeft: true, state: "frozen", ySplit: 1 }],
+            properties: { defaultRowHeight: 20 },
+        });
 
         worksheet.columns = [
-            { header: "م",            key: "index",        width: 6  },
-            { header: "الكود",        key: "code",         width: 20 },
-            { header: "النقاط",       key: "points",       width: 10 },
-            { header: "نوع التسليم", key: "deliveryType", width: 14 },
-            { header: "المتجر",       key: "store",        width: 20 },
-            { header: "QR Code",      key: "qr",           width: 18 },
+            { header: "اسم المتجر", key: "store", width: 20 },
+            { header: "الرمز",      key: "code",  width: 20 },
+            { header: "رمز QR",     key: "qr",    width: QR_COL_WIDTH },
         ];
 
         const headerRow = worksheet.getRow(1);
-        headerRow.font      = { bold: true, size: 12 };
-        headerRow.alignment = { horizontal: "center", vertical: "middle" };
-        headerRow.height    = 24;
+        headerRow.font      = { bold: true, size: 12, color: { argb: "FF1F2937" } };
+        headerRow.alignment = {
+            horizontal: "center",
+            vertical: "middle",
+            readingOrder: "rtl",
+            wrapText: true,
+        };
+        headerRow.height = 28;
+        headerRow.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE8EEF4" },
+        };
+        headerRow.eachCell((cell) => {
+            cell.border = {
+                top:    { style: "thin", color: { argb: "FFCBD5E1" } },
+                bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+                left:   { style: "thin", color: { argb: "FFCBD5E1" } },
+                right:  { style: "thin", color: { argb: "FFCBD5E1" } },
+            };
+        });
+
+        const storeName = order.store?.name || "";
+        let maxStoreWidth = excelColWidthForText("اسم المتجر");
+        let maxCodeWidth  = excelColWidthForText("الرمز");
+
+        // Center QR inside the cell (Excel col width ≈ 7px/unit; row height in points ≈ 1.333px)
+        const cellWidthPx  = QR_COL_WIDTH * 7;
+        const cellHeightPx = QR_ROW_HEIGHT * (96 / 72);
+        const colInset = Math.max(0, (cellWidthPx  - QR_DISPLAY_PX) / 2) / cellWidthPx;
+        const rowInset = Math.max(0, (cellHeightPx - QR_DISPLAY_PX) / 2) / cellHeightPx;
 
         for (let i = 0; i < order.codes.length; i++) {
             const promoCode = order.codes[i];
             const rowIndex  = i + 2;
+            const code      = promoCode.code;
 
             worksheet.addRow({
-                index:        i + 1,
-                code:         promoCode.code,
-                points:       order.cardType?.points || 0,
-                deliveryType: order.deliveryType === "digital" ? "رقمي 📱" : "ورقي 🖨️",
-                store:        order.store?.name || "",
+                store: storeName,
+                code,
             });
 
             const row = worksheet.getRow(rowIndex);
-            row.height    = 90;
-            row.alignment = { vertical: "middle", horizontal: "center" };
+            row.height = QR_ROW_HEIGHT;
+            row.getCell(1).alignment = {
+                vertical: "middle",
+                horizontal: "right",
+                readingOrder: "rtl",
+                wrapText: true,
+            };
+            row.getCell(2).alignment = {
+                vertical: "middle",
+                horizontal: "center",
+                readingOrder: "ltr",
+            };
+            row.getCell(3).alignment = {
+                vertical: "middle",
+                horizontal: "center",
+            };
 
-            const qrDataUrl = await QRCode.toDataURL(promoCode.code, { width: 100, margin: 1 });
-            const base64    = qrDataUrl.replace("data:image/png;base64,", "");
-            const imageId   = workbook.addImage({ base64, extension: "png" });
+            maxStoreWidth = Math.max(maxStoreWidth, excelColWidthForText(storeName));
+            maxCodeWidth  = Math.max(maxCodeWidth,  excelColWidthForText(code, 14, 36));
+
+            // High-res PNG with quiet zone; displayed at fixed square size (no stretch)
+            const qrDataUrl = await QRCode.toDataURL(code, {
+                errorCorrectionLevel: "H",
+                type: "image/png",
+                width: QR_RENDER_PX,
+                margin: 4,
+                color: { dark: "#000000", light: "#FFFFFF" },
+            });
+            const base64  = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+            const imageId = workbook.addImage({ base64, extension: "png" });
+
+            // Equal width/height + oneCell edit keeps the QR sharp and undistorted
             worksheet.addImage(imageId, {
-                tl: { col: 5,    row: rowIndex - 1 },
-                br: { col: 5.99, row: rowIndex      },
+                tl: {
+                    col: 2 + colInset,
+                    row: (rowIndex - 1) + rowInset,
+                },
+                ext: {
+                    width:  QR_DISPLAY_PX,
+                    height: QR_DISPLAY_PX,
+                },
+                editAs: "oneCell",
             });
         }
+
+        worksheet.getColumn(1).width = maxStoreWidth;
+        worksheet.getColumn(2).width = maxCodeWidth;
+        worksheet.getColumn(3).width = QR_COL_WIDTH;
 
         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         res.setHeader("Content-Disposition", `attachment; filename="codes-${Date.now()}.xlsx"`);

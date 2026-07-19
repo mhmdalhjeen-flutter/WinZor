@@ -1,5 +1,5 @@
 /** Tiny brand marks for above-the-fold chrome (avoid 400KB+ source PNGs). */
-const BRAND_VERSION = '6';
+const BRAND_VERSION = '7';
 
 export const BRAND_NAME = 'Win Gold';
 

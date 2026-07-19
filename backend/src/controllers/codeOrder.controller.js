@@ -204,7 +204,7 @@ exports.exportOrderCodes = async (req, res) => {
         const order = await CodeOrder.findById(id)
             .populate({ path: "codes", model: "PromoCode" })
             .populate("cardType", "name points")
-            .populate("store", "name");
+            .populate("store", "name logo");
 
         if (!order) return res.status(404).json({ message: "الطلب غير موجود" });
         if (order.deliveryType === "digital")
@@ -213,10 +213,11 @@ exports.exportOrderCodes = async (req, res) => {
             return res.status(400).json({ message: "لا توجد أكواد لهذا الطلب" });
 
         const storeName = order.store?.name || "";
+        const storeLogo = order.store?.logo || "";
         const codes = order.codes.map((promoCode) => promoCode.code);
         const websiteUrl = (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
 
-        const pdfBuffer = await generateGiftCardPdf({ codes, storeName, websiteUrl });
+        const pdfBuffer = await generateGiftCardPdf({ codes, storeName, storeLogo, websiteUrl });
 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename="gift-cards-${Date.now()}.pdf"`);

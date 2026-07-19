@@ -1,6 +1,6 @@
 /**
  * Premium printable gift-card PDF generator (A4 sheets, 300 DPI QR assets).
- * Arabic labels are rendered via Sharp+SVG for correct RTL shaping.
+ * Arabic labels rendered via Sharp+SVG for correct RTL shaping.
  */
 const fs = require("fs");
 const path = require("path");
@@ -24,12 +24,13 @@ const A4_H = 841.89;
 const GRID_X = (A4_W - GRID_W) / 2;
 const GRID_Y = (A4_H - GRID_H) / 2;
 
-const GOLD = "#C9A227";
-const GOLD_LIGHT = "#E8D48B";
-const RED_SOFT = "#E57373";
-const RED_BRAND = "#DC2626";
-const TEXT_DARK = "#1F2937";
-const TEXT_MUTED = "#64748B";
+const GOLD = "#9A7209";
+const GOLD_DARK = "#7A5900";
+const GOLD_LIGHT = "#C9A227";
+const RED_SOFT = "#C62828";
+const RED_BRAND = "#991B1B";
+const TEXT_DARK = "#111827";
+const TEXT_MUTED = "#4B5563";
 
 const FONT_DIR = path.join(__dirname, "../../node_modules/@fontsource/cairo/files");
 const FONT_CANDIDATES = {
@@ -45,7 +46,7 @@ const FONT_CANDIDATES = {
   ],
 };
 
-const LOGO_CANDIDATES = [
+const WIN_GOLD_LOGO_CANDIDATES = [
   path.join(__dirname, "../../assets/brand/win-gold-customer-logo.png"),
   path.join(__dirname, "../../../customerFrontend/src/assets/logo/win-goldenstore-logo.png"),
   path.join(__dirname, "../../../win_golden_flutter/assets/brand/win-goldenstore-logo.png"),
@@ -58,22 +59,9 @@ const QR_OPTIONS = {
   color: { dark: "#000000", light: "#FFFFFF" },
 };
 
-const FRONT_LAYOUT = {
-  pad: 7,
-  logoSize: 32,
-  logoTop: 5,
-  giftLabelGap: 3,
-  storeGap: 2,
-  qrSize: 60,
-  qrGap: 3,
-  codeGap: 2,
-  marketingGap: 2,
-  hintGap: 1,
-};
-
 const arabicTextCache = new Map();
-let logoCache;
-let resolvedFonts = null;
+let fontAssets = null;
+let winGoldLogoCache;
 
 function isValidFontBuffer(buf) {
   if (!buf || buf.length < 1024) return false;
@@ -92,22 +80,26 @@ function resolveFontPath(variant) {
   throw new Error(`Gift card font missing (${variant}). Run npm install in backend.`);
 }
 
-function ensureFonts(doc) {
-  if (resolvedFonts) return resolvedFonts;
+function loadFontAssets() {
+  if (fontAssets) return fontAssets;
 
   const regularPath = resolveFontPath("regular");
   const boldPath = resolveFontPath("bold");
 
-  doc.registerFont("Cairo", regularPath);
-  doc.registerFont("CairoBold", boldPath);
-
-  resolvedFonts = {
+  fontAssets = {
     regularPath,
     boldPath,
     regularData: fs.readFileSync(regularPath),
     boldData: fs.readFileSync(boldPath),
   };
-  return resolvedFonts;
+  return fontAssets;
+}
+
+function registerFonts(doc) {
+  const fonts = loadFontAssets();
+  doc.registerFont("Cairo", fonts.regularPath);
+  doc.registerFont("CairoBold", fonts.boldPath);
+  return fonts;
 }
 
 function fontFormatFromPath(fontPath) {
@@ -131,33 +123,27 @@ async function renderArabicText({
   color = TEXT_DARK,
   bold = false,
   align = "center",
-  maxLines = 2,
+  maxLines = 1,
 }) {
   const cacheKey = [text, widthPt, fontSizePt, color, bold, align, maxLines].join("|");
   if (arabicTextCache.has(cacheKey)) return arabicTextCache.get(cacheKey);
 
-  const fonts = resolvedFonts || {
-    regularPath: resolveFontPath("regular"),
-    boldPath: resolveFontPath("bold"),
-    regularData: fs.readFileSync(resolveFontPath("regular")),
-    boldData: fs.readFileSync(resolveFontPath("bold")),
-  };
-
+  const fonts = loadFontAssets();
   const fontPath = bold ? fonts.boldPath : fonts.regularPath;
   const fontData = bold ? fonts.boldData : fonts.regularData;
   const format = fontFormatFromPath(fontPath);
 
-  const widthPx = Math.max(24, Math.round((widthPt / 72) * 300));
-  const fontSizePx = Math.max(8, Math.round((fontSizePt / 72) * 300));
-  const lineHeightPx = Math.round(fontSizePx * 1.35);
-  const heightPx = lineHeightPx * maxLines + 4;
+  const widthPx = Math.max(32, Math.round((widthPt / 72) * 300));
+  const fontSizePx = Math.max(9, Math.round((fontSizePt / 72) * 300));
+  const lineHeightPx = Math.round(fontSizePx * 1.28);
+  const heightPx = lineHeightPx * maxLines + 6;
 
   const anchor = align === "right" ? "end" : align === "left" ? "start" : "middle";
   const x = align === "right" ? widthPx - 2 : align === "left" ? 2 : widthPx / 2;
   const lines = String(text).split("\n").slice(0, maxLines);
   const tspans = lines
     .map((line, index) => {
-      const dy = index === 0 ? fontSizePx + 1 : lineHeightPx;
+      const dy = index === 0 ? fontSizePx + 2 : lineHeightPx;
       return `<tspan x="${x}" dy="${dy}">${escapeXml(line)}</tspan>`;
     })
     .join("");
@@ -183,36 +169,71 @@ async function renderArabicText({
 </svg>`;
 
   const png = await sharp(Buffer.from(svg)).png().toBuffer();
-  arabicTextCache.set(cacheKey, { png, widthPt, heightPt: (heightPx / 300) * 72 });
-  return arabicTextCache.get(cacheKey);
+  const block = { png, widthPt, heightPt: (heightPx / 300) * 72 };
+  arabicTextCache.set(cacheKey, block);
+  return block;
 }
 
 function drawArabicBlock(doc, block, x, y, widthPt) {
   if (!block?.png) return y;
-  const drawW = widthPt;
-  const drawH = block.heightPt;
-  doc.image(block.png, x, y, { width: drawW, height: drawH });
-  return y + drawH;
+  doc.image(block.png, x, y, { width: widthPt, height: block.heightPt });
+  return y + block.heightPt;
 }
 
-async function loadLogoBuffer() {
-  if (logoCache !== undefined) return logoCache;
+async function loadWinGoldLogoBuffer() {
+  if (winGoldLogoCache !== undefined) return winGoldLogoCache;
 
-  for (const candidate of LOGO_CANDIDATES) {
+  for (const candidate of WIN_GOLD_LOGO_CANDIDATES) {
     if (!fs.existsSync(candidate)) continue;
     try {
-      logoCache = await sharp(candidate)
-        .resize(280, 280, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      winGoldLogoCache = await sharp(candidate)
+        .resize(180, 180, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .png()
         .toBuffer();
-      return logoCache;
+      return winGoldLogoCache;
     } catch {
-      /* try next candidate */
+      /* try next */
     }
   }
 
-  logoCache = null;
+  winGoldLogoCache = null;
   return null;
+}
+
+async function loadStoreIconBuffer(storeLogo, storeName) {
+  try {
+    if (storeLogo && /^https?:\/\//i.test(storeLogo)) {
+      const res = await fetch(storeLogo);
+      if (!res.ok) throw new Error("store logo fetch failed");
+      const buf = Buffer.from(await res.arrayBuffer());
+      return sharp(buf).resize(80, 80, { fit: "cover" }).png().toBuffer();
+    }
+
+    if (storeLogo && storeLogo.startsWith("data:image")) {
+      const base64 = storeLogo.split(",")[1];
+      return sharp(Buffer.from(base64, "base64"))
+        .resize(80, 80, { fit: "cover" })
+        .png()
+        .toBuffer();
+    }
+
+    if (storeLogo && fs.existsSync(storeLogo)) {
+      return sharp(storeLogo).resize(80, 80, { fit: "cover" }).png().toBuffer();
+    }
+  } catch {
+    /* fall through to placeholder */
+  }
+
+  const initial = encodeURIComponent(String(storeName || "S").trim().charAt(0) || "S");
+  const avatarUrl = `https://ui-avatars.com/api/?name=${initial}&background=6366f1&color=fff&size=128&bold=true`;
+  try {
+    const res = await fetch(avatarUrl);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return sharp(buf).resize(80, 80, { fit: "cover" }).png().toBuffer();
+  } catch {
+    return null;
+  }
 }
 
 async function generateQrBuffer(text, px) {
@@ -242,65 +263,68 @@ function drawRoundedCardFrame(doc, x, y) {
   doc.save();
   doc.roundedRect(x, y, CARD_PT, CARD_PT, radius).clip();
   doc.rect(x, y, CARD_PT, CARD_PT).fill("#FFFFFF");
-  doc.rect(x, y, CARD_PT, 3.5).fill(GOLD);
-  doc.rect(x, y + CARD_PT - 2, CARD_PT, 2).fill(RED_SOFT);
-
-  doc.opacity(0.07);
+  doc.rect(x, y, CARD_PT, 4).fill(GOLD_DARK);
+  doc.rect(x, y + CARD_PT - 2.5, CARD_PT, 2.5).fill(RED_SOFT);
+  doc.opacity(0.06);
   doc.fillColor(GOLD);
-  doc.font("CairoBold").fontSize(72);
-  doc.text("WG", x, y + CARD_PT * 0.28, {
-    width: CARD_PT,
-    align: "center",
-    lineBreak: false,
-  });
+  doc.font("CairoBold").fontSize(70);
+  doc.text("WG", x, y + CARD_PT * 0.3, { width: CARD_PT, align: "center", lineBreak: false });
   doc.opacity(1);
   doc.restore();
 
   doc.save();
-  doc.roundedRect(x, y, CARD_PT, CARD_PT, radius).lineWidth(0.8).strokeColor(GOLD_LIGHT).stroke();
+  doc.roundedRect(x, y, CARD_PT, CARD_PT, radius).lineWidth(0.9).strokeColor(GOLD).stroke();
   doc.restore();
 }
 
-async function drawCardFront(doc, x, y, { storeName, code, giftQr, logo }) {
-  drawRoundedCardFrame(doc, x, y);
+function drawBrandHeader(doc, x, y, { storeIcon, winGoldLogo }) {
+  const iconSize = 13;
+  const logoSize = 20;
+  const gap = 4;
+  const labelW = 34;
+  const totalW = iconSize + gap + logoSize + gap + labelW;
+  const startX = x + (CARD_PT - totalW) / 2;
+  const headerY = y + 4;
 
-  const L = FRONT_LAYOUT;
-  const innerX = x + L.pad;
-  const innerW = CARD_PT - L.pad * 2;
-  let cursorY = y + L.logoTop;
-
-  if (logo) {
-    doc.image(logo, x + (CARD_PT - L.logoSize) / 2, cursorY, {
-      width: L.logoSize,
-      height: L.logoSize,
-      fit: [L.logoSize, L.logoSize],
-    });
-    cursorY += L.logoSize + L.giftLabelGap;
-  } else {
-    doc.font("CairoBold").fontSize(9).fillColor(GOLD);
-    doc.text("Win Gold", innerX, cursorY, { width: innerW, align: "center", lineBreak: false });
-    cursorY += 12 + L.giftLabelGap;
+  if (storeIcon) {
+    doc.save();
+    doc.circle(startX + iconSize / 2, headerY + iconSize / 2, iconSize / 2).clip();
+    doc.image(storeIcon, startX, headerY, { width: iconSize, height: iconSize });
+    doc.restore();
   }
 
-  cursorY = drawArabicBlock(
-    doc,
-    await renderArabicText({
-      text: "هدية مقدمة من",
-      widthPt: innerW,
-      fontSizePt: 6.2,
-      color: TEXT_MUTED,
-    }),
-    innerX,
-    cursorY,
-    innerW
-  ) + L.storeGap;
+  const logoX = startX + iconSize + gap;
+  if (winGoldLogo) {
+    doc.image(winGoldLogo, logoX, headerY - 1, { width: logoSize, height: logoSize, fit: [logoSize, logoSize] });
+  }
+
+  doc.font("CairoBold").fontSize(7.5).fillColor(GOLD_DARK);
+  doc.text("Win Gold", logoX + logoSize + gap, headerY + 4, {
+    width: labelW,
+    align: "left",
+    lineBreak: false,
+  });
+
+  return y + 22;
+}
+
+async function drawCardFront(doc, x, y, { storeName, code, giftQr, storeIcon, winGoldLogo }) {
+  drawRoundedCardFrame(doc, x, y);
+
+  const pad = 6;
+  const innerX = x + pad;
+  const innerW = CARD_PT - pad * 2;
+  let cursorY = drawBrandHeader(doc, x, y, { storeIcon, winGoldLogo });
+
+  const giftLine = `هدية مقدمة من ${storeName || "—"}`;
+  const giftFontSize = giftLine.length > 34 ? 5.4 : giftLine.length > 28 ? 5.8 : 6.2;
 
   cursorY = drawArabicBlock(
     doc,
     await renderArabicText({
-      text: storeName || "—",
+      text: giftLine,
       widthPt: innerW,
-      fontSizePt: 7.4,
+      fontSizePt: giftFontSize,
       color: TEXT_DARK,
       bold: true,
       maxLines: 1,
@@ -308,155 +332,85 @@ async function drawCardFront(doc, x, y, { storeName, code, giftQr, logo }) {
     innerX,
     cursorY,
     innerW
-  ) + L.qrGap;
+  ) + 2;
 
-  doc.image(giftQr, x + (CARD_PT - L.qrSize) / 2, cursorY, {
-    width: L.qrSize,
-    height: L.qrSize,
-  });
-  cursorY += L.qrSize + L.codeGap;
+  const qrSize = 56;
+  doc.image(giftQr, x + (CARD_PT - qrSize) / 2, cursorY, { width: qrSize, height: qrSize });
+  cursorY += qrSize + 2;
 
-  doc.font("CairoBold").fontSize(8.2).fillColor(TEXT_DARK);
-  doc.text(code, innerX, cursorY, { width: innerW, align: "center", lineBreak: false });
-  cursorY += 10 + L.marketingGap;
+  doc.font("CairoBold").fontSize(5.2).fillColor(TEXT_MUTED);
+  doc.text("CODE:", innerX, cursorY, { width: innerW, align: "center", lineBreak: false });
+  cursorY += 6;
+
+  doc.font("CairoBold").fontSize(9.2).fillColor(TEXT_DARK);
+  doc.text(String(code || ""), innerX, cursorY, { width: innerW, align: "center", lineBreak: false });
+  cursorY += 11;
 
   cursorY = drawArabicBlock(
     doc,
     await renderArabicText({
       text: "ابدأ رحلتك مع Win Gold وكن أول فائز",
       widthPt: innerW,
-      fontSizePt: 5.4,
-      color: GOLD,
-      maxLines: 2,
-    }),
-    innerX,
-    cursorY,
-    innerW
-  ) + L.hintGap;
-
-  drawArabicBlock(
-    doc,
-    await renderArabicText({
-      text: "امسح هذا الرمز من داخل تطبيق Win Gold\nوالطريقة في الخلف",
-      widthPt: innerW,
-      fontSizePt: 4.8,
-      color: TEXT_MUTED,
-      maxLines: 2,
+      fontSizePt: 5.2,
+      color: GOLD_DARK,
+      maxLines: 1,
     }),
     innerX,
     cursorY,
     innerW
   );
-}
 
-function drawBagIcon(doc, cx, cy, s) {
-  doc.save();
-  doc.moveTo(cx - s, cy - s * 0.2).lineTo(cx - s * 0.7, cy - s).lineTo(cx + s * 0.7, cy - s).lineTo(cx + s, cy - s * 0.2)
-    .lineWidth(0.55).strokeColor(GOLD).stroke();
-  doc.rect(cx - s, cy - s * 0.2, s * 2, s * 1.2).lineWidth(0.55).strokeColor(GOLD).stroke();
-  doc.restore();
-}
-
-function drawStarIcon(doc, cx, cy, s) {
-  doc.save();
-  doc.font("CairoBold").fontSize(s * 3).fillColor(GOLD);
-  doc.text("★", cx - s, cy - s, { lineBreak: false });
-  doc.restore();
-}
-
-function drawStoreIcon(doc, cx, cy, s) {
-  doc.save();
-  doc.moveTo(cx, cy - s).lineTo(cx + s, cy).lineTo(cx + s, cy + s).lineTo(cx - s, cy + s).lineTo(cx - s, cy)
-    .closePath().lineWidth(0.55).strokeColor(GOLD).stroke();
-  doc.rect(cx - s * 0.35, cy, s * 0.7, s * 0.55).lineWidth(0.55).strokeColor(GOLD).stroke();
-  doc.restore();
-}
-
-function drawTrophyIcon(doc, cx, cy, s) {
-  doc.save();
-  doc.moveTo(cx - s * 0.8, cy - s).lineTo(cx + s * 0.8, cy - s).lineTo(cx + s * 0.5, cy)
-    .lineTo(cx + s * 0.2, cy).lineTo(cx + s * 0.2, cy + s * 0.7).lineTo(cx - s * 0.2, cy + s * 0.7)
-    .lineTo(cx - s * 0.2, cy).lineTo(cx - s * 0.5, cy).closePath().lineWidth(0.55).strokeColor(GOLD).stroke();
-  doc.restore();
-}
-
-function drawTicketIcon(doc, cx, cy, size) {
-  const w = size;
-  const h = size * 0.72;
-  const left = cx - w / 2;
-  const top = cy - h / 2;
-  doc.save();
-  doc.roundedRect(left, top, w, h, 2).lineWidth(0.8).strokeColor(RED_BRAND).stroke();
-  doc.moveTo(left + w * 0.28, top).lineTo(left + w * 0.28, top + h).strokeColor(RED_SOFT).stroke();
-  doc.restore();
-}
-
-async function drawFeatureRow(doc, x, y, w, drawIcon, label, desc) {
-  drawIcon(doc, x + w - 7, y + 4, 5);
-  await drawArabicBlock(
+  const hintY = y + CARD_PT - 11;
+  drawArabicBlock(
     doc,
     await renderArabicText({
-      text: label,
-      widthPt: w - 8,
-      fontSizePt: 5.2,
+      text: "امسح الرمز من داخل تطبيق Win Gold",
+      widthPt: innerW,
+      fontSizePt: 4.8,
+      color: TEXT_MUTED,
+      maxLines: 1,
+    }),
+    innerX,
+    hintY,
+    innerW
+  );
+}
+
+async function drawBackTextPair(doc, x, y, w, title, desc, titleSize = 5.4, descSize = 4.6) {
+  drawArabicBlock(
+    doc,
+    await renderArabicText({
+      text: title,
+      widthPt: w,
+      fontSizePt: titleSize,
       bold: true,
       align: "right",
       maxLines: 1,
     }),
     x,
     y,
-    w - 8
+    w
   );
-  await drawArabicBlock(
+  drawArabicBlock(
     doc,
     await renderArabicText({
       text: desc,
-      widthPt: w - 8,
-      fontSizePt: 4.4,
+      widthPt: w,
+      fontSizePt: descSize,
       color: TEXT_MUTED,
       align: "right",
       maxLines: 1,
     }),
     x,
     y + 6,
-    w - 8
-  );
-}
-
-async function drawStep(doc, x, y, w, number, text, showTicketIcon = false) {
-  const badgeR = 5;
-  const badgeX = x + w - badgeR;
-  const badgeY = y + badgeR + 1;
-
-  doc.circle(badgeX, badgeY, badgeR).fill(GOLD);
-  doc.font("CairoBold").fontSize(5.5).fillColor("#FFFFFF");
-  doc.text(String(number), badgeX - badgeR, badgeY - 4, {
-    width: badgeR * 2,
-    align: "center",
-    lineBreak: false,
-  });
-
-  if (showTicketIcon) drawTicketIcon(doc, x + 9, y + 7, 10);
-
-  await drawArabicBlock(
-    doc,
-    await renderArabicText({
-      text,
-      widthPt: w - (showTicketIcon ? 24 : 14),
-      fontSizePt: 4.8,
-      align: "right",
-      maxLines: 2,
-    }),
-    x,
-    y + 1,
-    w - 14
+    w
   );
 }
 
 async function drawCardBack(doc, x, y, { websiteQr }) {
   drawRoundedCardFrame(doc, x, y);
 
-  const pad = 7;
+  const pad = 6;
   const innerX = x + pad;
   const innerW = CARD_PT - pad * 2;
   let cursorY = y + 5;
@@ -466,37 +420,36 @@ async function drawCardBack(doc, x, y, { websiteQr }) {
     await renderArabicText({
       text: "ماذا يقدم Win Gold؟",
       widthPt: innerW,
-      fontSizePt: 6.2,
+      fontSizePt: 6,
       bold: true,
       maxLines: 1,
     }),
     innerX,
     cursorY,
     innerW
-  ) + 3;
+  ) + 2;
 
   const features = [
-    [drawBagIcon, "العروض", "خصومات يومية"],
-    [drawStarIcon, "النقاط", "اجمع واستبدل"],
-    [drawStoreIcon, "السوق العام", "تسوّق بسهولة"],
-    [drawTrophyIcon, "المسابقات", "اربح جوائز"],
+    ["العروض", "خصومات يومية"],
+    ["النقاط", "اجمع واستبدل"],
+    ["السوق العام", "بيع وشراء بسهولة"],
+    ["المسابقات", "شارك واربح"],
   ];
+  const colW = innerW / 2;
 
-  const featureColW = innerW / 2;
   for (let i = 0; i < features.length; i += 1) {
     const col = i % 2;
     const row = Math.floor(i / 2);
-    await drawFeatureRow(
+    await drawBackTextPair(
       doc,
-      innerX + col * featureColW,
-      cursorY + row * 14,
-      featureColW - 2,
+      innerX + col * colW,
+      cursorY + row * 13,
+      colW - 2,
       features[i][0],
-      features[i][1],
-      features[i][2]
+      features[i][1]
     );
   }
-  cursorY += 31;
+  cursorY += 29;
 
   cursorY = drawArabicBlock(
     doc,
@@ -512,15 +465,31 @@ async function drawCardBack(doc, x, y, { websiteQr }) {
     innerW
   ) + 2;
 
-  await drawStep(doc, innerX, cursorY, innerW, 1, "افتح تطبيق أو موقع Win Gold");
-  cursorY += 12;
-  await drawStep(doc, innerX, cursorY, innerW, 2, 'اضغط على أيقونة "إدخال الكود"', true);
-  cursorY += 13;
-  await drawStep(doc, innerX, cursorY, innerW, 3, "امسح رمز البطاقة أو أدخل الكود يدوياً");
-  cursorY += 13;
+  const steps = [
+    "① افتح تطبيق أو موقع Win Gold",
+    "② اضغط على \"إدخال الكود\"",
+    "③ امسح رمز البطاقة أو أدخل الكود يدوياً",
+  ];
 
+  for (const step of steps) {
+    cursorY = drawArabicBlock(
+      doc,
+      await renderArabicText({
+        text: step,
+        widthPt: innerW,
+        fontSizePt: 5,
+        align: "right",
+        maxLines: 1,
+      }),
+      innerX,
+      cursorY,
+      innerW
+    ) + 1;
+  }
+
+  cursorY += 1;
   doc.save();
-  doc.roundedRect(innerX, cursorY, innerW, 11, 3).fill("#FEF2F2");
+  doc.roundedRect(innerX, cursorY, innerW, 12, 3).fill("#FEE2E2");
   doc.restore();
 
   cursorY = drawArabicBlock(
@@ -528,7 +497,7 @@ async function drawCardBack(doc, x, y, { websiteQr }) {
     await renderArabicText({
       text: "هذه البطاقة هدية مجانية\nغير قابلة للبيع أو الشراء",
       widthPt: innerW,
-      fontSizePt: 4.6,
+      fontSizePt: 4.8,
       color: RED_BRAND,
       bold: true,
       maxLines: 2,
@@ -538,16 +507,16 @@ async function drawCardBack(doc, x, y, { websiteQr }) {
     innerW
   ) + 2;
 
-  const qrSize = 26;
+  const qrSize = 24;
   doc.image(websiteQr, x + (CARD_PT - qrSize) / 2, cursorY, { width: qrSize, height: qrSize });
   cursorY += qrSize + 1;
 
   drawArabicBlock(
     doc,
     await renderArabicText({
-      text: "حمّل Win Gold",
+      text: "زور Win Gold",
       widthPt: innerW,
-      fontSizePt: 4.4,
+      fontSizePt: 4.6,
       color: TEXT_MUTED,
       maxLines: 1,
     }),
@@ -575,13 +544,16 @@ function drawCropMarks(doc, x, y) {
   doc.restore();
 }
 
-async function generateGiftCardPdf({ codes, storeName, websiteUrl }) {
+async function generateGiftCardPdf({ codes, storeName, storeLogo, websiteUrl }) {
   if (!Array.isArray(codes) || codes.length === 0) {
     throw new Error("No gift codes supplied for PDF export");
   }
 
-  const logo = await loadLogoBuffer();
-  const websiteQr = await generateQrBuffer(websiteUrl, 420);
+  const [winGoldLogo, storeIcon, websiteQr] = await Promise.all([
+    loadWinGoldLogoBuffer(),
+    loadStoreIconBuffer(storeLogo, storeName),
+    generateQrBuffer(websiteUrl, 420),
+  ]);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -596,7 +568,7 @@ async function generateGiftCardPdf({ codes, storeName, websiteUrl }) {
     });
 
     try {
-      ensureFonts(doc);
+      registerFonts(doc);
     } catch (err) {
       reject(err);
       return;
@@ -623,7 +595,8 @@ async function generateGiftCardPdf({ codes, storeName, websiteUrl }) {
               storeName,
               code: batch[slot],
               giftQr,
-              logo,
+              storeIcon,
+              winGoldLogo,
             });
             drawCropMarks(doc, pos.x, pos.y);
           }

@@ -9,6 +9,7 @@ import {
   ONBOARDING_RESET_EVENT,
   ONBOARDING_START_EVENT,
 } from '../../utils/onboardingTour';
+import { isGiftActivationFlowActive } from '../../utils/giftActivationFlow';
 
 export default function OnboardingTourHost({ enabled = true }) {
   const { isAuth } = useAuth();
@@ -27,6 +28,7 @@ export default function OnboardingTourHost({ enabled = true }) {
 
   useEffect(() => {
     if (!enabled || !isAuth || isMainTourComplete()) return undefined;
+    if (isGiftActivationFlowActive()) return undefined;
 
     const splashDone = sessionStorage.getItem('app-startup-splash-done') === '1';
     const delay = splashDone ? 900 : 5500;

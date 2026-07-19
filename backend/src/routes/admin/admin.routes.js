@@ -29,7 +29,7 @@ const auditController = require("../../controllers/admin/audit.controller");
 const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
 const { requireObjectId } = require("../../utils/inputSecurity.util");
 
-const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore displayPriority owner cards bypassCards createdAt";
+const ADMIN_STORE_LIST_SELECT = "name phone whatsapp region subRegion category logo isActive isVerifiedStore displayPriority owner cards bypassCards subscriptionActive createdAt";
 const ADMIN_PRODUCT_LIST_SELECT = "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery isActive displayPriority createdAt";
 const ADMIN_OFFER_LIST_SELECT = "title description offerType value originalPrice finalPrice currency image freeDelivery isActive priority featuredPriority displayPriority expiresAt createdAt";
 
@@ -154,6 +154,28 @@ router.get('/stores', async (req, res) => {
         }
 
         res.json(stores.map((s) => stripBase64ListImage(s, "logo")));
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+});
+
+// ─── PATCH /admin/stores/:storeId/subscription ───────────────────────────────
+router.patch('/stores/:storeId/subscription', async (req, res) => {
+    try {
+        const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId);
+        if (!store) return res.status(404).json({ message: 'المتجر غير موجود' });
+
+        if (typeof req.body?.subscriptionActive === 'boolean') {
+            store.subscriptionActive = req.body.subscriptionActive;
+        } else {
+            store.subscriptionActive = store.subscriptionActive === false;
+        }
+        await store.save();
+        res.json({
+            message: store.subscriptionActive ? 'تم تفعيل اشتراك المتجر' : 'تم إيقاف اشتراك المتجر',
+            subscriptionActive: store.subscriptionActive,
+        });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message });
     }

@@ -12,6 +12,7 @@ async function getCustomerVisibleStoreIds(extraQuery = {}) {
   const stores = await Store.find({
     owner: { $in: ownerIds },
     isActive: true,
+    subscriptionActive: { $ne: false },
     ...extraQuery,
   }).select("_id");
   return stores.map((s) => s._id);

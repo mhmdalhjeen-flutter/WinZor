@@ -13,6 +13,7 @@ import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import { completePendingPwaAction } from '../pwa/pwaShortcutActions';
+import { completePendingGiftActivation } from '../utils/giftActivationFlow';
 import { registerPathWithRef, saveReferralCode } from '../utils/referralStorage';
 
 function LoginLightField({
@@ -73,6 +74,7 @@ const Login = () => {
   }, [searchParams]);
 
   const redirectByRole = useCallback((role) => {
+    if (completePendingGiftActivation(navigate)) return;
     if (completePendingPwaAction(navigate)) return;
     const routes = {
       admin: '/admin',

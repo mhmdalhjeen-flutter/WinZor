@@ -16,6 +16,8 @@ import BackgroundRefreshHost from './components/cache/BackgroundRefreshHost';
 import useBrowserBackGuard from './hooks/useBrowserBackGuard';
 import PwaHost from './components/pwa/PwaHost';
 import PwaShortcutHandler from './components/pwa/PwaShortcutHandler';
+import GiftActivationHandler from './components/giftActivation/GiftActivationHandler';
+import GiftActivationPostFlowHost from './components/giftActivation/GiftActivationPostFlowHost';
 import { PwaInstallProvider } from './context/PwaInstallContext';
 
 // Deferred — must not land in the initial Home JS graph
@@ -220,6 +222,8 @@ function App() {
     <PwaInstallProvider>
       <AppShell />
       <PwaShortcutHandler />
+      <GiftActivationHandler />
+      <GiftActivationPostFlowHost />
     </PwaInstallProvider>
   );
 }

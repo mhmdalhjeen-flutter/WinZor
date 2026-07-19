@@ -72,6 +72,10 @@ exports.createProduct = async (req, res) => {
 exports.getStoreProducts = async (req, res) => {
     try {
         const storeId = requireObjectId(req.params.storeId, "storeId");
+        const store = await Store.findById(storeId).select("subscriptionActive isActive").lean();
+        if (!store || !store.isActive || store.subscriptionActive === false) {
+            return res.json({ products: [] });
+        }
         const products = await Product.find({ 
             store: storeId,
             isActive: true,

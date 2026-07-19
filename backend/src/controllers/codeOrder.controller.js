@@ -4,9 +4,8 @@ const CardType  = require("../models/cardType");
 const Store     = require("../models/store");
 const PromoCode = require("../models/promoCode");
 const crypto    = require("crypto");
-const ExcelJS   = require("exceljs");
-const QRCode    = require("qrcode");
 const { generatePromoCodeString } = require("../utils/promoCode.util");
+const { generateGiftCardPdf } = require("../utils/giftCardPdf.util");
 const { assertNoMongoOperators, cleanString, intInRange, requireObjectId } = require("../utils/inputSecurity.util");
 const { safeLog } = require("../utils/logSanitize.util");
 
@@ -197,20 +196,8 @@ exports.markAsReceived = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// أدمن: تصدير Excel + QR
+// أدمن: تصدير بطاقات هدايا PDF (جاهزة للطباعة)
 // ─────────────────────────────────────────────────────────────────────────────
-const QR_DISPLAY_PX = 110;       // displayed size inside the cell (~90–120 px)
-const QR_RENDER_PX  = 440;       // high-res source for sharp print (4× display)
-const QR_ROW_HEIGHT = 96;        // points — keeps full QR visible without clipping
-const QR_COL_WIDTH  = 16;        // Excel char units ≈ ~110 px display width
-
-function excelColWidthForText(text, min = 12, max = 45) {
-    const len = String(text || "").length;
-    // Arabic glyphs need a bit more horizontal room than Latin
-    const approx = Math.ceil(len * 1.15) + 3;
-    return Math.min(Math.max(approx, min), max);
-}
-
 exports.exportOrderCodes = async (req, res) => {
     try {
         const id = requireObjectId(req.params.id, "id");
@@ -220,121 +207,115 @@ exports.exportOrderCodes = async (req, res) => {
             .populate("store", "name");
 
         if (!order) return res.status(404).json({ message: "الطلب غير موجود" });
+        if (order.deliveryType === "digital")
+            return res.status(400).json({ message: "الطلبات الرقمية لا تتطلب تصدير PDF" });
         if (!order.codes || order.codes.length === 0)
             return res.status(400).json({ message: "لا توجد أكواد لهذا الطلب" });
 
-        const workbook  = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("الأكواد", {
-            views: [{ rightToLeft: true, state: "frozen", ySplit: 1 }],
-            properties: { defaultRowHeight: 20 },
-        });
-
-        worksheet.columns = [
-            { header: "اسم المتجر", key: "store", width: 20 },
-            { header: "الرمز",      key: "code",  width: 20 },
-            { header: "رمز QR",     key: "qr",    width: QR_COL_WIDTH },
-        ];
-
-        const headerRow = worksheet.getRow(1);
-        headerRow.font      = { bold: true, size: 12, color: { argb: "FF1F2937" } };
-        headerRow.alignment = {
-            horizontal: "center",
-            vertical: "middle",
-            readingOrder: "rtl",
-            wrapText: true,
-        };
-        headerRow.height = 28;
-        headerRow.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFE8EEF4" },
-        };
-        headerRow.eachCell((cell) => {
-            cell.border = {
-                top:    { style: "thin", color: { argb: "FFCBD5E1" } },
-                bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
-                left:   { style: "thin", color: { argb: "FFCBD5E1" } },
-                right:  { style: "thin", color: { argb: "FFCBD5E1" } },
-            };
-        });
-
         const storeName = order.store?.name || "";
-        let maxStoreWidth = excelColWidthForText("اسم المتجر");
-        let maxCodeWidth  = excelColWidthForText("الرمز");
+        const codes = order.codes.map((promoCode) => promoCode.code);
+        const websiteUrl = (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
 
-        // Center QR inside the cell (Excel col width ≈ 7px/unit; row height in points ≈ 1.333px)
-        const cellWidthPx  = QR_COL_WIDTH * 7;
-        const cellHeightPx = QR_ROW_HEIGHT * (96 / 72);
-        const colInset = Math.max(0, (cellWidthPx  - QR_DISPLAY_PX) / 2) / cellWidthPx;
-        const rowInset = Math.max(0, (cellHeightPx - QR_DISPLAY_PX) / 2) / cellHeightPx;
+        const pdfBuffer = await generateGiftCardPdf({ codes, storeName, websiteUrl });
 
-        for (let i = 0; i < order.codes.length; i++) {
-            const promoCode = order.codes[i];
-            const rowIndex  = i + 2;
-            const code      = promoCode.code;
-
-            worksheet.addRow({
-                store: storeName,
-                code,
-            });
-
-            const row = worksheet.getRow(rowIndex);
-            row.height = QR_ROW_HEIGHT;
-            row.getCell(1).alignment = {
-                vertical: "middle",
-                horizontal: "right",
-                readingOrder: "rtl",
-                wrapText: true,
-            };
-            row.getCell(2).alignment = {
-                vertical: "middle",
-                horizontal: "center",
-                readingOrder: "ltr",
-            };
-            row.getCell(3).alignment = {
-                vertical: "middle",
-                horizontal: "center",
-            };
-
-            maxStoreWidth = Math.max(maxStoreWidth, excelColWidthForText(storeName));
-            maxCodeWidth  = Math.max(maxCodeWidth,  excelColWidthForText(code, 14, 36));
-
-            // High-res PNG with quiet zone; displayed at fixed square size (no stretch)
-            const qrDataUrl = await QRCode.toDataURL(code, {
-                errorCorrectionLevel: "H",
-                type: "image/png",
-                width: QR_RENDER_PX,
-                margin: 4,
-                color: { dark: "#000000", light: "#FFFFFF" },
-            });
-            const base64  = qrDataUrl.replace(/^data:image\/png;base64,/, "");
-            const imageId = workbook.addImage({ base64, extension: "png" });
-
-            // Equal width/height + oneCell edit keeps the QR sharp and undistorted
-            worksheet.addImage(imageId, {
-                tl: {
-                    col: 2 + colInset,
-                    row: (rowIndex - 1) + rowInset,
-                },
-                ext: {
-                    width:  QR_DISPLAY_PX,
-                    height: QR_DISPLAY_PX,
-                },
-                editAs: "oneCell",
-            });
-        }
-
-        worksheet.getColumn(1).width = maxStoreWidth;
-        worksheet.getColumn(2).width = maxCodeWidth;
-        worksheet.getColumn(3).width = QR_COL_WIDTH;
-
-        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        res.setHeader("Content-Disposition", `attachment; filename="codes-${Date.now()}.xlsx"`);
-        await workbook.xlsx.write(res);
-        res.end();
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="gift-cards-${Date.now()}.pdf"`);
+        res.send(pdfBuffer);
 
     } catch (err) {
         safeLog("error", "code_order_export_failed", { message: err.message, userId: req.user?.id });
         res.status(500).json({ message: "تعذّر تصدير الأكواد" });
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// أدمن: توليد أكواد مباشرة لمتجر (رقمي + ورقي)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.generateDirectStoreCodes = async (req, res) => {
+    try {
+        assertNoMongoOperators(req.body, "directCodeGen");
+        const { storeId, digitalQuantity, physicalQuantity, pointsPerCard } = req.body;
+
+        const safeStoreId = requireObjectId(storeId, "storeId");
+        const digitalQty = intInRange(digitalQuantity ?? 0, { field: "digitalQuantity", min: 0, max: 10000 });
+        const physicalQty = intInRange(physicalQuantity ?? 0, { field: "physicalQuantity", min: 0, max: 10000 });
+        const points = intInRange(pointsPerCard, { field: "pointsPerCard", min: 1, max: 1_000_000, required: true });
+
+        if (digitalQty === 0 && physicalQty === 0)
+            return res.status(400).json({ message: "أدخل كمية رقمية أو ورقية أكبر من صفر" });
+
+        const storeDoc = await Store.findById(safeStoreId);
+        if (!storeDoc) return res.status(404).json({ message: "المتجر غير موجود" });
+        if (!storeDoc.codePrefix)
+            return res.status(400).json({ message: "المتجر لا يملك بصمة أكواد" });
+
+        const buildCode = () => ({
+            code:          generatePromoCodeString(storeDoc.codePrefix),
+            rewardPoints:  points,
+            rewardEntries: 1,
+            store:         safeStoreId,
+            createdBy:     req.user.id,
+        });
+
+        const digitalPayload = Array.from({ length: digitalQty }, buildCode);
+        const physicalPayload = Array.from({ length: physicalQty }, buildCode);
+        const allPayload = [...digitalPayload, ...physicalPayload];
+        const created = await PromoCode.insertMany(allPayload);
+
+        const digitalCodes = created.slice(0, digitalQty);
+        const physicalCodes = created.slice(digitalQty);
+
+        if (digitalQty > 0) {
+            await Store.findByIdAndUpdate(safeStoreId, { $inc: { cards: digitalQty } });
+        }
+
+        res.status(201).json({
+            message: `تم توليد ${digitalQty} رقمي + ${physicalQty} ورقي`,
+            storeId: safeStoreId,
+            storeName: storeDoc.name,
+            digitalCodes,
+            physicalCodes,
+            pointsPerCard: points,
+        });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// أدمن: تصدير PDF لأكواد ورقية (توليد مباشر)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.exportDirectPhysicalCodes = async (req, res) => {
+    try {
+        assertNoMongoOperators(req.body, "physicalExport");
+        const { storeId, codes } = req.body;
+
+        const safeStoreId = requireObjectId(storeId, "storeId");
+        if (!Array.isArray(codes) || codes.length === 0)
+            return res.status(400).json({ message: "لا توجد أكواد للتصدير" });
+
+        const storeDoc = await Store.findById(safeStoreId).select("name");
+        if (!storeDoc) return res.status(404).json({ message: "المتجر غير موجود" });
+
+        const codeStrings = codes.slice(0, 500).map((c) =>
+            typeof c === "string" ? c : c?.code
+        ).filter(Boolean);
+
+        if (!codeStrings.length)
+            return res.status(400).json({ message: "لا توجد أكواد صالحة للتصدير" });
+
+        const websiteUrl = (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
+        const pdfBuffer = await generateGiftCardPdf({
+            codes: codeStrings,
+            storeName: storeDoc.name,
+            websiteUrl,
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="gift-cards-${Date.now()}.pdf"`);
+        res.send(pdfBuffer);
+    } catch (err) {
+        safeLog("error", "direct_physical_export_failed", { message: err.message, userId: req.user?.id });
+        res.status(500).json({ message: "تعذّر تصدير بطاقات PDF" });
     }
 };

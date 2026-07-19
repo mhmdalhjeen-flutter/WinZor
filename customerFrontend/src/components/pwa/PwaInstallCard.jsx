@@ -10,7 +10,14 @@ const BENEFITS = [
   { icon: Wifi, text: 'يوفر استهلاك الإنترنت بعد أول استخدام.' },
 ];
 
-export default function PwaInstallCard({ installing, onInstall, onLater, onClose }) {
+export default function PwaInstallCard({
+  installing,
+  onInstall,
+  onLater,
+  onClose,
+  title,
+  description,
+}) {
   return (
     <div className="pwa-install-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-install-heading" dir="rtl">
       <button type="button" className="pwa-install-overlay__backdrop" aria-label="إغلاق" onClick={onLater} />
@@ -40,9 +47,11 @@ export default function PwaInstallCard({ installing, onInstall, onLater, onClose
         </div>
 
         <h2 id="pwa-install-heading" className="pwa-install-card__title">
-          ثبت {BRAND_NAME} على جهازك
+          {title || `ثبت ${BRAND_NAME} على جهازك`}
         </h2>
-        <p className="pwa-install-card__desc">استمتع بتجربة أسرع مثل التطبيقات.</p>
+        <p className="pwa-install-card__desc">
+          {description || 'استمتع بتجربة أسرع مثل التطبيقات.'}
+        </p>
 
         <ul className="pwa-install-card__benefits">
           {BENEFITS.map(({ icon: Icon, text }) => (

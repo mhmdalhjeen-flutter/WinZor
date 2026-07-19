@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronRight, MapPin, Phone, MessageCircle, Share2, Gift, Trophy, Loader2,
+  ChevronRight, MapPin, Phone, MessageCircle, Share2, Gift, Trophy, Loader2, Bell,
 } from 'lucide-react';
 import api from '../api/axios';
 import { logActivity } from '../utils/activity';
@@ -14,6 +14,7 @@ import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
 import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
+import { clearStoreNotifyOptOut, isStoreNotifyOptedOut } from '../utils/giftActivationFlow';
 
 const StoreDetail = () => {
   const { id } = useParams();
@@ -26,6 +27,8 @@ const StoreDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
+  const [enablingNotify, setEnablingNotify] = useState(false);
+  const [notifyOptOut, setNotifyOptOut] = useState(() => isStoreNotifyOptedOut(id));
 
   useEffect(() => {
     let mounted = true;
@@ -49,6 +52,25 @@ const StoreDetail = () => {
 
     return () => { mounted = false; };
   }, [id]);
+
+  useEffect(() => {
+    setNotifyOptOut(isStoreNotifyOptedOut(id));
+  }, [id]);
+
+  const enableStoreNotifications = async () => {
+    if (!isAuth) { navigate('/login'); return; }
+    setEnablingNotify(true);
+    try {
+      clearStoreNotifyOptOut(id);
+      const { data: res } = await api.post(`/stores/${id}/follow`);
+      toast(res.message || 'تمت متابعة الإشعارات', 'success');
+      setNotifyOptOut(false);
+    } catch (err) {
+      toast(err.response?.data?.message || 'تعذّر تفعيل الإشعارات', 'error');
+    } finally {
+      setEnablingNotify(false);
+    }
+  };
 
   const joinStore = async () => {
     if (!isAuth) { navigate('/login'); return; }
@@ -132,7 +154,22 @@ const StoreDetail = () => {
               {joining ? '...' : isPending ? 'قيد الانتظار — أدخل كوداً' : 'انضم للمتجر'}
             </button>
           )}
-          {isMember && (
+          {isMember && notifyOptOut && (
+            <button
+              type="button"
+              onClick={enableStoreNotifications}
+              disabled={enablingNotify}
+              className="flex-1 min-w-[140px] bg-amber-500 text-white py-3 rounded-2xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {enablingNotify ? '...' : (
+                <>
+                  <Bell size={16} />
+                  متابعة الإشعارات
+                </>
+              )}
+            </button>
+          )}
+          {isMember && !notifyOptOut && (
             <span className="flex-1 text-center py-3 rounded-2xl bg-green-50 text-green-700 font-black text-sm border border-green-100">عضو فعلي ✓</span>
           )}
           <button type="button" onClick={contact} className="px-4 py-3 rounded-2xl border border-gray-200 text-gray-700">

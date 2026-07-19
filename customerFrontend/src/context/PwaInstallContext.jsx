@@ -16,6 +16,7 @@ import {
   recordPwaSessionLaunch,
   shouldShowInstallPrompt,
 } from '../pwa/pwaStorage';
+import { isGiftActivationFlowActive } from '../utils/giftActivationFlow';
 
 const PwaInstallContext = createContext(null);
 
@@ -27,6 +28,7 @@ export function PwaInstallProvider({ children }) {
   const [manualOpen, setManualOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [installCopy, setInstallCopy] = useState(null);
 
   useEffect(() => {
     recordPwaSessionLaunch();
@@ -61,9 +63,10 @@ export function PwaInstallProvider({ children }) {
   useEffect(() => {
     if (!deferredPrompt || isStandaloneDisplayMode() || manualOpen) return undefined;
     if (!shouldShowInstallPrompt()) return undefined;
+    if (isGiftActivationFlowActive()) return undefined;
 
     const timer = window.setTimeout(() => {
-      if (shouldShowInstallPrompt() && !isStandaloneDisplayMode()) {
+      if (shouldShowInstallPrompt() && !isStandaloneDisplayMode() && !isGiftActivationFlowActive()) {
         setCardOpen(true);
       }
     }, AUTO_SHOW_DELAY_MS);
@@ -77,10 +80,12 @@ export function PwaInstallProvider({ children }) {
     recordInstallDismissed();
     setCardOpen(false);
     setManualOpen(false);
+    setInstallCopy(null);
   }, []);
 
-  const openInstallCard = useCallback(() => {
-    if (!canInstall) return;
+  const openInstallCard = useCallback((copy) => {
+    if (copy) setInstallCopy(copy);
+    if (!canInstall && !copy) return;
     setManualOpen(true);
     setCardOpen(true);
   }, [canInstall]);
@@ -88,6 +93,7 @@ export function PwaInstallProvider({ children }) {
   const closeInstallCard = useCallback(() => {
     setCardOpen(false);
     setManualOpen(false);
+    setInstallCopy(null);
   }, []);
 
   const install = useCallback(async () => {
@@ -121,12 +127,14 @@ export function PwaInstallProvider({ children }) {
   return (
     <PwaInstallContext.Provider value={value}>
       {children}
-      {cardOpen && canInstall && (
+      {cardOpen && (canInstall || installCopy) && (
         <PwaInstallCard
           installing={installing}
           onInstall={install}
           onLater={dismissLater}
           onClose={manualOpen ? closeInstallCard : dismissLater}
+          title={installCopy?.title}
+          description={installCopy?.description}
         />
       )}
       {tutorialOpen && (

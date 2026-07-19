@@ -27,6 +27,7 @@ const {
   dismissBrandingWelcome,
 } = require("../controllers/store.controller");
 const { requireStoreOwnerPage } = require("../middleware/storeOwnerPage.middleware");
+const { requireStoreSubscription } = require("../middleware/storeSubscription.middleware");
 
 router.post("/", authMiddleware, roleMiddleware.store, createStore);
 router.get("/", getAllStores);
@@ -40,6 +41,7 @@ router.post(
   "/my/competition-request",
   authMiddleware,
   roleMiddleware.store,
+  requireStoreSubscription,
   requireStoreOwnerPage("competitions"),
   async (req, res) => {
     res.status(201).json({
@@ -47,13 +49,13 @@ router.post(
     });
   }
 );
-router.get("/my/code-stats", authMiddleware, roleMiddleware.business, getMyStoreCodeStats);
+router.get("/my/code-stats", authMiddleware, roleMiddleware.business, requireStoreSubscription, getMyStoreCodeStats);
 router.get("/my", authMiddleware, roleMiddleware.business, getMyStore);
-router.patch("/my", authMiddleware, roleMiddleware.business, updateMyStore);
-router.post("/my/apply-default-branding", authMiddleware, roleMiddleware.business, applyDefaultBranding);
-router.post("/my/dismiss-branding-welcome", authMiddleware, roleMiddleware.business, dismissBrandingWelcome);
-router.get("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreOwnerPage("memberPrizes"), listMyMemberPrizes);
-router.post("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreOwnerPage("memberPrizes"), createMemberPrize);
+router.patch("/my", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateMyStore);
+router.post("/my/apply-default-branding", authMiddleware, roleMiddleware.business, requireStoreSubscription, applyDefaultBranding);
+router.post("/my/dismiss-branding-welcome", authMiddleware, roleMiddleware.business, requireStoreSubscription, dismissBrandingWelcome);
+router.get("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreSubscription, requireStoreOwnerPage("memberPrizes"), listMyMemberPrizes);
+router.post("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreSubscription, requireStoreOwnerPage("memberPrizes"), createMemberPrize);
 
 router.get("/warehouses", authMiddleware, roleMiddleware.business, requireStoreOwnerPage("warehouses"), async (req, res) => {
   try {

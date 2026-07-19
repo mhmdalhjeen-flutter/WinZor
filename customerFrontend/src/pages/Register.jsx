@@ -20,6 +20,7 @@ import {
   clearReferralSession,
   loginPathWithRef,
 } from '../utils/referralStorage';
+import { completePendingGiftActivation } from '../utils/giftActivationFlow';
 
 const RESEND_COOLDOWN_SEC = 60;
 
@@ -246,11 +247,16 @@ const Register = () => {
     navigate(`/intro?ref=${encodeURIComponent(code)}`, { replace: true });
   }, [refFromUrl, navigate]);
 
+  const finishRegistration = useCallback(() => {
+    if (completePendingGiftActivation(navigate)) return;
+    navigate('/');
+  }, [navigate]);
+
   const { socialLoading, startSocialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
     successMessage: 'تم إنشاء حسابك بنجاح',
     onAuthenticated: () => {
       clearReferralSession();
-      navigate('/');
+      finishRegistration();
     },
   });
 
@@ -353,7 +359,7 @@ const Register = () => {
           {step === 'verify' ? (
             <PhoneVerificationStep
               phone={formData.phone}
-              onVerified={() => navigate('/')}
+              onVerified={finishRegistration}
               onBack={() => setStep('form')}
             />
           ) : (

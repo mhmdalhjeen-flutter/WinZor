@@ -24,8 +24,11 @@ const PromoCodes = () => {
   const [generatedCodes, setGeneratedCodes] = useState([]);
   const [exportingId, setExportingId]       = useState(null);
 
-
-// جرب:
+  const [stores, setStores]                   = useState([]);
+  const [storesLoading, setStoresLoading]     = useState(false);
+  const [storeRows, setStoreRows]             = useState({});
+  const [generatingStoreId, setGeneratingStoreId] = useState(null);
+  const [togglingSubId, setTogglingSubId]     = useState(null);
 
   const [tab, setTab] = useState("orders");
 
@@ -49,7 +52,29 @@ const PromoCodes = () => {
     finally { setOrdersLoading(false); }
   }, []);
 
+  const fetchStores = useCallback(async () => {
+    setStoresLoading(true);
+    try {
+      const res  = await fetch(`${API}/admin/stores?type=store`, { headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      const list = Array.isArray(data) ? data : [];
+      setStores(list);
+      const init = {};
+      list.forEach(s => {
+        init[s._id] = {
+          digital: 0,
+          physical: 0,
+          points: 20,
+        };
+      });
+      setStoreRows(prev => ({ ...init, ...prev }));
+    } catch { }
+    finally { setStoresLoading(false); }
+  }, []);
+
   useEffect(() => { fetchCardTypes(); fetchOrders(); }, []);
+  useEffect(() => { if (tab === "direct") fetchStores(); }, [tab, fetchStores]);
 
   // إضافة كرت
   const handleAddCard = async () => {
@@ -115,7 +140,7 @@ const PromoCodes = () => {
     } catch (err) { alert("خطأ: " + err.message); }
   };
 
-  // تصدير Excel + QR
+  // تصدير بطاقات هدايا PDF (ورقي فقط)
   const handleExportOrder = async (orderId) => {
     setExportingId(orderId);
     try {
@@ -128,11 +153,101 @@ const PromoCodes = () => {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
-      a.download = `codes-${orderId}.xlsx`;
+      a.download = `gift-cards-${orderId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) { alert("خطأ في التصدير: " + err.message); }
     finally { setExportingId(null); }
+  };
+
+  const updateStoreRow = (storeId, field, value) => {
+    setStoreRows(prev => ({
+      ...prev,
+      [storeId]: { ...prev[storeId], [field]: value },
+    }));
+  };
+
+  const handleToggleSubscription = async (storeId, currentActive) => {
+    setTogglingSubId(storeId);
+    try {
+      const res = await fetch(`${API}/admin/stores/${storeId}/subscription`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ subscriptionActive: !currentActive }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setStores(prev => prev.map(s =>
+        s._id === storeId ? { ...s, subscriptionActive: data.subscriptionActive } : s
+      ));
+    } catch (err) { alert("خطأ: " + err.message); }
+    finally { setTogglingSubId(null); }
+  };
+
+  const downloadPhysicalPdf = async (storeId, physicalCodes) => {
+    const res = await fetch(`${API}/code-orders/admin/direct-export-pdf`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        storeId,
+        codes: physicalCodes.map(c => c.code),
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `gift-cards-${storeId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDirectGenerate = async (storeId) => {
+    const row = storeRows[storeId] || {};
+    const digital = parseInt(row.digital, 10) || 0;
+    const physical = parseInt(row.physical, 10) || 0;
+    const points = parseInt(row.points, 10) || 0;
+
+    if (digital <= 0 && physical <= 0)
+      return alert("أدخل كمية رقمية أو ورقية أكبر من صفر");
+    if (points <= 0)
+      return alert("أدخل نقاط لكل كرت");
+
+    setGeneratingStoreId(storeId);
+    try {
+      const res = await fetch(`${API}/code-orders/admin/direct-generate`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          storeId,
+          digitalQuantity: digital,
+          physicalQuantity: physical,
+          pointsPerCard: points,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      if (data.digitalCodes?.length) {
+        setGeneratedCodes(data.digitalCodes);
+        setTab("codes");
+      }
+
+      if (data.physicalCodes?.length) {
+        await downloadPhysicalPdf(storeId, data.physicalCodes);
+      }
+
+      alert(data.message);
+      setStoreRows(prev => ({
+        ...prev,
+        [storeId]: { digital: 0, physical: 0, points: row.points || 20 },
+      }));
+    } catch (err) { alert("خطأ: " + err.message); }
+    finally { setGeneratingStoreId(null); }
   };
 
   const pendingCount = orders.filter(o => o.status === "pending").length;
@@ -157,6 +272,7 @@ const PromoCodes = () => {
       <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.5rem", borderBottom:"1px solid var(--border)" }}>
         {[
           { key: "orders",    label: `📋 طلبات المتاجر${pendingCount > 0 ? ` (${pendingCount})` : ""}` },
+          { key: "direct",    label: "🏪 توليد مباشر للمتاجر" },
           { key: "cardtypes", label: "🃏 أنواع الكروت" },
           { key: "codes",     label: `🎟️ الأكواد الناتجة${generatedCodes.length > 0 ? ` (${generatedCodes.length})` : ""}` },
         ].map(t => (
@@ -230,43 +346,12 @@ const PromoCodes = () => {
                               </span>
                           )}
                       </td>
-
-                      {order.status === "configured" && (
-                          <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-                              <button onClick={() => handleExportOrder(order._id)}
-                                  disabled={exportingId === order._id}
-                                  style={{
-                                      padding:"0.3rem 0.7rem", background:"#16a34a",
-                                      color:"#fff", border:"none", borderRadius:"6px",
-                                      cursor:"pointer", fontSize:"0.78rem",
-                                      display:"flex", alignItems:"center", gap:"0.3rem",
-                                      opacity: exportingId === order._id ? 0.6 : 1,
-                                  }}>
-                                  <Download size={13} />
-                                  {exportingId === order._id ? "جاري التصدير..." : "Excel + QR"}
-                              </button>
-
-                              {/* ✅ "تم الاستلام" فقط للورقي لأن الرقمي يُضاف تلقائياً */}
-                              {order.deliveryType !== "digital" && (
-                                  <button onClick={() => handleReceive(order._id)}
-                                      style={{
-                                          padding:"0.3rem 0.7rem", background:"#0891b2",
-                                          color:"#fff", border:"none", borderRadius:"6px",
-                                          cursor:"pointer", fontSize:"0.78rem",
-                                      }}>
-                                      ✅ تم الاستلام
-                                  </button>
-                              )}
-                          </div>
-                      )}
                       <td>{new Date(order.createdAt).toLocaleDateString("ar-EG")}</td>
                       <td>
                         <span className={`status-tag ${statusMap[order.status]?.cls}`}>
                           {statusMap[order.status]?.label}
                         </span>
                       </td>
-
-                      {/* ===== عمود الإجراء — مرة واحدة فقط ===== */}
                       <td>
                         {order.status === "pending" && (
                           <button onClick={() => handleConfigure(order._id)}
@@ -283,26 +368,32 @@ const PromoCodes = () => {
 
                         {order.status === "configured" && (
                           <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-                            <button onClick={() => handleExportOrder(order._id)}
-                              disabled={exportingId === order._id}
-                              style={{
-                                padding:"0.3rem 0.7rem", background:"#16a34a",
-                                color:"#fff", border:"none", borderRadius:"6px",
-                                cursor:"pointer", fontSize:"0.78rem",
-                                display:"flex", alignItems:"center", gap:"0.3rem",
-                                opacity: exportingId === order._id ? 0.6 : 1,
-                              }}>
-                              <Download size={13} />
-                              {exportingId === order._id ? "جاري التصدير..." : "Excel + QR"}
-                            </button>
-                            <button onClick={() => handleReceive(order._id)}
-                              style={{
-                                padding:"0.3rem 0.7rem", background:"#0891b2",
-                                color:"#fff", border:"none", borderRadius:"6px",
-                                cursor:"pointer", fontSize:"0.78rem",
-                              }}>
-                              ✅ تم الاستلام
-                            </button>
+                            {order.deliveryType !== "digital" && (
+                              <button onClick={() => handleExportOrder(order._id)}
+                                disabled={exportingId === order._id}
+                                style={{
+                                  padding:"0.3rem 0.7rem", background:"#16a34a",
+                                  color:"#fff", border:"none", borderRadius:"6px",
+                                  cursor:"pointer", fontSize:"0.78rem",
+                                  display:"flex", alignItems:"center", gap:"0.3rem",
+                                  opacity: exportingId === order._id ? 0.6 : 1,
+                                }}>
+                                <Download size={13} />
+                                {exportingId === order._id ? "جاري التصدير..." : "PDF بطاقات"}
+                              </button>
+                            )}
+                            {order.deliveryType === "digital" ? (
+                              <span style={{ color: "green", fontSize: "0.85rem" }}>✅ مُضاف للمتجر</span>
+                            ) : (
+                              <button onClick={() => handleReceive(order._id)}
+                                style={{
+                                  padding:"0.3rem 0.7rem", background:"#0891b2",
+                                  color:"#fff", border:"none", borderRadius:"6px",
+                                  cursor:"pointer", fontSize:"0.78rem",
+                                }}>
+                                ✅ تم الاستلام
+                              </button>
+                            )}
                           </div>
                         )}
 
@@ -312,6 +403,116 @@ const PromoCodes = () => {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== TAB: توليد مباشر للمتاجر ===== */}
+      {tab === "direct" && (
+        <div className="generator-form-card">
+          <h2 style={{ marginBottom: "0.5rem" }}>🏪 توليد أكواد مباشرة لكل متجر</h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+            الرقمي: يُضاف لرصيد المتجر بدون PDF — الورقي: بطاقات PDF جاهزة للطباعة
+          </p>
+
+          {storesLoading ? <p>⏳ جاري تحميل المتاجر...</p>
+          : stores.length === 0 ? (
+            <p style={{ color: "var(--text-secondary)" }}>لا توجد متاجر</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="codes-table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>المتجر</th>
+                    <th>أكواد رقمية</th>
+                    <th>بطاقات ورقية</th>
+                    <th>نقاط/كرت</th>
+                    <th>الاشتراك</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stores.map(store => {
+                    const row = storeRows[store._id] || { digital: 0, physical: 0, points: 20 };
+                    const subActive = store.subscriptionActive !== false;
+                    return (
+                      <tr key={store._id}>
+                        <td style={{ fontWeight: 600 }}>{store.name}</td>
+                        <td>
+                          <input
+                            className="admin-input"
+                            type="number"
+                            min="0"
+                            style={{ width: 80 }}
+                            value={row.digital}
+                            onChange={e => updateStoreRow(store._id, "digital", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="admin-input"
+                            type="number"
+                            min="0"
+                            style={{ width: 80 }}
+                            value={row.physical}
+                            onChange={e => updateStoreRow(store._id, "physical", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="admin-input"
+                            type="number"
+                            min="1"
+                            style={{ width: 80 }}
+                            value={row.points}
+                            onChange={e => updateStoreRow(store._id, "points", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSubscription(store._id, subActive)}
+                            disabled={togglingSubId === store._id}
+                            style={{
+                              padding: "0.35rem 0.75rem",
+                              border: "none",
+                              borderRadius: 20,
+                              cursor: "pointer",
+                              fontWeight: 600,
+                              fontSize: "0.8rem",
+                              background: subActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+                              color: subActive ? "#16a34a" : "#dc2626",
+                              opacity: togglingSubId === store._id ? 0.6 : 1,
+                            }}
+                          >
+                            {subActive ? "✅ ON" : "❌ OFF"}
+                          </button>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => handleDirectGenerate(store._id)}
+                            disabled={generatingStoreId === store._id}
+                            style={{
+                              padding: "0.35rem 0.9rem",
+                              background: "#2563eb",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              fontSize: "0.82rem",
+                              opacity: generatingStoreId === store._id ? 0.6 : 1,
+                            }}
+                          >
+                            {generatingStoreId === store._id ? "⏳..." : "⚡ توليد"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

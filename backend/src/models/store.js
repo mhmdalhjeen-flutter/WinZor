@@ -135,6 +135,12 @@ const storeSchema = new mongoose.Schema({
         default: false,
     },
 
+    /** اشتراك المتجر — عند false يُخفى المتجر ويُمنع صاحبه من لوحة التحكم */
+    subscriptionActive: {
+        type: Boolean,
+        default: true,
+    },
+
     /** أولوية عرض يدوية داخل التصنيف — null = نظام التوصيات الحالي */
     displayPriority: { type: Number, default: null },
 

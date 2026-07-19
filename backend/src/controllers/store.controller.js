@@ -200,6 +200,9 @@ exports.getStoreById = async (req, res) => {
         const storeId = requireObjectId(req.params.id, "id");
         const store = await Store.findById(storeId);
         if (!store) return res.status(404).json({ message: "المتجر غير موجود" });
+        if (store.subscriptionActive === false) {
+            return res.status(404).json({ message: "المتجر غير متاح" });
+        }
 
         store.totalVisits += 1;
         store.todayVisits += 1;

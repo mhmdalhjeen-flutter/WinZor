@@ -14,6 +14,16 @@ import {
   ENTER_CARD_EVENT,
   REFERRAL_CARDS_EVENT,
 } from '../utils/pointsGuideEvents';
+import {
+  OPEN_GIFT_ACTIVATION_EVENT,
+  GIFT_POST_FLOW_EVENT,
+  parseGiftCodeFromPayload,
+  isGiftActivationFlowActive,
+  isLikelyGiftCode,
+  markGiftPostFlowPending,
+  clearGiftActivationFlow,
+} from '../utils/giftActivationFlow';
+import StoreFollowChoiceModal from './giftActivation/StoreFollowChoiceModal';
 
 function WheelIcon({ size = 22, className = '' }) {
   return (
@@ -117,6 +127,8 @@ const FloatingCodeButton = () => {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState('');
   const [rewardPoints, setRewardPoints] = useState(0);
+  const [giftFlow, setGiftFlow] = useState(false);
+  const [followChoice, setFollowChoice] = useState(null);
   const codeBtnRef = useRef(null);
   const navigate = useNavigate();
   const { updateUser } = useAuth();
@@ -163,7 +175,11 @@ const FloatingCodeButton = () => {
         { facingMode: 'environment' },
         { fps: 8, qrbox: { width: 200, height: 200 } },
         (decoded) => {
-          setCode(String(decoded).trim().toUpperCase());
+          const parsed = parseGiftCodeFromPayload(decoded);
+          if (parsed) {
+            setCode(parsed);
+            setGiftFlow(isLikelyGiftCode(parsed) || isGiftActivationFlowActive());
+          }
           stopScanner();
         },
         () => {}
@@ -183,7 +199,11 @@ const FloatingCodeButton = () => {
             try {
               const codes = await detector.detect(videoRef.current);
               if (codes[0]?.rawValue) {
-                setCode(String(codes[0].rawValue).trim().toUpperCase());
+                const parsed = parseGiftCodeFromPayload(codes[0].rawValue);
+                if (parsed) {
+                  setCode(parsed);
+                  setGiftFlow(isLikelyGiftCode(parsed) || isGiftActivationFlowActive());
+                }
                 stopScanner();
                 return;
               }
@@ -217,14 +237,24 @@ const FloatingCodeButton = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cart });
       setSuccess(true);
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         setIsOpen(false);
         setSuccess(false);
         setCode('');
+
+        if (giftFlow && data.storeId) {
+          setFollowChoice({
+            storeId: data.storeId,
+            storeName: data.storeName || 'المتجر',
+          });
+          return;
+        }
+
+        clearGiftActivationFlow();
         if (data.storeId) {
           navigate(`/store/${data.storeId}`);
         }
-      }, 2200);
+      }, giftFlow ? 1600 : 2200);
     } catch (err) {
       if (handleApiVerificationError(err, handleRedeem)) return;
       toast(err.response?.data?.message || 'فشل تفعيل الكود', 'error');
@@ -233,16 +263,41 @@ const FloatingCodeButton = () => {
     }
   };
 
+  const openCodeModal = useCallback((prefillCode = '', fromGiftFlow = false) => {
+    runWithVerification(() => {
+      if (prefillCode) setCode(prefillCode);
+      setGiftFlow(fromGiftFlow || isGiftActivationFlowActive());
+      setIsOpen(true);
+    });
+  }, [runWithVerification]);
+
   useEffect(() => {
-    const openCodeFromGuide = () => runWithVerification(() => setIsOpen(true));
+    const openCodeFromGuide = () => openCodeModal('', false);
     const openReferralFromGuide = () => setReferralOpen(true);
+    const openGiftActivation = (event) => {
+      const detail = event.detail || {};
+      openCodeModal(detail.code || '', detail.giftFlow !== false);
+    };
+
     window.addEventListener(ENTER_CARD_EVENT, openCodeFromGuide);
     window.addEventListener(REFERRAL_CARDS_EVENT, openReferralFromGuide);
+    window.addEventListener(OPEN_GIFT_ACTIVATION_EVENT, openGiftActivation);
     return () => {
       window.removeEventListener(ENTER_CARD_EVENT, openCodeFromGuide);
       window.removeEventListener(REFERRAL_CARDS_EVENT, openReferralFromGuide);
+      window.removeEventListener(OPEN_GIFT_ACTIVATION_EVENT, openGiftActivation);
     };
-  }, [runWithVerification]);
+  }, [openCodeModal]);
+
+  const finishFollowChoice = () => {
+    const choice = followChoice;
+    setFollowChoice(null);
+    markGiftPostFlowPending();
+    window.dispatchEvent(new CustomEvent(GIFT_POST_FLOW_EVENT));
+    if (choice?.storeId) {
+      navigate(`/store/${choice.storeId}`);
+    }
+  };
 
   if (viewerOpen) return null;
 
@@ -269,7 +324,7 @@ const FloatingCodeButton = () => {
             buttonRef={codeBtnRef}
             label={<>ادخل<br />الكود</>}
             icon={Zap}
-            onClick={() => runWithVerification(() => setIsOpen(true))}
+            onClick={() => openCodeModal('', false)}
           />
         </div>
       )}
@@ -303,12 +358,19 @@ const FloatingCodeButton = () => {
                   <Zap size={28} className="text-primary fill-primary" />
                 </div>
                 <div className="text-center space-y-1">
-                  <h3 className="text-lg font-black text-gray-900">شحن سريع للنقاط</h3>
-                  <p className="text-[11px] text-gray-400 font-bold px-2">امسح QR أو أدخل الكود من المتجر</p>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {giftFlow ? 'إدخال الكود' : 'شحن سريع للنقاط'}
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-bold px-2">
+                    {giftFlow
+                      ? 'الكود جاهز — اضغط تفعيل الكود للحصول على نقاطك'
+                      : 'امسح QR أو أدخل الكود من المتجر'}
+                  </p>
                 </div>
 
                 {!success && (
                   <div className="w-full space-y-3">
+                    {!giftFlow && (
                     <div className="rounded-2xl overflow-hidden bg-gray-900 relative min-h-[160px]">
                       {scanning ? (
                         <>
@@ -334,6 +396,7 @@ const FloatingCodeButton = () => {
                         </button>
                       )}
                     </div>
+                    )}
 
                     <input
                       type="text"
@@ -348,7 +411,7 @@ const FloatingCodeButton = () => {
                       disabled={loading || !code.trim()}
                       className="w-full bg-primary text-white py-3.5 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {loading ? <Loader2 className="animate-spin" size={18} /> : 'تفعيل الكود الآن'}
+                      {loading ? <Loader2 className="animate-spin" size={18} /> : (giftFlow ? 'تفعيل الكود' : 'تفعيل الكود الآن')}
                     </button>
                   </div>
                 )}
@@ -365,11 +428,17 @@ const FloatingCodeButton = () => {
                     >
                       <CheckCircle2 size={56} className="text-green-500" />
                     </motion.div>
-                    <p className="font-black text-green-600">تم شحن نقاطك بنجاح!</p>
+                    <p className="font-black text-green-600">
+                      {giftFlow ? 'تم تفعيل الكود بنجاح!' : 'تم شحن نقاطك بنجاح!'}
+                    </p>
                     {rewardPoints > 0 && (
-                      <p className="text-sm text-amber-600 font-black">+{rewardPoints} نقطة</p>
+                      <p className="text-sm text-amber-600 font-black">
+                        {giftFlow ? `احصل على ${rewardPoints} نقطة` : `+${rewardPoints} نقطة`}
+                      </p>
                     )}
-                    <p className="text-[10px] text-gray-400">جاري الانتقال للمتجر...</p>
+                    <p className="text-[10px] text-gray-400">
+                      {giftFlow ? 'جاري إعداد تجربتك...' : 'جاري الانتقال للمتجر...'}
+                    </p>
                   </motion.div>
                 )}
               </div>
@@ -377,6 +446,13 @@ const FloatingCodeButton = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <StoreFollowChoiceModal
+        open={Boolean(followChoice)}
+        storeId={followChoice?.storeId}
+        storeName={followChoice?.storeName}
+        onComplete={finishFollowChoice}
+      />
     </>
   );
 };

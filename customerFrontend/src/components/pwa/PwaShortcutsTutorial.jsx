@@ -1,13 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { X, Ticket, ShoppingBag, Store, Medal } from 'lucide-react';
+import { X, QrCode, ShoppingBag, Coins } from 'lucide-react';
 import { BRAND_LOGO_64, BRAND_NAME } from '../../utils/brandAssets';
 
 const SHORTCUTS = [
-  { icon: Ticket, label: 'إدخال الكود', color: '#1e3a8a' },
-  { icon: ShoppingBag, label: 'السوق العام', color: '#059669' },
-  { icon: Store, label: 'المتاجر', color: '#2563eb' },
-  { icon: Medal, label: 'مسابقاتي', color: '#7c3aed' },
+  { icon: QrCode, label: 'إدخال الكود', description: 'فعّل بطاقتك واحصل على نقاطك', color: '#b91c1c' },
+  { icon: ShoppingBag, label: 'السوق العام', description: 'بيع واشتري بسهولة', color: '#059669' },
+  { icon: Coins, label: 'نقاطي', description: 'تابع نقاطك وفرص الفوز', color: '#d97706' },
 ];
 
 export default function PwaShortcutsTutorial({ onClose }) {
@@ -53,8 +52,16 @@ export default function PwaShortcutsTutorial({ onClose }) {
           يمكنك الضغط مطولًا على أيقونة {BRAND_NAME} للوصول السريع إلى:
         </p>
         <ul className="pwa-tutorial-list">
-          {SHORTCUTS.map(({ label }) => (
-            <li key={label}>• {label}</li>
+          {SHORTCUTS.map(({ icon: Icon, label, description, color }) => (
+            <li key={label} className="pwa-tutorial-list__item">
+              <span className="pwa-tutorial-list__icon" style={{ color }}>
+                <Icon size={16} strokeWidth={2.2} />
+              </span>
+              <span>
+                <strong>{label}</strong>
+                <span className="pwa-tutorial-list__desc">{description}</span>
+              </span>
+            </li>
           ))}
         </ul>
         <button type="button" className="pwa-install-card__btn pwa-install-card__btn--primary pwa-tutorial-card__ok" onClick={onClose}>

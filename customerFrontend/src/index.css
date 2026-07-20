@@ -1545,6 +1545,59 @@ body.offer-viewer-open {
   gap: 0.625rem;
 }
 
+.quick-access-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid #f3f4f6;
+  background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.quick-access-card:active {
+  transform: scale(0.985);
+}
+
+.quick-access-card:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 10px 24px -14px rgba(15, 23, 42, 0.18);
+}
+
+.quick-access-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.quick-access-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-access-card__title {
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: #111827;
+}
+
+.quick-access-card__desc {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
 .user-points-hero__value {
   color: #fff;
   text-shadow:
@@ -1968,16 +2021,21 @@ body.offer-viewer-open {
   position: fixed;
   inset: 0;
   z-index: 520;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-.onboarding-tour-backdrop {
+.onboarding-tour-backdrop,
+.onboarding-tour-dim-panel {
   position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.32);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  z-index: 520;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
+}
+
+.onboarding-tour-backdrop--full {
+  inset: 0;
 }
 
 .onboarding-tour-spotlight {
@@ -1986,9 +2044,9 @@ body.offer-viewer-open {
   border-radius: 16px;
   background: transparent;
   box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.98),
-    0 0 0 5px rgba(124, 58, 237, 0.28),
-    0 14px 36px rgba(15, 23, 42, 0.18);
+    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 0 5px rgba(124, 58, 237, 0.22),
+    0 10px 28px rgba(124, 58, 237, 0.16);
   pointer-events: none;
   transition: top 0.32s ease, left 0.32s ease, width 0.32s ease, height 0.32s ease;
 }
@@ -2003,6 +2061,7 @@ body.offer-viewer-open {
 .onboarding-tour-card {
   position: fixed;
   z-index: 522;
+  pointer-events: auto;
   background: #fff;
   border-radius: 20px;
   padding: 1rem 1rem 0.875rem;
@@ -2566,12 +2625,43 @@ body.offer-viewer-open {
 
 .pwa-tutorial-list {
   margin: 0 0 0.85rem;
-  padding: 0 0.75rem;
+  padding: 0;
   list-style: none;
   font-size: 0.78rem;
   font-weight: 800;
   color: #374151;
   line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pwa-tutorial-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.85rem;
+  background: #f9fafb;
+}
+
+.pwa-tutorial-list__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.55rem;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.pwa-tutorial-list__desc {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #6b7280;
 }
 
 .pwa-tutorial-card__ok {

@@ -2,20 +2,46 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { onboardingTarget } from '../../utils/onboardingTour';
+import { findOnboardingElement } from '../../utils/onboardingTour';
 
 const PAD = 10;
 const TOOLTIP_GAP = 14;
+const MIN_HOLE = 24;
 
-function clampRect(rect) {
+function clampRectToViewport(rect) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const top = Math.max(0, rect.top);
+  const left = Math.max(0, rect.left);
+  const right = Math.min(vw, rect.left + rect.width);
+  const bottom = Math.min(vh, rect.top + rect.height);
+
   return {
-    top: Math.max(PAD, rect.top),
-    left: Math.max(PAD, rect.left),
-    width: Math.min(rect.width, vw - PAD * 2),
-    height: Math.min(rect.height, vh - PAD * 2),
+    top,
+    left,
+    width: Math.max(MIN_HOLE, right - left),
+    height: Math.max(MIN_HOLE, bottom - top),
   };
+}
+
+function DimPanels({ rect }) {
+  if (!rect) {
+    return <div className="onboarding-tour-backdrop onboarding-tour-backdrop--full" aria-hidden />;
+  }
+
+  const { top, left, width, height } = rect;
+  const bottom = top + height;
+  const right = left + width;
+  const panelClass = 'onboarding-tour-dim-panel';
+
+  return (
+    <>
+      <div className={panelClass} style={{ top: 0, left: 0, right: 0, height: top }} aria-hidden />
+      <div className={panelClass} style={{ top: bottom, left: 0, right: 0, bottom: 0 }} aria-hidden />
+      <div className={panelClass} style={{ top, left: 0, width: left, height }} aria-hidden />
+      <div className={panelClass} style={{ top, left: right, right: 0, height }} aria-hidden />
+    </>
+  );
 }
 
 function SpotlightTour({
@@ -27,10 +53,13 @@ function SpotlightTour({
   onPrev,
   onSkip,
   onFinish,
+  onTargetMissing,
 }) {
   const [rect, setRect] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({ top: 0, left: 0, maxWidth: 320 });
   const activeTargetRef = useRef(null);
+  const cardRef = useRef(null);
+  const missingReportedRef = useRef(false);
 
   const isFirst = stepIndex <= 0;
   const isLast = stepIndex >= totalSteps - 1;
@@ -42,19 +71,42 @@ function SpotlightTour({
     }
   }, []);
 
+  const updateTooltipPosition = useCallback((box) => {
+    const cardEl = cardRef.current;
+    const tooltipW = Math.min(320, window.innerWidth - 24);
+    const tooltipH = cardEl?.offsetHeight || 180;
+    const spaceBelow = window.innerHeight - (box.top + box.height);
+    const placeBelow = spaceBelow > tooltipH + TOOLTIP_GAP || box.top < window.innerHeight / 2;
+    const top = placeBelow
+      ? box.top + box.height + TOOLTIP_GAP
+      : box.top - TOOLTIP_GAP - tooltipH;
+    const left = Math.min(
+      Math.max(12, box.left + box.width / 2 - tooltipW / 2),
+      window.innerWidth - tooltipW - 12,
+    );
+
+    setTooltipStyle({
+      top: Math.max(12, Math.min(top, window.innerHeight - tooltipH - 12)),
+      left,
+      maxWidth: tooltipW,
+    });
+  }, []);
+
   const measure = useCallback(() => {
     if (!open || !step?.target) {
       clearActiveTarget();
       setRect(null);
-      return;
+      return null;
     }
 
-    const el = document.querySelector(onboardingTarget(step.target));
+    const el = findOnboardingElement(step.target);
     if (!el) {
       clearActiveTarget();
       setRect(null);
-      return;
+      return null;
     }
+
+    missingReportedRef.current = false;
 
     if (activeTargetRef.current !== el) {
       clearActiveTarget();
@@ -66,44 +118,30 @@ function SpotlightTour({
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }
 
-    const updateRect = () => {
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 && r.height <= 0) return;
+    const raw = el.getBoundingClientRect();
+    if (raw.width <= 0 && raw.height <= 0) return null;
 
-      const box = clampRect({
-        top: r.top - PAD,
-        left: r.left - PAD,
-        width: r.width + PAD * 2,
-        height: r.height + PAD * 2,
-      });
-      setRect(box);
-
-      const tooltipW = Math.min(320, window.innerWidth - 24);
-      const spaceBelow = window.innerHeight - (box.top + box.height);
-      const placeBelow = spaceBelow > 180 || box.top < window.innerHeight / 2;
-      const top = placeBelow
-        ? box.top + box.height + TOOLTIP_GAP
-        : box.top - TOOLTIP_GAP - 160;
-      const left = Math.min(
-        Math.max(12, box.left + box.width / 2 - tooltipW / 2),
-        window.innerWidth - tooltipW - 12,
-      );
-
-      setTooltipStyle({
-        top: Math.max(12, Math.min(top, window.innerHeight - 180)),
-        left,
-        maxWidth: tooltipW,
-      });
-    };
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(updateRect);
+    const box = clampRectToViewport({
+      top: raw.top - PAD,
+      left: raw.left - PAD,
+      width: raw.width + PAD * 2,
+      height: raw.height + PAD * 2,
     });
-  }, [open, step, clearActiveTarget]);
+
+    setRect(box);
+    updateTooltipPosition(box);
+    return el;
+  }, [open, step, clearActiveTarget, onTargetMissing, updateTooltipPosition]);
 
   useLayoutEffect(() => {
+    missingReportedRef.current = false;
     measure();
   }, [measure, stepIndex, open]);
+
+  useLayoutEffect(() => {
+    if (!open || !rect) return undefined;
+    updateTooltipPosition(rect);
+  }, [open, rect, updateTooltipPosition]);
 
   useEffect(() => {
     if (!open) {
@@ -111,18 +149,46 @@ function SpotlightTour({
       return undefined;
     }
 
-    const onReflow = () => measure();
+    const runMeasure = () => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(measure);
+      });
+    };
+
+    runMeasure();
+
+    const onReflow = () => runMeasure();
     window.addEventListener('resize', onReflow);
     window.addEventListener('scroll', onReflow, true);
-    const retry = window.setTimeout(measure, 420);
+    window.visualViewport?.addEventListener('resize', onReflow);
+    window.visualViewport?.addEventListener('scroll', onReflow);
+
+    const retryTimers = [120, 420, 900].map((ms) => window.setTimeout(runMeasure, ms));
+    const missingTimer = window.setTimeout(() => {
+      if (!findOnboardingElement(step?.target) && !missingReportedRef.current) {
+        missingReportedRef.current = true;
+        onTargetMissing?.(step);
+      }
+    }, 1200);
+
+    let resizeObserver;
+    const el = findOnboardingElement(step?.target);
+    if (el && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(onReflow);
+      resizeObserver.observe(el);
+    }
 
     return () => {
       window.removeEventListener('resize', onReflow);
       window.removeEventListener('scroll', onReflow, true);
-      window.clearTimeout(retry);
+      window.visualViewport?.removeEventListener('resize', onReflow);
+      window.visualViewport?.removeEventListener('scroll', onReflow);
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
+      window.clearTimeout(missingTimer);
+      resizeObserver?.disconnect();
       clearActiveTarget();
     };
-  }, [open, measure, clearActiveTarget]);
+  }, [open, measure, clearActiveTarget, step?.target, onTargetMissing]);
 
   useEffect(() => () => clearActiveTarget(), [clearActiveTarget]);
 
@@ -143,12 +209,12 @@ function SpotlightTour({
           aria-modal="true"
           aria-labelledby="onboarding-tour-title"
         >
-          <div className="onboarding-tour-backdrop" aria-hidden />
+          <DimPanels rect={rect} />
 
           {rect && (
             <motion.div
               className="onboarding-tour-spotlight"
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               style={{
@@ -161,6 +227,7 @@ function SpotlightTour({
           )}
 
           <motion.div
+            ref={cardRef}
             className="onboarding-tour-card"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -191,7 +258,7 @@ function SpotlightTour({
 
             {!rect && (
               <p className="onboarding-tour-card__hint text-amber-700 bg-amber-50 rounded-xl px-3 py-2 text-xs font-bold mb-3">
-                جاري تحديد العنصر… انتقل للصفحة المناسبة أو اضغط «التالي».
+                جاري تحديد العنصر…
               </p>
             )}
 

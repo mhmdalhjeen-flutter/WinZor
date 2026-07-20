@@ -65,6 +65,8 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
   Offset _tooltipOffset = Offset.zero;
   double _tooltipMaxWidth = 320;
   late final AnimationController _fade;
+  OverlayEntry? _overlayEntry;
+  bool _overlayInserted = false;
 
   bool get _isFirst => widget.stepIndex <= 0;
   bool get _isLast => widget.stepIndex >= widget.totalSteps - 1;
@@ -76,7 +78,10 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 280),
     );
-    if (widget.open) _fade.forward();
+    if (widget.open) {
+      _fade.forward();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverlay());
+    }
   }
 
   @override
@@ -84,20 +89,47 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
     super.didUpdateWidget(oldWidget);
     if (widget.open && !oldWidget.open) {
       _fade.forward(from: 0);
+      _syncOverlay();
     } else if (!widget.open && oldWidget.open) {
       _fade.reverse();
-    }
-    if (widget.open &&
+      _removeOverlay();
+    } else if (widget.open &&
         (widget.stepIndex != oldWidget.stepIndex ||
             widget.step.id != oldWidget.step.id)) {
       _scheduleMeasure();
+      _overlayEntry?.markNeedsBuild();
+    } else if (widget.open) {
+      _overlayEntry?.markNeedsBuild();
     }
   }
 
   @override
   void dispose() {
+    _removeOverlay();
     _fade.dispose();
     super.dispose();
+  }
+
+  void _syncOverlay() {
+    if (!mounted || !widget.open) return;
+    _overlayEntry ??= OverlayEntry(builder: (_) => _buildOverlay());
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    if (!_overlayInserted) {
+      overlay.insert(_overlayEntry!);
+      _overlayInserted = true;
+    } else {
+      _overlayEntry!.markNeedsBuild();
+    }
+  }
+
+  void _removeOverlay() {
+    if (_overlayInserted) {
+      _overlayEntry?.remove();
+      _overlayInserted = false;
+    }
+    _overlayEntry?.dispose();
+    _overlayEntry = null;
   }
 
   void _scheduleMeasure() {
@@ -123,6 +155,7 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
     final raw = measureTargetRect(widget.step.targetKey);
     if (raw == null) {
       setState(() => _hole = null);
+      _overlayEntry?.markNeedsBuild();
       return;
     }
 
@@ -148,6 +181,7 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
       _tooltipOffset = Offset(left, top.clamp(12.0, screen.height - tooltipH - 12));
       _tooltipMaxWidth = tooltipW;
     });
+    _overlayEntry?.markNeedsBuild();
   }
 
   @override
@@ -155,9 +189,15 @@ class _SpotlightTourOverlayState extends State<SpotlightTourOverlay>
     if (!widget.open) return const SizedBox.shrink();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.open && _hole == null) _prepareAndMeasure();
+      if (!mounted || !widget.open) return;
+      _syncOverlay();
+      if (_hole == null) _prepareAndMeasure();
     });
 
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildOverlay() {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: FadeTransition(

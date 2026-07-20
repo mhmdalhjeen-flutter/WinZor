@@ -58,7 +58,9 @@ class MainShell extends ConsumerWidget {
                   : null,
             ),
             if (isAuth)
-              OnboardingTourHost(navigationShell: navigationShell),
+              Positioned.fill(
+                child: OnboardingTourHost(navigationShell: navigationShell),
+              ),
           ],
         ),
       ),

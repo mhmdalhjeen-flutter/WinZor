@@ -1996,14 +1996,16 @@ body.offer-viewer-open {
 .onboarding-tour-root {
   position: fixed;
   inset: 0;
-  z-index: 520;
+  /* Above app chrome (header/nav/floating actions) but below PWA/modals. */
+  z-index: 8000;
   pointer-events: none;
+  isolation: isolate;
 }
 
 .onboarding-tour-backdrop,
 .onboarding-tour-dim-panel {
   position: fixed;
-  z-index: 520;
+  z-index: 1;
   background: rgba(15, 23, 42, 0.28);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -2016,7 +2018,7 @@ body.offer-viewer-open {
 
 .onboarding-tour-spotlight {
   position: fixed;
-  z-index: 521;
+  z-index: 2;
   border-radius: 16px;
   background: transparent;
   box-shadow:
@@ -2028,24 +2030,13 @@ body.offer-viewer-open {
 }
 
 .onboarding-tour-target-active {
-  z-index: 521 !important;
   filter: none !important;
   opacity: 1 !important;
-  isolation: isolate;
-}
-
-/* Keep app shell above dim overlay for the whole tour (header + bottom nav) */
-body.onboarding-tour-active header[data-onboarding="top-nav"] {
-  z-index: 521 !important;
-}
-
-body.onboarding-tour-active nav[data-onboarding="bottom-nav"] {
-  z-index: 521 !important;
 }
 
 .onboarding-tour-card {
   position: fixed;
-  z-index: 522;
+  z-index: 3;
   pointer-events: auto;
   background: #fff;
   border-radius: 20px;

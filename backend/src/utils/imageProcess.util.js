@@ -1,4 +1,5 @@
 const sharp = require("sharp");
+const { isBlockedExternalImageUrl } = require("./blockedImageUrl.util");
 
 const DATA_URL_RE = /^data:([^;]+);base64,(.+)$/i;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -95,6 +96,7 @@ async function processDataUrlImage(
   const trimmed = input.trim();
   if (trimmed.startsWith("http://")) throw badImage("روابط الصور غير الآمنة غير مسموحة");
   if (trimmed.startsWith("https://")) {
+    if (isBlockedExternalImageUrl(trimmed)) return null;
     if (enforceCloudinaryHttps) assertTrustedHttps(trimmed, previousValue);
     return trimmed;
   }

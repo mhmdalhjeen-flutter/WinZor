@@ -50,8 +50,12 @@ const enrichConversation = (conv) => {
     return obj;
 };
 
-const stripDataUrl = (value) =>
-    typeof value === "string" && value.startsWith("data:") ? null : (value || "");
+const { sanitizeStoredImageUrl } = require("./blockedImageUrl.util");
+
+const stripDataUrl = (value) => {
+  const raw = typeof value === "string" && value.startsWith("data:") ? null : (value || "");
+  return sanitizeStoredImageUrl(raw) ?? "";
+};
 
 /** قوائم المحادثات — لا base64 في الصور المرجعية أو آخر رسالة */
 const stripChatListImages = (conv) => {

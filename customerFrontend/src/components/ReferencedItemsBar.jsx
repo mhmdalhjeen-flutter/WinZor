@@ -1,4 +1,5 @@
 import { getChatItemPath, itemTypeIcon } from '../utils/chatItemRoutes';
+import { resolveImageUrl } from '../utils/mediaUrl';
 
 export default function ReferencedItemsBar({ items, onItemClick }) {
   if (!items?.length) return null;
@@ -9,6 +10,7 @@ export default function ReferencedItemsBar({ items, onItemClick }) {
       <div className="referenced-items-scroll">
         {items.map((item) => {
           const key = `${item.itemType}:${item.itemId}`;
+          const imgSrc = resolveImageUrl(item.itemImage, { width: 120 });
           return (
             <button
               key={key}
@@ -16,8 +18,8 @@ export default function ReferencedItemsBar({ items, onItemClick }) {
               className="referenced-item-chip"
               onClick={() => onItemClick(item)}
             >
-              {item.itemImage ? (
-                <img src={item.itemImage} alt="" loading="lazy" decoding="async" className="referenced-item-img" />
+              {imgSrc ? (
+                <img src={imgSrc} alt="" loading="lazy" decoding="async" className="referenced-item-img" />
               ) : (
                 <span className="referenced-item-fallback">{itemTypeIcon(item.itemType)}</span>
               )}

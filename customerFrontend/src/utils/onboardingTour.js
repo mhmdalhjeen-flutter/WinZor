@@ -3,6 +3,7 @@ const MARKETPLACE_TOUR_KEY = 'win_golden_marketplace_onboarding_v1';
 
 export const ONBOARDING_RESET_EVENT = 'app-onboarding-reset';
 export const ONBOARDING_START_EVENT = 'app-onboarding-start';
+export const ONBOARDING_TOUR_BODY_CLASS = 'onboarding-tour-active';
 
 export function isMainTourComplete() {
   try {

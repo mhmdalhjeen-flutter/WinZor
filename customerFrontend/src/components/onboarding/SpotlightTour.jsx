@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { findOnboardingElement } from '../../utils/onboardingTour';
+import { findOnboardingElement, ONBOARDING_TOUR_BODY_CLASS } from '../../utils/onboardingTour';
 
 const PAD = 10;
 const TOOLTIP_GAP = 14;
@@ -46,6 +46,7 @@ function DimPanels({ rect }) {
 
 function SpotlightTour({
   open,
+  layoutKey = '',
   step,
   stepIndex,
   totalSteps,
@@ -136,7 +137,16 @@ function SpotlightTour({
   useLayoutEffect(() => {
     missingReportedRef.current = false;
     measure();
-  }, [measure, stepIndex, open]);
+  }, [measure, stepIndex, open, layoutKey]);
+
+  useEffect(() => {
+    if (!open) {
+      document.body.classList.remove(ONBOARDING_TOUR_BODY_CLASS);
+      return undefined;
+    }
+    document.body.classList.add(ONBOARDING_TOUR_BODY_CLASS);
+    return () => document.body.classList.remove(ONBOARDING_TOUR_BODY_CLASS);
+  }, [open]);
 
   useLayoutEffect(() => {
     if (!open || !rect) return undefined;
@@ -186,9 +196,14 @@ function SpotlightTour({
       retryTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(missingTimer);
       resizeObserver?.disconnect();
-      clearActiveTarget();
     };
-  }, [open, measure, clearActiveTarget, step?.target, onTargetMissing]);
+  }, [open, measure, step?.target, onTargetMissing, layoutKey]);
+
+  useEffect(() => {
+    if (!open) {
+      clearActiveTarget();
+    }
+  }, [open, clearActiveTarget]);
 
   useEffect(() => () => clearActiveTarget(), [clearActiveTarget]);
 

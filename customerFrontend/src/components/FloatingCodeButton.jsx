@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, CheckCircle2, Camera, LayoutGrid, QrCode } from 'lucide-react';
+import { X, Zap, Loader2, CheckCircle2, Camera, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,6 @@ import { queryClient, queryKeys } from '../lib/queryClient';
 import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimation';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import ReferralCardsModal from './ReferralCardsModal';
-import QuickAccessSheet from './QuickAccessSheet';
 import {
   ENTER_CARD_EVENT,
   REFERRAL_CARDS_EVENT,
@@ -25,6 +24,83 @@ import {
   clearGiftActivationFlow,
 } from '../utils/giftActivationFlow';
 import StoreFollowChoiceModal from './giftActivation/StoreFollowChoiceModal';
+
+function WheelIcon({ size = 22, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="12" r="2.25" fill="currentColor" stroke="none" />
+      <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+      <circle cx="12" cy="5.25" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="17.25" cy="14.25" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="6.75" cy="14.25" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function PremiumFloatingButton({
+  onClick,
+  label,
+  icon: Icon,
+  iconNode,
+  tone = 'primary',
+  buttonRef,
+}) {
+  const tones = {
+    primary: {
+      gradient: 'from-[#c41f1f] via-primary to-[#991b1b]',
+      glow: 'rgba(185, 28, 28, 0.38)',
+      ring: 'ring-red-100/80',
+    },
+    amber: {
+      gradient: 'from-amber-400 via-amber-500 to-orange-600',
+      glow: 'rgba(245, 158, 11, 0.38)',
+      ring: 'ring-amber-100/80',
+    },
+    violet: {
+      gradient: 'from-violet-500 via-fuchsia-500 to-purple-700',
+      glow: 'rgba(139, 92, 246, 0.38)',
+      ring: 'ring-violet-100/80',
+    },
+  };
+
+  const t = tones[tone] || tones.primary;
+
+  return (
+    <motion.button
+      ref={buttonRef}
+      type="button"
+      onClick={onClick}
+      whileHover={{ y: -2, scale: 1.03 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+      className={`floating-action-btn group relative flex h-[3.65rem] w-[3.65rem] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[1.125rem] text-white ring-1 ${t.ring}`}
+      style={{
+        boxShadow: `0 10px 28px -8px ${t.glow}, 0 4px 12px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255,255,255,0.28)`,
+      }}
+    >
+      <span className={`absolute inset-0 bg-gradient-to-br ${t.gradient}`} aria-hidden />
+      <span
+        className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22), transparent 55%)' }}
+        aria-hidden
+      />
+      <span className="relative z-[1] flex items-center justify-center">
+        {iconNode || (Icon ? <Icon size={20} strokeWidth={2.25} /> : null)}
+      </span>
+      <span className="relative z-[1] px-1 text-center font-cairo text-[8.5px] font-black leading-[1.05] tracking-tight">
+        {label}
+      </span>
+    </motion.button>
+  );
+}
 
 const FloatingCodeButton = () => {
   const [viewerOpen, setViewerOpen] = useState(
@@ -59,9 +135,8 @@ const FloatingCodeButton = () => {
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { toast } = useToast();
   const { data: platformSettings } = usePlatformSettings();
-  const features = platformSettings?.features || {};
-  const showMarketplace = features.marketplace !== false;
-  const [quickAccessOpen, setQuickAccessOpen] = useState(false);
+  const showWheel = platformSettings?.features?.wheel !== false
+    && platformSettings?.wheel?.enabled !== false;
   const [referralOpen, setReferralOpen] = useState(false);
   const scannerRef = useRef(null);
   const html5Ref = useRef(null);
@@ -230,43 +305,29 @@ const FloatingCodeButton = () => {
     <>
       {!guideOpen && (
         <div className="floating-actions-stack">
-          <motion.button
-            ref={codeBtnRef}
-            type="button"
-            onClick={() => setQuickAccessOpen(true)}
-            whileHover={{ y: -2, scale: 1.03 }}
-            whileTap={{ scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 24 }}
-            className="floating-action-btn group relative flex h-[3.65rem] w-[3.65rem] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[1.125rem] text-white ring-1 ring-red-100/80"
-            style={{
-              boxShadow: '0 10px 28px -8px rgba(185, 28, 28, 0.38), 0 4px 12px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255,255,255,0.28)',
-            }}
-            aria-label="الوصول السريع"
-          >
-            <span className="absolute inset-0 bg-gradient-to-br from-[#c41f1f] via-primary to-[#991b1b]" aria-hidden />
-            <span
-              className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22), transparent 55%)' }}
-              aria-hidden
+          {showWheel && (
+            <PremiumFloatingButton
+              tone="violet"
+              label={<>عجلة<br />الحظ</>}
+              iconNode={<WheelIcon size={21} />}
+              onClick={() => navigate('/wheel')}
             />
-            <span className="relative z-[1] flex items-center justify-center">
-              <LayoutGrid size={20} strokeWidth={2.25} />
-            </span>
-            <span className="relative z-[1] px-1 text-center font-cairo text-[8.5px] font-black leading-[1.05] tracking-tight">
-              وصول<br />سريع
-            </span>
-          </motion.button>
+          )}
+          <PremiumFloatingButton
+            tone="amber"
+            label={<>كروت<br />مجانية</>}
+            icon={Gift}
+            onClick={() => setReferralOpen(true)}
+          />
+          <PremiumFloatingButton
+            tone="primary"
+            buttonRef={codeBtnRef}
+            label={<>ادخل<br />الكود</>}
+            icon={Zap}
+            onClick={() => openCodeModal('', false)}
+          />
         </div>
       )}
-
-      <QuickAccessSheet
-        open={quickAccessOpen}
-        onClose={() => setQuickAccessOpen(false)}
-        showMarketplace={showMarketplace}
-        onEnterCode={() => openCodeModal('', false)}
-        onMarketplace={() => navigate('/marketplace')}
-        onPoints={() => navigate('/center')}
-      />
 
       <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
 
@@ -294,7 +355,7 @@ const FloatingCodeButton = () => {
 
               <div className="flex flex-col items-center gap-3">
                 <div className="bg-primary/10 w-14 h-14 rounded-[20px] flex items-center justify-center">
-                  <QrCode size={28} className="text-primary" />
+                  <Zap size={28} className="text-primary fill-primary" />
                 </div>
                 <div className="text-center space-y-1">
                   <h3 className="text-lg font-black text-gray-900">

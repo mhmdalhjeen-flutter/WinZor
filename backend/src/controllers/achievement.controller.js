@@ -1,5 +1,15 @@
 const AchievementMilestone = require("../models/achievementMilestone");
 const User = require("../models/user");
+const { sanitizeStoredImageUrl } = require("../utils/blockedImageUrl.util");
+
+function sanitizeMilestone(doc) {
+  const obj = doc?.toObject ? doc.toObject() : { ...doc };
+  if (obj.image) {
+    const safe = sanitizeStoredImageUrl(obj.image);
+    if (!safe) obj.image = "";
+  }
+  return obj;
+}
 
 async function syncUnlocks(user) {
   const milestones = await AchievementMilestone.find({ isActive: true }).sort({ pointsRequired: 1 });
@@ -31,7 +41,7 @@ exports.listPublic = async (_req, res) => {
   try {
     const milestones = await AchievementMilestone.find({ isActive: true })
       .sort({ sortOrder: 1, pointsRequired: 1 });
-    res.json({ milestones });
+    res.json({ milestones: milestones.map(sanitizeMilestone) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -54,7 +64,7 @@ exports.myProgress = async (req, res) => {
       const unlock = unlockMap.get(String(m._id));
       const unlocked = user.points >= m.pointsRequired;
       return {
-        ...m.toObject(),
+        ...sanitizeMilestone(m),
         unlocked,
         animationSeen: unlock?.animationSeen ?? false,
         unlockedAt: unlocked ? unlock?.unlockedAt || null : null,
@@ -64,7 +74,7 @@ exports.myProgress = async (req, res) => {
     res.json({
       points: user.points,
       road,
-      newlyUnlocked: newlyUnlocked.map((m) => m.toObject()),
+      newlyUnlocked: newlyUnlocked.map(sanitizeMilestone),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

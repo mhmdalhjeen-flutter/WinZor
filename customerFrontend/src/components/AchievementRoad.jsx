@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Sparkles, Trophy, ChevronLeft } from 'lucide-react';
 import api from '../api/axios';
 import { computeTimelineLayout } from '../utils/achievementTimeline';
+import { resolveImageUrl } from '../utils/mediaUrl';
 import HorizontalSwipe from './ui/HorizontalSwipe';
 const MilestoneNode = ({ milestone, unlocked, isNext, onMarkSeen }) => {
   const { _id, name, icon, image, pointsRequired, animationSeen } = milestone;
+  const imageSrc = resolveImageUrl(image, { width: 128 });
 
   return (
     <motion.div
@@ -37,8 +39,8 @@ const MilestoneNode = ({ milestone, unlocked, isNext, onMarkSeen }) => {
             />
           )}
 
-          {image ? (
-            <img src={image} alt="" className="w-11 h-11 object-contain relative z-10" loading="lazy" />
+          {imageSrc ? (
+            <img src={imageSrc} alt="" className="w-11 h-11 object-contain relative z-10" loading="lazy" />
           ) : (
             <span className="text-3xl relative z-10 select-none">{icon || '🏆'}</span>
           )}
@@ -305,7 +307,9 @@ const AchievementRoad = ({ points = 0, onUnlock }) => {
       </HorizontalSwipe>
 
       <AnimatePresence>
-        {celebrate && (
+        {celebrate && (() => {
+          const celebrateImg = resolveImageUrl(celebrate.image, { width: 128 });
+          return (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -327,8 +331,8 @@ const AchievementRoad = ({ points = 0, onUnlock }) => {
                   transition={{ repeat: 2, duration: 0.55 }}
                   className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[24px] bg-white/10 text-5xl"
                 >
-                  {celebrate.image ? (
-                    <img src={celebrate.image} alt="" className="h-14 w-14 object-contain" />
+                  {celebrateImg ? (
+                    <img src={celebrateImg} alt="" className="h-14 w-14 object-contain" />
                   ) : (
                     celebrate.icon || '🏆'
                   )}
@@ -349,7 +353,8 @@ const AchievementRoad = ({ points = 0, onUnlock }) => {
               </div>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </section>
   );

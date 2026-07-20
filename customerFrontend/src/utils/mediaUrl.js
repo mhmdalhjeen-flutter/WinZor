@@ -2,6 +2,20 @@ import { API_URL } from '../lib/apiUrl';
 
 const ABSOLUTE_SRC_RE = /^(https?:|data:|blob:)/i;
 const CLOUDINARY_HOST_RE = /^(https?:)?\/\/res\.cloudinary\.com\//i;
+/** Blocked external hosts (Google thumbnails / CSP violations). */
+const BLOCKED_IMAGE_PATTERNS = [
+  /encrypted-tbn0\.gstatic\.com/i,
+  /\/images\?q=tbn/i,
+  /[?&]tbn[=:]/i,
+  /gstatic\.com\/images\?.*tbn/i,
+];
+
+export function isBlockedExternalImageUrl(src) {
+  if (!src || typeof src !== 'string') return false;
+  const trimmed = src.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  return BLOCKED_IMAGE_PATTERNS.some((re) => re.test(trimmed));
+}
 /** Single Cloudinary transform token (w_300, f_auto, c_fill, …) — not a folder name. */
 const CLOUDINARY_TRANSFORM_TOKEN_RE =
   /^(a|ar|b|bo|c|co|cs|d|dl|dn|du|e|f|fl|g|h|l|o|p|q|r|t|u|w|x|y|z|dpr|if|so|eo|ac|af|br|vs)[_:].+/i;
@@ -27,7 +41,10 @@ export function isDisplayableImageSrc(src) {
   if (!src || typeof src !== 'string') return false;
   const trimmed = src.trim();
   if (!trimmed) return false;
-  if (ABSOLUTE_SRC_RE.test(trimmed)) return true;
+  if (ABSOLUTE_SRC_RE.test(trimmed)) {
+    if (isBlockedExternalImageUrl(trimmed)) return false;
+    return true;
+  }
   // API-relative media paths only (not arbitrary relative text)
   return (
     trimmed.startsWith('/offers/')
@@ -149,8 +166,11 @@ export function resolveStoreCover(store, options = {}) {
 }
 
 export function storeLogoPlaceholder(store) {
-  const name = encodeURIComponent(store?.name || 'S');
-  return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff&size=128`;
+  if (store?.name) {
+    const name = encodeURIComponent(store.name);
+    return `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff&size=128`;
+  }
+  return '/brand/logo-128.webp';
 }
 
 export default resolveImageUrl;

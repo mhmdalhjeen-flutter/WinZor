@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import SpotlightTour from './SpotlightTour';
 import { MAIN_ONBOARDING_STEPS } from './onboardingSteps';
@@ -20,6 +21,7 @@ function getBlockedReason() {
 
 export default function OnboardingTourHost({ enabled = true }) {
   const { isAuth } = useAuth();
+  const location = useLocation();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const autoStartedRef = useRef(false);
@@ -122,6 +124,7 @@ export default function OnboardingTourHost({ enabled = true }) {
   return (
     <SpotlightTour
       open={active}
+      layoutKey={location.pathname}
       step={step}
       stepIndex={stepIndex}
       totalSteps={MAIN_ONBOARDING_STEPS.length}

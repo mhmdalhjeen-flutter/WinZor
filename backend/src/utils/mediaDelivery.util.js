@@ -1,3 +1,5 @@
+const { isBlockedExternalImageUrl, sanitizeStoredImageUrl } = require("./blockedImageUrl.util");
+
 function parseDataUrl(value) {
   if (typeof value !== "string" || !value.startsWith("data:")) return null;
   const match = /^data:([^;]+);base64,(.+)$/i.exec(value);
@@ -19,6 +21,8 @@ function resolveListImageField(row, resource) {
     copy.hasImage = true;
     copy.image = `/${resource}/${id}/image`;
   } else {
+    const safe = sanitizeStoredImageUrl(copy.image);
+    if (safe !== copy.image) copy.image = safe;
     copy.hasImage = !!copy.image;
   }
 
@@ -37,6 +41,8 @@ function resolveStoreMediaFields(store) {
     copy.hasLogo = true;
     copy.logo = `/stores/${id}/logo`;
   } else {
+    const safeLogo = sanitizeStoredImageUrl(copy.logo);
+    if (safeLogo !== copy.logo) copy.logo = safeLogo;
     copy.hasLogo = !!copy.logo;
   }
 
@@ -44,6 +50,8 @@ function resolveStoreMediaFields(store) {
     copy.hasCoverImage = true;
     copy.coverImage = `/stores/${id}/cover`;
   } else if ("coverImage" in copy) {
+    const safeCover = sanitizeStoredImageUrl(copy.coverImage);
+    if (safeCover !== copy.coverImage) copy.coverImage = safeCover;
     copy.hasCoverImage = !!copy.coverImage;
   }
 
@@ -56,6 +64,9 @@ async function deliverStoredImage(res, image) {
   }
 
   if (image.startsWith("https://") || image.startsWith("http://")) {
+    if (isBlockedExternalImageUrl(image)) {
+      return res.status(404).end();
+    }
     return res.redirect(302, image);
   }
 

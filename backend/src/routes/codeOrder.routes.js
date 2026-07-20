@@ -14,6 +14,6 @@ router.post("/admin/configure/:id",auth, role(["admin"]),             ctrl.confi
 router.post("/admin/receive/:id", auth, role(["admin"]), ctrl.markAsReceived);
 router.get("/admin/export/:id", auth, role(["admin"]), ctrl.exportOrderCodes);
 router.post("/admin/direct-generate", auth, role(["admin"]), ctrl.generateDirectStoreCodes);
-router.post("/admin/direct-export-pdf", auth, role(["admin"]), ctrl.exportDirectPhysicalCodes);
+router.post("/admin/direct-export", auth, role(["admin"]), ctrl.exportDirectPhysicalCodes);
 
 module.exports = router;

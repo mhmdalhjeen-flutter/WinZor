@@ -5,7 +5,7 @@ const Store     = require("../models/store");
 const PromoCode = require("../models/promoCode");
 const crypto    = require("crypto");
 const { generatePromoCodeString } = require("../utils/promoCode.util");
-const { generateGiftCardPdf } = require("../utils/giftCardPdf.util");
+const { buildGiftCodesExcelBuffer } = require("../utils/giftCodeExcelExport.util");
 const { assertNoMongoOperators, cleanString, intInRange, requireObjectId } = require("../utils/inputSecurity.util");
 const { safeLog } = require("../utils/logSanitize.util");
 
@@ -196,7 +196,7 @@ exports.markAsReceived = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// أدمن: تصدير بطاقات هدايا PDF (جاهزة للطباعة)
+// أدمن: تصدير Excel (Store Name | Gift Code | QR Value)
 // ─────────────────────────────────────────────────────────────────────────────
 exports.exportOrderCodes = async (req, res) => {
     try {
@@ -204,24 +204,21 @@ exports.exportOrderCodes = async (req, res) => {
         const order = await CodeOrder.findById(id)
             .populate({ path: "codes", model: "PromoCode" })
             .populate("cardType", "name points")
-            .populate("store", "name logo");
+            .populate("store", "name");
 
         if (!order) return res.status(404).json({ message: "الطلب غير موجود" });
         if (order.deliveryType === "digital")
-            return res.status(400).json({ message: "الطلبات الرقمية لا تتطلب تصدير PDF" });
+            return res.status(400).json({ message: "الطلبات الرقمية لا تتطلب تصدير Excel" });
         if (!order.codes || order.codes.length === 0)
             return res.status(400).json({ message: "لا توجد أكواد لهذا الطلب" });
 
         const storeName = order.store?.name || "";
-        const storeLogo = order.store?.logo || "";
         const codes = order.codes.map((promoCode) => promoCode.code);
-        const websiteUrl = (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
+        const xlsxBuffer = await buildGiftCodesExcelBuffer({ codes, storeName });
 
-        const pdfBuffer = await generateGiftCardPdf({ codes, storeName, storeLogo, websiteUrl });
-
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="gift-cards-${Date.now()}.pdf"`);
-        res.send(pdfBuffer);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="gift-codes-${Date.now()}.xlsx"`);
+        res.send(xlsxBuffer);
 
     } catch (err) {
         safeLog("error", "code_order_export_failed", {
@@ -288,7 +285,7 @@ exports.generateDirectStoreCodes = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// أدمن: تصدير PDF لأكواد ورقية (توليد مباشر)
+// أدمن: تصدير Excel لأكواد ورقية (توليد مباشر)
 // ─────────────────────────────────────────────────────────────────────────────
 exports.exportDirectPhysicalCodes = async (req, res) => {
     try {
@@ -309,18 +306,16 @@ exports.exportDirectPhysicalCodes = async (req, res) => {
         if (!codeStrings.length)
             return res.status(400).json({ message: "لا توجد أكواد صالحة للتصدير" });
 
-        const websiteUrl = (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
-        const pdfBuffer = await generateGiftCardPdf({
+        const xlsxBuffer = await buildGiftCodesExcelBuffer({
             codes: codeStrings,
             storeName: storeDoc.name,
-            websiteUrl,
         });
 
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="gift-cards-${Date.now()}.pdf"`);
-        res.send(pdfBuffer);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="gift-codes-${Date.now()}.xlsx"`);
+        res.send(xlsxBuffer);
     } catch (err) {
         safeLog("error", "direct_physical_export_failed", { message: err.message, userId: req.user?.id });
-        res.status(500).json({ message: "تعذّر تصدير بطاقات PDF" });
+        res.status(500).json({ message: "تعذّر تصدير Excel" });
     }
 };

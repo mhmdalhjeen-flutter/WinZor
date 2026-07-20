@@ -7,6 +7,7 @@ const path = require("path");
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
 const sharp = require("sharp");
+const { buildGiftActivationUrl } = require("./giftActivationUrl.util");
 
 const MM_TO_PT = 72 / 25.4;
 const CARD_MM = 60;
@@ -241,11 +242,6 @@ async function generateQrBuffer(text, px) {
     ...QR_OPTIONS,
     width: px,
   });
-}
-
-function buildGiftActivationUrl(websiteUrl, code) {
-  const base = String(websiteUrl || "").replace(/\/$/, "");
-  return `${base}/?gift=${encodeURIComponent(code)}`;
 }
 
 function cardPosition(slotIndex) {

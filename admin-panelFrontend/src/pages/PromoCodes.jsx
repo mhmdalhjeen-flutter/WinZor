@@ -140,7 +140,7 @@ const PromoCodes = () => {
     } catch (err) { alert("خطأ: " + err.message); }
   };
 
-  // تصدير بطاقات هدايا PDF (ورقي فقط)
+  // تصدير Excel (ورقي فقط)
   const handleExportOrder = async (orderId) => {
     setExportingId(orderId);
     try {
@@ -153,7 +153,7 @@ const PromoCodes = () => {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href     = url;
-      a.download = `gift-cards-${orderId}.pdf`;
+      a.download = `gift-codes-${orderId}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) { alert("خطأ في التصدير: " + err.message); }
@@ -184,8 +184,8 @@ const PromoCodes = () => {
     finally { setTogglingSubId(null); }
   };
 
-  const downloadPhysicalPdf = async (storeId, physicalCodes) => {
-    const res = await fetch(`${API}/code-orders/admin/direct-export-pdf`, {
+  const downloadPhysicalExcel = async (storeId, physicalCodes) => {
+    const res = await fetch(`${API}/code-orders/admin/direct-export`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -201,7 +201,7 @@ const PromoCodes = () => {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = `gift-cards-${storeId}.pdf`;
+    a.download = `gift-codes-${storeId}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -238,7 +238,7 @@ const PromoCodes = () => {
       }
 
       if (data.physicalCodes?.length) {
-        await downloadPhysicalPdf(storeId, data.physicalCodes);
+        await downloadPhysicalExcel(storeId, data.physicalCodes);
       }
 
       alert(data.message);
@@ -379,7 +379,7 @@ const PromoCodes = () => {
                                   opacity: exportingId === order._id ? 0.6 : 1,
                                 }}>
                                 <Download size={13} />
-                                {exportingId === order._id ? "جاري التصدير..." : "PDF بطاقات"}
+                                {exportingId === order._id ? "جاري التصدير..." : "Excel"}
                               </button>
                             )}
                             {order.deliveryType === "digital" ? (
@@ -415,7 +415,7 @@ const PromoCodes = () => {
         <div className="generator-form-card">
           <h2 style={{ marginBottom: "0.5rem" }}>🏪 توليد أكواد مباشرة لكل متجر</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-            الرقمي: يُضاف لرصيد المتجر بدون PDF — الورقي: بطاقات PDF جاهزة للطباعة
+            الرقمي: يُضاف لرصيد المتجر — الورقي: يُصدَّر Excel للطباعة عبر تطبيق سطح المكتب
           </p>
 
           {storesLoading ? <p>⏳ جاري تحميل المتاجر...</p>

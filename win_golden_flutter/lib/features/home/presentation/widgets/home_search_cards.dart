@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/onboarding/onboarding_target.dart';
+import '../../../../core/onboarding/onboarding_targets.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/hierarchy_node.dart';
 import '../../../../core/utils/media_url.dart';
@@ -132,30 +134,33 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
           Row(
             children: [
               Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildModeCard(
-                        mode: SearchMode.region,
-                        icon: Icons.location_on_outlined,
-                        label: 'فلترة العروض\n(حسب المنطقة)',
-                        iconBg: const Color(0xFFD1FAE5),
-                        iconColor: const Color(0xFF059669),
-                        activeColor: const Color(0xFF34D399).withOpacity(0.5),
+                child: OnboardingTarget(
+                  targetKey: OnboardingTargets.filters,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildModeCard(
+                          mode: SearchMode.region,
+                          icon: Icons.location_on_outlined,
+                          label: 'فلترة العروض\n(حسب المنطقة)',
+                          iconBg: const Color(0xFFD1FAE5),
+                          iconColor: const Color(0xFF059669),
+                          activeColor: const Color(0xFF34D399).withOpacity(0.5),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildModeCard(
-                        mode: SearchMode.offer,
-                        icon: Icons.local_offer_outlined,
-                        label: 'تصنيف العروض\n(حسب النوع)',
-                        iconBg: const Color(0xFFEDE9FE),
-                        iconColor: const Color(0xFF7C3AED),
-                        activeColor: const Color(0xFFA78BFA).withOpacity(0.5),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildModeCard(
+                          mode: SearchMode.offer,
+                          icon: Icons.local_offer_outlined,
+                          label: 'تصنيف العروض\n(حسب النوع)',
+                          iconBg: const Color(0xFFEDE9FE),
+                          iconColor: const Color(0xFF7C3AED),
+                          activeColor: const Color(0xFFA78BFA).withOpacity(0.5),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -27,17 +27,9 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     final chatCount = chatAsync?.asData?.value ?? 0;
 
     return AppBar(
-      title: showAuth
-          ? OnboardingTarget(
-              targetKey: OnboardingTargets.points,
-              child: GestureDetector(
-                onTap: () => showPointsBalanceSheet(context),
-                child: _buildPointsBadge(auth.user),
-              ),
-            )
-          : _buildLogoTitle(),
+      title: showAuth ? _buildAuthTitle() : _buildLogoTitle(),
       actions: showAuth
-          ? _buildAuthActions(context, ref, notifCount, chatCount)
+          ? [_buildAuthHeaderIcons(context, ref, notifCount, chatCount)]
           : _buildGuestActions(context),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(0.8),
@@ -199,47 +191,61 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     );
   }
 
-  List<Widget> _buildAuthActions(
+  Widget _buildAuthTitle() {
+    return const BrandLogo.compact(width: 36, height: 36);
+  }
+
+  Widget _buildAuthHeaderIcons(
     BuildContext context,
     WidgetRef ref,
     int notifCount,
     int chatCount,
   ) {
-    return [
-      _buildIconButton(
-        context,
-        Icons.notifications_none,
-        const Color(0xFFDC2626),
-        const Color(0xFFFFF1F2),
-        const Color(0xFFFEE2E2),
-        notifCount,
-        tourKey: OnboardingTargets.notifications,
-        onTap: () => context.push('/notifications'),
+    final auth = ref.watch(authProvider);
+
+    return OnboardingTarget(
+      targetKey: OnboardingTargets.headerIcons,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => showPointsBalanceSheet(context),
+            child: _buildPointsBadge(auth.user),
+          ),
+          const SizedBox(width: 4),
+          _buildIconButton(
+            context,
+            Icons.notifications_none,
+            const Color(0xFFDC2626),
+            const Color(0xFFFFF1F2),
+            const Color(0xFFFEE2E2),
+            notifCount,
+            onTap: () => context.push('/notifications'),
+          ),
+          _buildIconButton(
+            context,
+            LucideIcons.shoppingCart,
+            const Color(0xFFD97706),
+            const Color(0xFFFFFBEB),
+            const Color(0xFFFED7AA),
+            0,
+            onTap: () => context.push('/orders'),
+          ),
+          _buildIconButton(
+            context,
+            LucideIcons.messageCircle,
+            const Color(0xFF2563EB),
+            const Color(0xFFF0F9FF),
+            const Color(0xFFBFDBFE),
+            chatCount,
+            filled: true,
+            onTap: () => context.push('/chat'),
+          ),
+          _buildMoreButton(context, ref),
+          const SizedBox(width: 8),
+        ],
       ),
-      _buildIconButton(
-        context,
-        LucideIcons.shoppingCart,
-        const Color(0xFFD97706),
-        const Color(0xFFFFFBEB),
-        const Color(0xFFFED7AA),
-        0,
-        tourKey: OnboardingTargets.cart,
-        onTap: () => context.push('/orders'),
-      ),
-      _buildIconButton(
-        context,
-        LucideIcons.messageCircle,
-        const Color(0xFF2563EB),
-        const Color(0xFFF0F9FF),
-        const Color(0xFFBFDBFE),
-        chatCount,
-        filled: true,
-        tourKey: OnboardingTargets.chat,
-        onTap: () => context.push('/chat'),
-      ),
-      _buildMoreButton(context, ref),
-      const SizedBox(width: 8),
-    ];
+    );
   }
 
   Widget _buildIconButton(
@@ -249,11 +255,10 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     Color bgFrom,
     Color bgTo,
     int badge, {
-    GlobalKey? tourKey,
     VoidCallback? onTap,
     bool filled = false,
   }) {
-    final button = Padding(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: InkWell(
         onTap: onTap,
@@ -319,9 +324,6 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
     );
-
-    if (tourKey == null) return button;
-    return OnboardingTarget(targetKey: tourKey, child: button);
   }
 
   Widget _buildMoreButton(BuildContext context, WidgetRef ref) {
@@ -399,9 +401,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           child: _MoreItem(icon: LucideIcons.logOut, label: 'تسجيل الخروج', color: Color(0xFFDC2626)),
         ),
       ],
-      child: OnboardingTarget(
-        targetKey: OnboardingTargets.more,
-        child: Container(
+      child: Container(
           margin: const EdgeInsets.only(left: 4),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -440,7 +440,6 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
             ],
           ),
         ),
-      ),
     );
   }
 

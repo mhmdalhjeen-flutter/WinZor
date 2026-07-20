@@ -4,7 +4,17 @@ const cache = require("../utils/responseCache.util");
 // إشعاراتي (اختياري ?unread=true لغير المقروءة فقط).
 exports.getMine = async (req, res) => {
   try {
-    const filter = { user: req.user.id };
+    const userId = req.user.id;
+
+    // تنظيف خفيف: حذف الإشعارات المقروءة الأقدم من 90 يوماً
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    await Notification.deleteMany({
+      user: userId,
+      read: true,
+      createdAt: { $lt: cutoff },
+    }).catch(() => {});
+
+    const filter = { user: userId };
     if (req.query.unread === "true") filter.read = false;
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
     const notifications = await Notification.find(filter)

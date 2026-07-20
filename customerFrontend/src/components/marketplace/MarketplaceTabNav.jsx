@@ -6,19 +6,13 @@ const MarketplaceTabNav = ({ activeTab, onTabChange }) => (
     className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm"
     aria-label="تنقل السوق"
   >
-    <div className="flex gap-1 overflow-x-auto px-1 py-2.5 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex gap-1 overflow-x-auto px-1 py-2.5 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-onboarding="mp-tabs">
       {Object.values(MARKETPLACE_TAB_CONFIG).map(({ id, icon: Icon, label, color }) => {
         const active = activeTab === id;
         return (
           <button
             key={id}
             type="button"
-            data-onboarding={
-              id === 'sellExchange' ? 'mp-buy'
-                : id === 'rent' ? 'mp-rent'
-                  : id === 'wanted' ? 'mp-wanted'
-                    : undefined
-            }
             onClick={() => onTabChange(id)}
             aria-current={active ? 'page' : undefined}
             className={`flex flex-col items-center justify-center gap-1 py-2 px-2 min-w-[4.25rem] rounded-2xl transition-all duration-200 snap-start shrink-0 ${

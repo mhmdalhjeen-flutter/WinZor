@@ -176,7 +176,9 @@ const Home = () => {
 
         {/* Competitions — directly below hero */}
         <Suspense fallback={competitionsPlaceholder}>
-          <FeaturedCompetitions />
+          <div data-onboarding="prize-draw">
+            <FeaturedCompetitions />
+          </div>
         </Suspense>
 
         {/* الفلترة و البحث */}

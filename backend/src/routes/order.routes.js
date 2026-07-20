@@ -49,7 +49,8 @@ router.patch("/:id/status", roleMiddleware.business, async (req, res) => {
     const result = await orderService.updateOrderStatus(
       req.user.id,
       orderId,
-      req.body.status
+      req.body.status,
+      { rejectionReason: req.body.rejectionReason }
     );
     if (["confirmed", "rejected", "cancelled"].includes(req.body.status)) {
       await auditService.logSensitiveOperation(req, {

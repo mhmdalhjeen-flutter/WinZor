@@ -57,101 +57,103 @@ class HomePage extends ConsumerWidget {
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 const SliverToBoxAdapter(child: HomeHero()),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(child: FeaturedCompetitions()),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 SliverToBoxAdapter(
                   child: OnboardingTarget(
-                    targetKey: OnboardingTargets.search,
-                    child: HomeSearchCards(
-                      regionTree: regionsAsync.asData?.value ?? [],
-                      regionPath: regionPath,
-                      onRegionPathChange: (path) => ref.read(regionPathProvider.notifier).state = path,
-                      regionsLoading: regionsAsync.isLoading,
-                      categoryTree: categoriesAsync.asData?.value ?? [],
-                      categoryPath: categoryPath,
-                      onCategoryPathChange: (path) => ref.read(categoryPathProvider.notifier).state = path,
-                      categoriesLoading: categoriesAsync.isLoading,
-                      onSearchTriggered: () {
-                        // Handled by providers watching the paths
-                      },
-                    ),
+                    targetKey: OnboardingTargets.prizeDraw,
+                    child: const FeaturedCompetitions(),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                  child: HomeSearchCards(
+                    regionTree: regionsAsync.asData?.value ?? [],
+                    regionPath: regionPath,
+                    onRegionPathChange: (path) => ref.read(regionPathProvider.notifier).state = path,
+                    regionsLoading: regionsAsync.isLoading,
+                    categoryTree: categoriesAsync.asData?.value ?? [],
+                    categoryPath: categoryPath,
+                    onCategoryPathChange: (path) => ref.read(categoryPathProvider.notifier).state = path,
+                    categoriesLoading: categoriesAsync.isLoading,
+                    onSearchTriggered: () {
+                      // Handled by providers watching the paths
+                    },
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // Offers Header
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverToBoxAdapter(
-                    child: OnboardingTarget(
-                      targetKey: OnboardingTargets.home,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.auto_awesome, color: Color(0xFFB91C1C), size: 18),
-                              SizedBox(width: 8),
-                              Text(
-                                'العروض',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF111827),
-                                  fontFamily: 'Cairo',
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (hasActiveFilters)
-                            GestureDetector(
-                              onTap: () {
-                                ref.read(regionPathProvider.notifier).state = [];
-                                ref.read(categoryPathProvider.notifier).state = [];
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F3FF),
-                                  borderRadius: BorderRadius.circular(100),
-                                  border: Border.all(color: const Color(0xFFDDD6FE)),
-                                ),
-                                child: const Text(
-                                  'إلغاء التصفية',
-                                  style: TextStyle(
-                                    color: Color(0xFF7C3AED),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Cairo',
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
                 reelsAsync.when(
                   data: (reels) {
-                    if (reels.isEmpty) {
-                      return const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                          child: Text(
-                            'لا توجد عروض مطابقة حالياً',
-                            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                    return SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: OnboardingTarget(
+                          targetKey: OnboardingTargets.home,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.auto_awesome, color: Color(0xFFB91C1C), size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'العروض',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF111827),
+                                          fontFamily: 'Cairo',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (hasActiveFilters)
+                                    GestureDetector(
+                                      onTap: () {
+                                        ref.read(regionPathProvider.notifier).state = [];
+                                        ref.read(categoryPathProvider.notifier).state = [];
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF5F3FF),
+                                          borderRadius: BorderRadius.circular(100),
+                                          border: Border.all(color: const Color(0xFFDDD6FE)),
+                                        ),
+                                        child: const Text(
+                                          'إلغاء التصفية',
+                                          style: TextStyle(
+                                            color: Color(0xFF7C3AED),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Cairo',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              if (reels.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 48),
+                                  child: Center(
+                                    child: Text(
+                                      'لا توجد عروض مطابقة حالياً',
+                                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                )
+                              else
+                                OnboardingTarget(
+                                  targetKey: OnboardingTargets.reelViewer,
+                                  child: ProgressiveCategoryReels(reels: reels),
+                                ),
+                            ],
                           ),
                         ),
-                      );
-                    }
-                    return SliverToBoxAdapter(
-                      child: OnboardingTarget(
-                        targetKey: OnboardingTargets.reelViewer,
-                        child: ProgressiveCategoryReels(reels: reels),
                       ),
                     );
                   },

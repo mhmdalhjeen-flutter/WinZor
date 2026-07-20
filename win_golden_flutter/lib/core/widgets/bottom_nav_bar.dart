@@ -36,12 +36,11 @@ class BottomNavBar extends ConsumerWidget {
         label: 'المتاجر',
       ),
       if (settings.showMarketplace)
-        _NavSpec(
+        const _NavSpec(
           index: 2,
           icon: Icons.shopping_bag_outlined,
           activeIcon: Icons.shopping_bag,
           label: 'السوق',
-          tourKey: OnboardingTargets.marketplaceNav,
         ),
       if (settings.showRewards)
         const _NavSpec(
@@ -50,13 +49,12 @@ class BottomNavBar extends ConsumerWidget {
           activeIcon: Icons.card_giftcard,
           label: 'الجوائز',
         ),
-      _NavSpec(
+      const _NavSpec(
         index: 4,
         icon: Icons.stars_outlined,
         activeIcon: Icons.stars,
         label: 'نقاطي',
         isSpecial: true,
-        tourKey: OnboardingTargets.profileNav,
       ),
     ];
 
@@ -69,7 +67,9 @@ class BottomNavBar extends ConsumerWidget {
       });
     }
 
-    return Container(
+    return OnboardingTarget(
+      targetKey: OnboardingTargets.bottomNav,
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
         border: const Border(
@@ -95,6 +95,7 @@ class BottomNavBar extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -171,9 +172,6 @@ class BottomNavBar extends ConsumerWidget {
       ),
     );
 
-    if (item.tourKey != null) {
-      return OnboardingTarget(targetKey: item.tourKey!, child: content);
-    }
     return content;
   }
 }
@@ -184,7 +182,6 @@ class _NavSpec {
   final IconData activeIcon;
   final String label;
   final bool isSpecial;
-  final GlobalKey? tourKey;
 
   const _NavSpec({
     required this.index,
@@ -192,6 +189,5 @@ class _NavSpec {
     required this.activeIcon,
     required this.label,
     this.isSpecial = false,
-    this.tourKey,
   });
 }

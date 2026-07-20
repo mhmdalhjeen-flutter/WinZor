@@ -45,7 +45,6 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       type="button"
       onClick={onClick}
       id="points-header-anchor"
-      data-onboarding="points"
       aria-label={`${displayPoints.toLocaleString('en-US')} نقطة — تسوق واربح`}
       className={`flex items-center gap-2.5 sm:gap-3 min-w-0 max-w-[68%] sm:max-w-none active:scale-95 transition-transform ${
         isUp || isDown ? 'animate-pulse' : ''

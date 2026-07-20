@@ -87,7 +87,9 @@ class MarketplacePage extends ConsumerWidget {
   }
 
   Widget _buildHeader() {
-    return Container(
+    return OnboardingTarget(
+      targetKey: OnboardingTargets.marketplaceMain,
+      child: Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       child: const Column(
@@ -103,6 +105,7 @@ class MarketplacePage extends ConsumerWidget {
             style: TextStyle(fontSize: 13, color: Color(0xFF4B5563), height: 1.5, fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
           ),
         ],
+      ),
       ),
     );
   }

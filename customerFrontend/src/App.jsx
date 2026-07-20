@@ -136,7 +136,6 @@ function AppShell() {
         {showAppChrome && !hideOverlayChrome && <Header />}
 
         <main
-          data-onboarding="current-page"
           className={`flex-grow w-full max-w-screen-xl mx-auto ${showAppChrome && !hideOverlayChrome ? 'px-4 pt-3 pb-[calc(5.1rem+env(safe-area-inset-bottom,0px))] md:pb-8' : ''}`}
         >
           {isAuth && <VerifyBanner />}

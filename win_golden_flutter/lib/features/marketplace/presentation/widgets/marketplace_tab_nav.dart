@@ -97,68 +97,60 @@ class MarketplaceTabNav extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        child: Row(
-          children: marketplaceTabs.values.map((tab) {
-            final bool isActive = activeTab == tab.id;
-            final GlobalKey? tourKey = switch (tab.id) {
-              'sellExchange' => OnboardingTargets.marketplaceBuy,
-              'rent' => OnboardingTargets.marketplaceRent,
-              'wanted' => OnboardingTargets.marketplaceWanted,
-              _ => null,
-            };
+        child: OnboardingTarget(
+          targetKey: OnboardingTargets.marketplaceTabs,
+          child: Row(
+            children: marketplaceTabs.values.map((tab) {
+              final bool isActive = activeTab == tab.id;
 
-            final tabButton = Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: GestureDetector(
-                onTap: () => onTabChange(tab.id),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  constraints: const BoxConstraints(minWidth: 70),
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: isActive ? tab.activeBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    border: isActive ? Border.all(color: tab.activeText.withOpacity(0.2)) : null,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isActive ? Colors.white : tab.iconBg,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : null,
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () => onTabChange(tab.id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    constraints: const BoxConstraints(minWidth: 70),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isActive ? tab.activeBg : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isActive ? Border.all(color: tab.activeText.withOpacity(0.2)) : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isActive ? Colors.white : tab.iconBg,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : null,
+                          ),
+                          child: Icon(
+                            tab.icon,
+                            size: 20,
+                            color: tab.iconColor,
+                            fill: (tab.id == 'favorites' && isActive) ? 1.0 : 0.0,
+                          ),
                         ),
-                        child: Icon(
-                          tab.icon,
-                          size: 20,
-                          color: tab.iconColor,
-                          fill: (tab.id == 'favorites' && isActive) ? 1.0 : 0.0,
+                        const SizedBox(height: 6),
+                        Text(
+                          tab.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: isActive ? tab.activeText : const Color(0xFF6B7280),
+                            fontFamily: 'Cairo',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        tab.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: isActive ? tab.activeText : const Color(0xFF6B7280),
-                          fontFamily: 'Cairo',
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-
-            if (tourKey != null) {
-              return OnboardingTarget(targetKey: tourKey, child: tabButton);
-            }
-            return tabButton;
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );

@@ -162,9 +162,9 @@ export default function HomeSearchCards({
   );
 
   return (
-    <section className="max-w-6xl mx-auto px-1.5 sm:px-2" dir="rtl" data-onboarding="search">
+    <section className="max-w-6xl mx-auto px-1.5 sm:px-2" dir="rtl">
       <div className="flex items-stretch gap-2">
-        <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
+        <div className="grid grid-cols-2 gap-2 flex-1 min-w-0" data-onboarding="filters">
           {SEARCH_MODES.map((mode) => {
             const isActive = activeMode === mode.id;
             return (

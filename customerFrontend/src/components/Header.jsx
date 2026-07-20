@@ -57,7 +57,6 @@ const MoreMenuBtn = ({ onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    data-onboarding="more"
     className="relative flex items-center gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl active:scale-95 transition-transform shrink-0 bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200/70 shadow-sm"
     aria-label="المزيد"
   >
@@ -276,14 +275,13 @@ const Header = () => {
   return (
     <>
       <header
-        data-onboarding="top-nav"
         className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/70 shadow-sm"
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
           {isAuth ? (
-            <div className="flex items-center gap-2 min-w-0 shrink-0">
+            <>
               <img
                 src={BRAND_LOGO_64}
                 alt=""
@@ -294,12 +292,38 @@ const Header = () => {
                 fetchpriority="high"
                 decoding="async"
               />
-              <PointsBadge
-                points={points}
-                pulse={pointsPulse}
-                onClick={openPoints}
-              />
-            </div>
+              <div
+                data-onboarding="header-icons"
+                className="flex items-center gap-0 sm:gap-0.5 shrink-0 min-w-0"
+              >
+                <PointsBadge
+                  points={points}
+                  pulse={pointsPulse}
+                  onClick={openPoints}
+                />
+                <HeaderIconBtn
+                  icon={Bell}
+                  label="إشعارات"
+                  theme="bell"
+                  badge={notifCount}
+                  onClick={() => navigate('/notifications')}
+                />
+                <HeaderIconBtn
+                  icon={ShoppingCart}
+                  label="طلباتي"
+                  theme="cart"
+                  onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
+                />
+                <HeaderIconBtn
+                  icon={MessageCircle}
+                  label="رسائل"
+                  theme="message"
+                  badge={unreadCount}
+                  onClick={() => navigate('/chat')}
+                />
+                <MoreMenuBtn onClick={() => setMoreOpen(true)} />
+              </div>
+            </>
           ) : (
             <button
               type="button"
@@ -319,35 +343,6 @@ const Header = () => {
               />
               <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">{BRAND_NAME}</span>
             </button>
-          )}
-
-          {isAuth && (
-            <div className="flex items-center gap-0 sm:gap-0.5 shrink-0 min-w-0">
-              <HeaderIconBtn
-                icon={Bell}
-                label="إشعارات"
-                theme="bell"
-                badge={notifCount}
-                onboardingId="notifications"
-                onClick={() => navigate('/notifications')}
-              />
-              <HeaderIconBtn
-                icon={ShoppingCart}
-                label="طلباتي"
-                theme="cart"
-                onboardingId="cart"
-                onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
-              />
-              <HeaderIconBtn
-                icon={MessageCircle}
-                label="رسائل"
-                theme="message"
-                badge={unreadCount}
-                onboardingId="chat"
-                onClick={() => navigate('/chat')}
-              />
-              <MoreMenuBtn onClick={() => setMoreOpen(true)} />
-            </div>
           )}
 
           {!isAuth && (

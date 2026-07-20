@@ -668,7 +668,7 @@ const Marketplace = () => {
   return (
     <div className="pb-20 bg-gray-50 min-h-screen text-right marketplace-page" dir="rtl">
       <MarketplaceOnboardingTourHost activePage />
-      <div className="px-2 pt-3 pb-2 text-center">
+      <div className="px-2 pt-3 pb-2 text-center" data-onboarding="mp-main">
         <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug font-cairo">
           السوق العام
         </h1>

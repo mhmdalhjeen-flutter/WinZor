@@ -26,115 +26,79 @@ final mainOnboardingSteps = <OnboardingStep>[
     targetKey: OnboardingTargets.home,
     title: 'الرئيسية',
     body:
-        'تصفّح العروض والمنتجات والمسابقات من مكان واحد — اسحب أفقياً بين البطاقات واكتشف ما يناسبك.',
+        'هنا تصفح أحدث العروض المميزة، واستفد من الخصومات، واكتشف أفضل الفرص للفوز.',
     shellBranch: 0,
     scrollToTarget: true,
-  ),
-  OnboardingStep(
-    id: 'search',
-    targetKey: OnboardingTargets.search,
-    title: 'البحث',
-    body:
-        'ابحث عن متاجر وعروض ومنتجات، أو فلتر حسب المنطقة والتصنيف للوصول السريع لما تريد.',
-    shellBranch: 0,
-    scrollToTarget: true,
-  ),
-  OnboardingStep(
-    id: 'points',
-    targetKey: OnboardingTargets.points,
-    title: 'النقاط',
-    body:
-        'اجمع نقاطك من المتاجر المشاركة في البرنامج، واستبدلها بجوائز ومزايا حصرية.',
-    shellBranch: 0,
-  ),
-  OnboardingStep(
-    id: 'marketplace',
-    targetKey: OnboardingTargets.marketplaceNav,
-    title: 'السوق المفتوح',
-    body:
-        'اشترِ، بِع، استأجر، أو انشر طلباتك عبر السوق المفتوح — كل ذلك من تبويب واحد.',
-    shellBranch: 2,
   ),
   OnboardingStep(
     id: 'reels',
     targetKey: OnboardingTargets.reelViewer,
-    title: 'عارض الريلز',
+    title: 'عروض الريلز',
     body:
-        'اضغط على أي بطاقة عرض لفتح تجربة ريلز عمودية — تصفح العروض والمنتجات بسلاسة مثل TikTok.',
+        'هنا تصفح العروض بطريقة الريلز (السحب للأعلى)، واطلبها وأنت في المنزل.',
     shellBranch: 0,
     scrollToTarget: true,
   ),
   OnboardingStep(
-    id: 'cart',
-    targetKey: OnboardingTargets.cart,
-    title: 'سلة التسوق',
-    body: 'راجع منتجاتك وعروضك قبل إتمام الطلب — كل مشترياتك في مكان واحد.',
+    id: 'filters',
+    targetKey: OnboardingTargets.filters,
+    title: 'الفلاتر',
+    body: 'استعرض العروض حسب منطقتك أو نوع المنتج الذي تبحث عنه.',
     shellBranch: 0,
+    scrollToTarget: true,
   ),
   OnboardingStep(
-    id: 'chat',
-    targetKey: OnboardingTargets.chat,
-    title: 'المحادثات',
-    body: 'تواصل مباشرة مع المتاجر للاستفسار عن العروض والمنتجات.',
-    shellBranch: 0,
-  ),
-  OnboardingStep(
-    id: 'notifications',
-    targetKey: OnboardingTargets.notifications,
-    title: 'الإشعارات',
-    body: 'تابع تحديثات المتاجر التي تتابعها، المسابقات، الطلبات، والرسائل.',
-    shellBranch: 0,
-  ),
-  OnboardingStep(
-    id: 'profile',
-    targetKey: OnboardingTargets.profileNav,
-    title: 'حسابي',
-    body: 'أدر حسابك، طلباتك، مكافآتك، وإعداداتك الشخصية من هنا.',
-    shellBranch: 4,
-  ),
-  OnboardingStep(
-    id: 'more',
-    targetKey: OnboardingTargets.more,
-    title: 'المزيد',
+    id: 'header-icons',
+    targetKey: OnboardingTargets.headerIcons,
+    title: 'أيقونات الشريط العلوي',
     body:
-        'الوصول إلى المفضلة، متاجر النقاط، المسابقات، وعجلة الحظ وميزات إضافية.',
+        'تابع نقاطك، وتواصل مع المتاجر، واستكشف المزيد من الخدمات والمتاجر المعتمدة في المنصة.',
+    shellBranch: 0,
+  ),
+  OnboardingStep(
+    id: 'prize-draw',
+    targetKey: OnboardingTargets.prizeDraw,
+    title: 'السحب على الجوائز',
+    body: 'عند وصولك للعدد المطلوب، يمكنك الانضمام إلى السحب على الجوائز.',
+    shellBranch: 0,
+    scrollToTarget: true,
+  ),
+  OnboardingStep(
+    id: 'bottom-nav',
+    targetKey: OnboardingTargets.bottomNav,
+    title: 'التنقل السفلي',
+    body: 'تنقل بسرعة بين المتاجر، والسوق العام، وملفك الشخصي (نقاطك).',
     shellBranch: 0,
   ),
 ];
 
 final marketplaceOnboardingSteps = <OnboardingStep>[
   OnboardingStep(
-    id: 'mp-buy',
-    targetKey: OnboardingTargets.marketplaceBuy,
-    title: 'شراء',
-    body: 'تصفّح إعلانات البيع والبدل — اشترِ منتجات من مستخدمين آخرين بسهولة.',
-    shellBranch: 2,
-  ),
-  OnboardingStep(
-    id: 'mp-sell',
-    targetKey: OnboardingTargets.marketplaceSell,
-    title: 'بيع',
-    body: 'انشر إعلانك للبيع أو البدل — حوّل أغراضك إلى فرصة للبيع.',
-    shellBranch: 2,
-  ),
-  OnboardingStep(
-    id: 'mp-rent',
-    targetKey: OnboardingTargets.marketplaceRent,
-    title: 'إيجار',
+    id: 'mp-main',
+    targetKey: OnboardingTargets.marketplaceMain,
+    title: 'ما هو السوق العام؟',
     body:
-        'اعرض أو استأجر عقارات ومركبات وأصول — كل ما تحتاجه للإيجار في مكان واحد.',
+        'السوق العام هو مكان يمكنك من خلاله بيع وشراء وتأجير وتبادل المنتجات بسهولة بين مستخدمي المنصة، مع الوصول إلى عروض متنوعة في مكان واحد.',
     shellBranch: 2,
   ),
   OnboardingStep(
-    id: 'mp-wanted',
-    targetKey: OnboardingTargets.marketplaceWanted,
-    title: 'مطلوب',
-    body: 'انشر طلباً لما تبحث عنه — دع البائعين يتواصلون معك مباشرة.',
+    id: 'mp-publish',
+    targetKey: OnboardingTargets.marketplaceSell,
+    title: 'النشر',
+    body:
+        'اعرض أغراضك للبيع أو البدل أو الإيجار، أو انشر طلبًا لما تبحث عنه، وتواصل مباشرة مع المهتمين.',
+    shellBranch: 2,
+  ),
+  OnboardingStep(
+    id: 'mp-tabs',
+    targetKey: OnboardingTargets.marketplaceTabs,
+    title: 'أقسام السوق',
+    body:
+        'اعثر على ما تحتاجه من خلال تصفح المعروضات، والمأجورات، والمطلوبات، مع سهولة الوصول إلى مختلف الإعلانات في مكان واحد.',
     shellBranch: 2,
   ),
 ];
 
 List<OnboardingStep> filteredMainSteps({required bool showMarketplace}) {
-  if (showMarketplace) return mainOnboardingSteps;
-  return mainOnboardingSteps.where((s) => s.id != 'marketplace').toList();
+  return mainOnboardingSteps;
 }

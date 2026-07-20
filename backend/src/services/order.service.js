@@ -5,6 +5,7 @@ const Store = require("../models/store");
 const User = require("../models/user");
 const notificationService = require("./notification.service");
 const { restoreStockForOrderItems } = require("./cart.service");
+const { cleanString } = require("../utils/inputSecurity.util");
 
 const ORDER_LIST_SELECT =
   "customer store items total status pointsAwarded cardDeducted createdAt updatedAt";
@@ -77,7 +78,10 @@ async function getStoreOrders(ownerId) {
     throw err;
   }
 
-  const orders = await Order.find({ store: store._id, status: { $ne: "delivered" } })
+  const orders = await Order.find({
+    store: store._id,
+    status: { $nin: ["delivered", "rejected", "cancelled"] },
+  })
     .select(ORDER_LIST_SELECT)
     .sort({ createdAt: -1 })
     .populate("customer", "name phone")
@@ -168,7 +172,7 @@ async function applyRevertConfirmSideEffects(order, store, session) {
   }
 }
 
-async function updateOrderStatusCore(ownerId, orderId, status, session) {
+async function updateOrderStatusCore(ownerId, orderId, status, session, options = {}) {
   if (!ALLOWED_STATUSES.includes(status)) {
     const err = new Error("حالة غير صحيحة");
     err.status = 400;
@@ -300,9 +304,21 @@ async function updateOrderStatusCore(ownerId, orderId, status, session) {
 
     await restoreOrderItemsToCart(order.customer, order.items, session);
 
+    const reason = cleanString(options.rejectionReason, { field: "rejectionReason", max: 500 });
+    if (reason) {
+      await notificationService.create({
+        user: order.customer,
+        type: "order_rejected",
+        title: `تم رفض طلبك من ${store.name || "المتجر"}`,
+        body: reason,
+        data: { orderId: order._id.toString() },
+      });
+    }
+
     return {
-      message: "تم تحديث الحالة",
+      message: "تم رفض الطلب",
       order,
+      deleted: true,
       cards: store.cards,
       bypassCards: store.bypassCards,
     };
@@ -361,17 +377,17 @@ async function updateOrderStatusCore(ownerId, orderId, status, session) {
   throw err;
 }
 
-async function updateOrderStatus(ownerId, orderId, status) {
+async function updateOrderStatus(ownerId, orderId, status, options = {}) {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-    const result = await updateOrderStatusCore(ownerId, orderId, status, session);
+    const result = await updateOrderStatusCore(ownerId, orderId, status, session, options);
     await session.commitTransaction();
     return result;
   } catch (err) {
     await session.abortTransaction().catch(() => {});
     if (isTransactionUnsupported(err)) {
-      return updateOrderStatusCore(ownerId, orderId, status, null);
+      return updateOrderStatusCore(ownerId, orderId, status, null, options);
     }
     throw err;
   } finally {

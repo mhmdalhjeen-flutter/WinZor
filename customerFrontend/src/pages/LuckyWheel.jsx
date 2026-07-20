@@ -8,8 +8,12 @@ import { queryClient, queryKeys } from '../lib/queryClient';
 import WheelVisual from '../components/WheelVisual';
 import WheelResultPopup from '../components/WheelResultPopup';
 import { setPointsFloatOrigin, commitPointsUpdate } from '../utils/pointsAnimation';
+import { calcStopRotation } from '../utils/wheelRotation';
 
 const spinIdempotency = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const FREE_SPIN_DEG_PER_SEC = 900;
+const DECEL_MS = 5500;
 
 const LuckyWheel = () => {
   const navigate = useNavigate();
@@ -18,10 +22,16 @@ const LuckyWheel = () => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [spinning, setSpinning] = useState(false);
+  const [decelerating, setDecelerating] = useState(false);
+  const [spinIntensity, setSpinIntensity] = useState(0);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
   const [userPoints, setUserPoints] = useState(user?.points ?? 0);
   const spinBtnRef = useRef(null);
+  const rotationRef = useRef(0);
+  const rafRef = useRef(null);
+  const decelTimerRef = useRef(null);
+  const lastFrameRef = useRef(0);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -37,49 +47,106 @@ const LuckyWheel = () => {
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
 
-  const calcRotation = (segmentIndex, segmentCount, currentRot) => {
-    const angle = 360 / segmentCount;
-    const target = 360 - (segmentIndex * angle + angle / 2);
-    const fullSpins = 8 * 360;
-    const base = currentRot % 360;
-    return currentRot + fullSpins + (target - base + 360) % 360;
-  };
+  useEffect(() => {
+    rotationRef.current = rotation;
+  }, [rotation]);
+
+  const stopFreeSpin = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  const finishSpin = useCallback((data) => {
+    setUserPoints(data.userPoints);
+    if (data.userPoints != null) {
+      const btn = spinBtnRef.current;
+      if (btn) {
+        const r = btn.getBoundingClientRect();
+        setPointsFloatOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      }
+      commitPointsUpdate(updateUser, data.userPoints);
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+    }
+    setResult(data);
+    loadConfig();
+    setSpinning(false);
+    setDecelerating(false);
+    setSpinIntensity(0);
+  }, [loadConfig, updateUser]);
+
+  const beginDeceleration = useCallback((data, segments) => {
+    stopFreeSpin();
+    const finalRot = calcStopRotation(
+      segments,
+      data.prize?._id,
+      data.segmentIndex,
+      rotationRef.current,
+    );
+    setDecelerating(true);
+    setSpinIntensity(0.85);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setRotation(finalRot);
+        rotationRef.current = finalRot;
+      });
+    });
+
+    const fadeStart = DECEL_MS * 0.35;
+    const fadeTimer = setTimeout(() => {
+      setSpinIntensity(0);
+    }, fadeStart);
+
+    decelTimerRef.current = setTimeout(() => {
+      clearTimeout(fadeTimer);
+      finishSpin(data);
+    }, DECEL_MS + 80);
+  }, [finishSpin, stopFreeSpin]);
+
+  const startFreeSpin = useCallback(() => {
+    lastFrameRef.current = performance.now();
+    setSpinIntensity(1);
+
+    const tick = (now) => {
+      const dt = Math.min((now - lastFrameRef.current) / 1000, 0.05);
+      lastFrameRef.current = now;
+      rotationRef.current += FREE_SPIN_DEG_PER_SEC * dt;
+      setRotation(rotationRef.current);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  useEffect(() => () => {
+    stopFreeSpin();
+    if (decelTimerRef.current) clearTimeout(decelTimerRef.current);
+  }, [stopFreeSpin]);
 
   const doSpin = async () => {
     if (spinning || !config?.segments?.length) return;
 
     setSpinning(true);
+    setDecelerating(false);
     setResult(null);
+    startFreeSpin();
+
     const idemKey = spinIdempotency();
+    const segments = config.segments;
 
     try {
       const { data } = await api.post('/wheel/spin', {}, {
         headers: { 'Idempotency-Key': idemKey },
       });
-
-      const segCount = data.segmentCount || config.segments.length;
-      const newRot = calcRotation(data.segmentIndex, segCount, rotation);
-      setRotation(newRot);
-
-      await new Promise((r) => setTimeout(r, 7200));
-
-      setUserPoints(data.userPoints);
-      if (data.userPoints != null) {
-        const btn = spinBtnRef.current;
-        if (btn) {
-          const r = btn.getBoundingClientRect();
-          setPointsFloatOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-        }
-        commitPointsUpdate(updateUser, data.userPoints);
-        queryClient.invalidateQueries({ queryKey: queryKeys.me });
-      }
-      setResult(data);
-      loadConfig();
+      beginDeceleration(data, segments);
     } catch (err) {
+      stopFreeSpin();
+      setSpinning(false);
+      setDecelerating(false);
+      setSpinIntensity(0);
       if (handleApiVerificationError(err, doSpin)) return;
       alert(err.response?.data?.message || 'تعذّر الدوران');
-    } finally {
-      setSpinning(false);
     }
   };
 
@@ -154,7 +221,14 @@ const LuckyWheel = () => {
 
       <div className="flex flex-col lg:flex-row gap-8 items-center justify-center px-2">
         <div className="flex flex-col items-center">
-          <WheelVisual segments={segments} rotation={rotation} size={300} spinning={spinning} />
+          <WheelVisual
+            segments={segments}
+            rotation={rotation}
+            size={300}
+            spinning={spinning && !decelerating}
+            decelerating={decelerating}
+            spinIntensity={spinIntensity}
+          />
           <button
             ref={spinBtnRef}
             type="button"
@@ -169,7 +243,6 @@ const LuckyWheel = () => {
           )}
         </div>
 
-        {/* Legend */}
         <div className="w-full max-w-xs bg-white rounded-3xl border border-gray-100 p-4 shadow-sm space-y-2">
           <h3 className="font-black text-gray-800 text-sm mb-3">دليل الجوائز</h3>
           {segments.map((seg) => (

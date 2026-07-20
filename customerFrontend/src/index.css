@@ -63,6 +63,35 @@ p, label, li, td, th, textarea {
 .animate-shake {
   animation: shakeX 0.3s ease-in-out;
 }
+
+/* Lucky wheel — GPU spin, no page reflow */
+.wheel-visual-root {
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.wheel-disc {
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
+
+@keyframes wheelShineSweep {
+  0% { transform: translateX(-120%) rotate(25deg); }
+  100% { transform: translateX(120%) rotate(25deg); }
+}
+
+.wheel-disc-shine {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 236, 179, 0.55) 48%,
+    rgba(255, 215, 100, 0.75) 50%,
+    rgba(255, 236, 179, 0.55) 52%,
+    transparent 65%
+  );
+  animation: wheelShineSweep 0.9s linear infinite;
+  mix-blend-mode: screen;
+}
 .shadow-glass {
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
 }

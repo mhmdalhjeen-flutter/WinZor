@@ -1,5 +1,5 @@
 function getCustomerAppUrl() {
-  return (process.env.CUSTOMER_APP_URL || "https://winzor.netlify.app").replace(/\/$/, "");
+  return (process.env.CUSTOMER_APP_URL || "https://win-gold-shopping.mhmdalhjeen.workers.dev").replace(/\/$/, "");
 }
 
 function buildGiftActivationUrl(websiteUrl, code) {

@@ -20,7 +20,7 @@ const ENVIRONMENTS = [
   },
   {
     name: 'netlify-production',
-    frontendUrl: 'https://winzor.netlify.app',
+    frontendUrl: 'https://win-gold-shopping.mhmdalhjeen.workers.dev',
     apiBase: API_BASE,
   },
 ];

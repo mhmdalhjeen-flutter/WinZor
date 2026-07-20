@@ -1,10 +1,10 @@
 export const MAIN_ONBOARDING_STEPS = [
   {
     id: 'home',
-    target: 'home',
+    target: 'bottom-nav-home',
     title: 'الرئيسية',
     body: 'هنا تصفح أحدث العروض المميزة، واستفد من الخصومات، واكتشف أفضل الفرص للفوز.',
-    scroll: true,
+    scroll: false,
   },
   {
     id: 'reels',

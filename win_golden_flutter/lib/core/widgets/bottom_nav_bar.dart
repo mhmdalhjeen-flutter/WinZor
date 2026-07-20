@@ -103,76 +103,81 @@ class BottomNavBar extends ConsumerWidget {
   Widget _buildNavItem(BuildContext context, _NavSpec item) {
     final bool isActive = navigationShell.currentIndex == item.index;
 
-    final content = Expanded(
-      child: GestureDetector(
-        onTap: () => navigationShell.goBranch(
-          item.index,
-          initialLocation: item.index == navigationShell.currentIndex,
-        ),
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 36,
-              height: 36,
+    final navBody = GestureDetector(
+      onTap: () => navigationShell.goBranch(
+        item.index,
+        initialLocation: item.index == navigationShell.currentIndex,
+      ),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: item.isSpecial && isActive
+                  ? Colors.amber.withOpacity(0.1)
+                  : isActive
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.transparent,
+              border: item.isSpecial && isActive
+                  ? Border.all(color: Colors.amber.withOpacity(0.6), width: 1)
+                  : null,
+              gradient: item.isSpecial && isActive
+                  ? const LinearGradient(
+                      colors: [
+                        Color(0xFFF5F3FF),
+                        Color(0xFFFFFBEB),
+                        Color(0xFFFEF2F2)
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+            ),
+            child: Icon(
+              isActive ? item.activeIcon : item.icon,
+              size: 24,
+              color: isActive ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Cairo',
+              color: isActive ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+          if (isActive)
+            Container(
+              height: 2,
+              width: 16,
+              margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: item.isSpecial && isActive
-                    ? Colors.amber.withOpacity(0.1)
-                    : isActive
-                        ? AppColors.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                border: item.isSpecial && isActive
-                    ? Border.all(color: Colors.amber.withOpacity(0.6), width: 1)
-                    : null,
-                gradient: item.isSpecial && isActive
-                    ? const LinearGradient(
-                        colors: [
-                          Color(0xFFF5F3FF),
-                          Color(0xFFFFFBEB),
-                          Color(0xFFFEF2F2)
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2),
               ),
-              child: Icon(
-                isActive ? item.activeIcon : item.icon,
-                size: 24,
-                color: isActive ? AppColors.primary : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              item.label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'Cairo',
-                color: isActive ? AppColors.primary : AppColors.textSecondary,
-              ),
-            ),
-            if (isActive)
-              Container(
-                height: 2,
-                width: 16,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              )
-            else
-              const SizedBox(height: 4),
-          ],
-        ),
+            )
+          else
+            const SizedBox(height: 4),
+        ],
       ),
     );
 
-    return content;
+    return Expanded(
+      child: item.index == 0
+          ? OnboardingTarget(
+              targetKey: OnboardingTargets.bottomNavHome,
+              child: navBody,
+            )
+          : navBody,
+    );
   }
 }
 

@@ -57,15 +57,17 @@ function CategoryCarousel({
   hideHeader = false,
   priorityFirstImage = false,
 }) {
-  const offersTrackRef = React.useRef(null);
-  const productsTrackRef = React.useRef(null);
-  const scrollOffers = useRailScroll(offersTrackRef);
-  const scrollProducts = useRailScroll(productsTrackRef);
+  const trackRef = React.useRef(null);
+  const scrollRail = useRailScroll(trackRef);
 
   const offers = reel?.offers || [];
   const products = reel?.products || [];
+  const hasOffers = offers.length > 0;
+  const hasProducts = products.length > 0;
+  const hasBoth = hasOffers && hasProducts;
+  const totalSlides = offers.length + (hasBoth ? 1 : 0) + products.length;
 
-  const countLabel = products.length
+  const countLabel = hasProducts
     ? `${offers.length} عرض · ${products.length} منتج`
     : `${offers.length} عرض`;
 
@@ -80,12 +82,12 @@ function CategoryCarousel({
           </span>
           <h3 className="category-reel__title">{reel.categoryName}</h3>
           <span className="category-reel__count">{countLabel}</span>
-          {offers.length > 3 && (
+          {totalSlides > 3 && (
             <button
               type="button"
               className="category-reel__scroll-hint"
-              onClick={() => scrollOffers(1)}
-              aria-label="تمرير العروض"
+              onClick={() => scrollRail(1)}
+              aria-label="تمرير العروض والمنتجات"
             >
               <ChevronLeft size={16} />
             </button>
@@ -93,8 +95,16 @@ function CategoryCarousel({
         </header>
       )}
 
-      {offers.length > 0 && (
-        <OfferRailTrack trackRef={offersTrackRef} resetKey={`${resetKey}-offers`}>
+      {hasBoth && (
+        <div className="category-reel__type-row" aria-label="أقسام العروض والمنتجات">
+          <span className="category-reel__type-label">العروض</span>
+          <span className="category-reel__type-separator" aria-hidden />
+          <span className="category-reel__type-label">المنتجات</span>
+        </div>
+      )}
+
+      {totalSlides > 0 && (
+        <OfferRailTrack trackRef={trackRef} resetKey={`${resetKey}-combined`}>
           {offers.map((offer, idx) => (
             <div key={offer._id} className="home-offers-rail__slide">
               <MarketplaceOfferCard
@@ -104,36 +114,23 @@ function CategoryCarousel({
               />
             </div>
           ))}
-        </OfferRailTrack>
-      )}
 
-      {products.length > 0 && (
-        <div className="category-reel__products-wrap category-reel__products-rail">
-          {products.length > 3 && (
-            <div className="category-reel__products-header">
-              <span className="category-reel__products-label">منتجات</span>
-              <button
-                type="button"
-                className="category-reel__scroll-hint"
-                onClick={() => scrollProducts(1)}
-                aria-label="تمرير المنتجات"
-              >
-                <ChevronLeft size={16} />
-              </button>
+          {hasBoth && (
+            <div className="home-offers-rail__slide home-offers-rail__slide--divider" aria-hidden>
+              <div className="category-reel__products-divider" />
             </div>
           )}
-          <OfferRailTrack trackRef={productsTrackRef} resetKey={`${resetKey}-products`}>
-            {products.map((product, idx) => (
-              <div key={product._id} className="home-offers-rail__slide">
-                <MarketplaceOfferCard
-                  offer={mapProductForCard(product)}
-                  topBadge={SHOPPING_BADGE}
-                  onClick={() => onProductClick?.(reel, idx)}
-                />
-              </div>
-            ))}
-          </OfferRailTrack>
-        </div>
+
+          {products.map((product, idx) => (
+            <div key={product._id} className="home-offers-rail__slide">
+              <MarketplaceOfferCard
+                offer={mapProductForCard(product)}
+                topBadge={SHOPPING_BADGE}
+                onClick={() => onProductClick?.(reel, idx)}
+              />
+            </div>
+          ))}
+        </OfferRailTrack>
       )}
     </section>
   );

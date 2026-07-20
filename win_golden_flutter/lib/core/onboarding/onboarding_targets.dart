@@ -10,6 +10,7 @@ class OnboardingTargets {
   static final headerIcons = GlobalKey(debugLabel: 'onboarding_header_icons');
   static final prizeDraw = GlobalKey(debugLabel: 'onboarding_prize_draw');
   static final bottomNav = GlobalKey(debugLabel: 'onboarding_bottom_nav');
+  static final bottomNavHome = GlobalKey(debugLabel: 'onboarding_bottom_nav_home');
 
   static final marketplaceMain = GlobalKey(debugLabel: 'onboarding_mp_main');
   static final marketplaceSell = GlobalKey(debugLabel: 'onboarding_mp_sell');

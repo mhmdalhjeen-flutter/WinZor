@@ -23,12 +23,11 @@ class OnboardingStep {
 final mainOnboardingSteps = <OnboardingStep>[
   OnboardingStep(
     id: 'home',
-    targetKey: OnboardingTargets.home,
+    targetKey: OnboardingTargets.bottomNavHome,
     title: 'الرئيسية',
     body:
         'هنا تصفح أحدث العروض المميزة، واستفد من الخصومات، واكتشف أفضل الفرص للفوز.',
     shellBranch: 0,
-    scrollToTarget: true,
   ),
   OnboardingStep(
     id: 'reels',

@@ -27,6 +27,12 @@ function formatPrice(amount, currency = DEFAULT_CURRENCY) {
   return `${symbol} ${value}`;
 }
 
+function formatPriceWithUnit(amount, currency, priceUnit) {
+  const base = formatPrice(amount, currency);
+  const unit = String(priceUnit || "").trim();
+  return unit ? `${base} / ${unit}` : base;
+}
+
 module.exports = {
   DEFAULT_CURRENCY,
   CURRENCY_SYMBOLS,
@@ -34,4 +40,5 @@ module.exports = {
   normalizeCurrency,
   getCurrencySymbol,
   formatPrice,
+  formatPriceWithUnit,
 };

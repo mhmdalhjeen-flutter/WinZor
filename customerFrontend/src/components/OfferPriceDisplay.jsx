@@ -1,4 +1,4 @@
-import { formatPrice } from '../utils/currency';
+import { formatPriceWithUnit } from '../utils/currency';
 import { formatOfferBadge, resolveOfferPrices } from '../utils/offerPricing';
 
 /** Reads pricing from API SSOT — no local price calculation. */
@@ -23,6 +23,8 @@ export default function OfferPriceDisplay({
   const newPrice = pricing?.finalPrice;
   const showCompare = pricing?.showCompare ?? false;
   const badge = pricing?.badge || formatOfferBadge(offer);
+  const priceUnit = pricing?.priceUnit || offer?.priceUnit;
+  const currency = pricing?.currency || offer?.currency;
 
   if (newPrice == null && !badge) return null;
 
@@ -32,11 +34,11 @@ export default function OfferPriceDisplay({
     <div className={`flex items-center gap-2 flex-wrap ${className}`.trim()}>
       {showCompare && oldPrice != null && (
         <span className={oldClassName} aria-label="السعر القديم">
-          {pricing?.displayOld || formatPrice(oldPrice, pricing?.currency || offer?.currency)}
+          {pricing?.displayOld || formatPriceWithUnit(oldPrice, currency, priceUnit)}
         </span>
       )}
       {newPrice != null ? (
-        <span className={newClassName}>{pricing?.displayNew || formatPrice(newPrice, pricing?.currency || offer?.currency)}</span>
+        <span className={newClassName}>{pricing?.displayNew || formatPriceWithUnit(newPrice, currency, priceUnit)}</span>
       ) : (
         <span className={newClassName}>{badge}</span>
       )}

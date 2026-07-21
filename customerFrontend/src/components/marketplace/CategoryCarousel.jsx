@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
-import { formatPrice } from '../../utils/currency';
+import { formatPriceWithUnit } from '../../utils/currency';
 import { isMiscReel } from '../../utils/categoryDisplay';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
@@ -14,7 +14,7 @@ export function mapProductForCard(product) {
     title: product.name,
     pricing: {
       finalPrice: product.price,
-      displayNew: formatPrice(product.price, product.currency),
+      displayNew: formatPriceWithUnit(product.price, product.currency, product.priceUnit),
       showCompare: false,
     },
   };

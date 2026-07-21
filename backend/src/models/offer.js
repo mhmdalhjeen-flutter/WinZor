@@ -42,6 +42,12 @@ const offerSchema = new mongoose.Schema({
         default: "ILS",
     },
 
+    priceUnit: {
+        type: String,
+        trim: true,
+        maxlength: 40,
+    },
+
     image: {
         type: String,
     },

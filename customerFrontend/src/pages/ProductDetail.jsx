@@ -11,7 +11,7 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
 import { resolveProductImage } from '../utils/mediaUrl';
-import { formatPrice } from '../utils/currency';
+import { formatPriceWithUnit } from '../utils/currency';
 import { recordRecentlyViewed } from '../utils/recentlyViewed';
 
 const ProductDetail = () => {
@@ -34,7 +34,7 @@ const ProductDetail = () => {
           id: data.product?._id,
           title: data.product?.name || data.product?.title,
           image: resolveProductImage(data.product),
-          price: formatPrice(data.product?.price, data.product?.currency),
+          price: formatPriceWithUnit(data.product?.price, data.product?.currency, data.product?.priceUnit),
         });
         logActivity('view_product', {
           targetType: 'Product',
@@ -116,7 +116,7 @@ const ProductDetail = () => {
 
       <div className="px-4 space-y-4">
         <h1 className="text-2xl font-black text-gray-900">{product.name}</h1>
-        <p className="text-2xl font-black text-primary">{formatPrice(product.price, product.currency)}</p>
+        <p className="text-2xl font-black text-primary">{formatPriceWithUnit(product.price, product.currency, product.priceUnit)}</p>
         <StarRating targetType="product" targetId={product._id} ratingAvg={product.ratingAvg} ratingCount={product.ratingCount} />
 
         {product.description && (

@@ -26,6 +26,12 @@ const productSchema = new mongoose.Schema({
         default: "ILS",
     },
 
+    priceUnit: {
+        type: String,
+        trim: true,
+        maxlength: 40,
+    },
+
     wholesalePrice: { // سعر البيع بالجملة (يظهر لأصحاب المتاجر فقط)
         type: Number,
     },

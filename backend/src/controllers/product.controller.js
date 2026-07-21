@@ -13,7 +13,7 @@ const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.ut
 const { normalizeCurrency } = require("../utils/currency.util");
 
 const PRODUCT_LIST_SELECT =
-    "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
+    "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
 
 function stripBase64Image(product) {
     if (!product || typeof product !== "object") return product;
@@ -37,6 +37,7 @@ exports.createProduct = async (req, res) => {
             description,
             price,
             currency,
+            priceUnit,
             image,
             isWholesale,
             freeDelivery,
@@ -55,6 +56,7 @@ exports.createProduct = async (req, res) => {
             description: cleanString(description, { field: "description", max: 1000 }),
             price: numberInRange(price, { field: "price", min: 0, max: 10_000_000, required: true }),
             currency: normalizeCurrency(currency),
+            priceUnit: cleanString(priceUnit, { field: "priceUnit", max: 40 }),
             image: await processDataUrlImage(image.trim(), { enforceCloudinaryHttps: true }),
             isWholesale: !!isWholesale,
             freeDelivery: !!freeDelivery,
@@ -190,7 +192,7 @@ exports.updateProduct = async (req, res) => {
         const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ message: "المنتج غير موجود" });
 
-        const allowed = ["name", "description", "price", "currency", "image", "isWholesale"];
+        const allowed = ["name", "description", "price", "currency", "priceUnit", "image", "isWholesale"];
         for (const field of allowed) {
             if (req.body[field] === undefined) continue;
             if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
@@ -208,6 +210,8 @@ exports.updateProduct = async (req, res) => {
                 product.description = cleanString(req.body.description, { field: "description", max: 1000 });
             } else if (field === "isWholesale") {
                 product.isWholesale = !!req.body.isWholesale;
+            } else if (field === "priceUnit") {
+                product.priceUnit = cleanString(req.body.priceUnit, { field: "priceUnit", max: 40 });
             } else {
                 product[field] = req.body[field];
             }

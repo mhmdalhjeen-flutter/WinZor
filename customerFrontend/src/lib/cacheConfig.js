@@ -1,4 +1,5 @@
 import { getRecentlyViewedIds } from '../utils/recentlyViewed';
+import { getVisitedStoreIds } from '../utils/visitedStores';
 
 /** Smart PWA cache limits — tuned for weak connections and limited storage. */
 
@@ -100,6 +101,10 @@ export function shouldPersistQuery(query) {
     if (key[1] === 'browse') {
       return isDefaultObjectKey(key[2], DEFAULT_STORES_BROWSE_KEY);
     }
+    if (key[1] === 'detail') {
+      const storeId = String(key[2] || '');
+      return storeId.length > 0 && getVisitedStoreIds().includes(storeId);
+    }
     return false;
   }
 
@@ -198,6 +203,21 @@ export function trimDehydratedState(dehydratedState) {
         state: {
           ...entry.state,
           data: entry.state.data.slice(0, CACHE_LIMITS.competitions.maxItems),
+        },
+      };
+    }
+
+    if (root === 'stores' && key[1] === 'detail' && entry.state?.data) {
+      const data = entry.state.data;
+      return {
+        ...entry,
+        state: {
+          ...entry.state,
+          data: {
+            ...data,
+            offers: (data.offers || []).slice(0, 30),
+            products: (data.products || []).slice(0, 30),
+          },
         },
       };
     }

@@ -31,9 +31,9 @@ const offerService = require("../services/offer.service");
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const OFFER_LIST_SELECT =
-  "title description offerType value originalPrice finalPrice freeDelivery currency image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";
+  "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";
 const PRODUCT_LIST_SELECT =
-  "name description price currency wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
+  "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
 
 function stripBase64Images(offer) {
   if (!offer || typeof offer !== "object") return offer;

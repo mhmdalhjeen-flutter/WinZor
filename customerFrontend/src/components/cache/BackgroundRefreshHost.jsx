@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { scheduleBackgroundRefresh } from '../../lib/backgroundRefresh';
 import { pruneStaleRecentlyViewed } from '../../utils/recentlyViewed';
+import { pruneStaleVisitedStores } from '../../utils/visitedStores';
 
 /**
  * Runs selective background refresh when the PWA opens or regains connectivity.
@@ -15,6 +16,7 @@ export default function BackgroundRefreshHost() {
 
   useEffect(() => {
     pruneStaleRecentlyViewed();
+    pruneStaleVisitedStores();
   }, []);
 
   useEffect(() => {

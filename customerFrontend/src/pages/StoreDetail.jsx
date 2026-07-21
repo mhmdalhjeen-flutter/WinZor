@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
-  ChevronRight, MapPin, Phone, MessageCircle, Share2, Gift, Trophy, Loader2, Bell,
+  ChevronRight, MapPin, Phone, MessageCircle, Gift, Trophy, Bell,
 } from 'lucide-react';
 import api from '../api/axios';
 import { logActivity } from '../utils/activity';
@@ -9,12 +10,15 @@ import StarRating from '../components/StarRating';
 import VerifiedBadge from '../components/marketplace/VerifiedBadge';
 import OfferCard from '../components/OfferCard';
 import ProductCard from '../shared/ProductCard';
-import LoadingSpinner from '../shared/LoadingSpinner';
+import LightLoadingHint from '../shared/LightLoadingHint';
 import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
 import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 import { clearStoreNotifyOptOut, isStoreNotifyOptedOut } from '../utils/giftActivationFlow';
+import { queryKeys } from '../lib/queryClient';
+import { recordVisitedStore } from '../utils/visitedStores';
+import { warmStoreDetailImages } from '../utils/cacheImages';
 
 const StoreDetail = () => {
   const { id } = useParams();
@@ -22,39 +26,52 @@ const StoreDetail = () => {
   const { toast } = useToast();
   const { isAuth } = useAuth();
   const [tab, setTab] = useState('offers');
-  const [data, setData] = useState(null);
   const [prizes, setPrizes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
   const [enablingNotify, setEnablingNotify] = useState(false);
   const [notifyOptOut, setNotifyOptOut] = useState(() => isStoreNotifyOptedOut(id));
+  const [loggedVisit, setLoggedVisit] = useState(false);
+
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.storeDetail(id),
+    queryFn: async () => {
+      const { data: d } = await api.get(`/stores/${id}`);
+      recordVisitedStore(id);
+      warmStoreDetailImages(d);
+      return d;
+    },
+    staleTime: 5 * 60 * 1000,
+    networkMode: 'offlineFirst',
+    enabled: Boolean(id),
+  });
+
+  useEffect(() => {
+    if (!data?.store || loggedVisit) return;
+    logActivity('visit_store', {
+      targetType: 'Store',
+      targetId: id,
+      meta: { category: data.store?.category, region: data.store?.region },
+    });
+    setLoggedVisit(true);
+  }, [data, id, loggedVisit]);
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    api.get(`/stores/${id}`)
-      .then(({ data: d }) => {
-        if (!mounted) return;
-        setData(d);
-        logActivity('visit_store', {
-          targetType: 'Store',
-          targetId: id,
-          meta: { category: d.store?.category, region: d.store?.region },
-        });
-      })
-      .catch((err) => mounted && setError(err.response?.data?.message || 'تعذّر التحميل'))
-      .finally(() => mounted && setLoading(false));
-
     api.get(`/stores/${id}/member-prizes`)
       .then(({ data: p }) => mounted && setPrizes(p.prizes || []))
       .catch(() => {});
-
     return () => { mounted = false; };
   }, [id]);
 
   useEffect(() => {
     setNotifyOptOut(isStoreNotifyOptedOut(id));
+    setLoggedVisit(false);
   }, [id]);
 
   const enableStoreNotifications = async () => {
@@ -78,7 +95,7 @@ const StoreDetail = () => {
     try {
       const { data: res } = await api.post(`/stores/${id}/join`);
       toast(res.message, 'success');
-      setData((prev) => prev ? { ...prev, membershipStatus: res.membership?.status || 'pending' } : prev);
+      refetch();
     } catch (err) {
       toast(err.response?.data?.message || 'فشل الانضمام', 'error');
     } finally {
@@ -97,8 +114,10 @@ const StoreDetail = () => {
     navigate('/chat');
   };
 
-  if (loading) return <LoadingSpinner />;
-  if (error || !data?.store) return <ErrorState message={error || 'المتجر غير موجود'} />;
+  if (isLoading && !data) return <LightLoadingHint label="جاري تحميل المتجر..." />;
+  const error = queryError?.response?.data?.message || (queryError && !data ? 'تعذّر التحميل' : '');
+  if (error && !data?.store) return <ErrorState message={error || 'المتجر غير موجود'} onRetry={() => refetch()} />;
+  if (!data?.store) return <ErrorState message="المتجر غير موجود" />;
 
   const { store, offers = [], products = [], membershipStatus, storeCompetitionsEnabled } = data;
   const coverSrc = resolveStoreCover(store, { width: 800 });
@@ -139,6 +158,9 @@ const StoreDetail = () => {
       </div>
 
       <div className="px-4 pt-6 space-y-4">
+        {isFetching && data && (
+          <p className="text-[11px] text-center text-primary/70 font-bold animate-pulse">جاري التحديث...</p>
+        )}
         <div className="bg-white rounded-[28px] p-4 shadow-lg border border-gray-50 text-center">
           <h1 className="text-lg font-black text-gray-900 truncate">{store.name}</h1>
           {store.isVerifiedStore && <VerifiedBadge className="mt-1 justify-center" />}

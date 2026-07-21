@@ -1,7 +1,7 @@
 import React, { useState, memo } from 'react';
 import { ShoppingCart, Eye, Check, Loader2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatPrice } from '../utils/currency';
+import { formatPriceWithUnit } from '../utils/currency';
 import api from '../api/axios';
 import { useToast } from './Toast';
 import { useVerificationGate } from '../context/VerificationGateContext';
@@ -63,7 +63,7 @@ const ProductCard = ({ product, storeId }) => {
       </div>
       <div className="p-3 flex-1 flex flex-col gap-2">
         <h4 className="font-black text-sm text-gray-900 line-clamp-2">{product.name}</h4>
-        <p className="text-primary font-black text-sm">{formatPrice(product.price, product.currency)}</p>
+        <p className="text-primary font-black text-sm">{formatPriceWithUnit(product.price, product.currency, product.priceUnit)}</p>
         <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
           <Star size={10} fill="currentColor" /> {(product.ratingAvg || 0).toFixed(1)}
         </div>

@@ -192,7 +192,7 @@ export default defineConfig({
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'winzor-pages',
+              cacheName: 'winzor-pages-v2',
               networkTimeoutSeconds: 4,
               expiration: { maxEntries: 32, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] },
@@ -213,11 +213,13 @@ export default defineConfig({
     // https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid#cross_origin_opener_policy
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Permissions-Policy': 'camera=(self)',
     },
   },
   preview: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Permissions-Policy': 'camera=(self)',
     },
   },
   build: {

@@ -1,4 +1,4 @@
-import { resolveImageUrl, resolveOfferImage, resolveProductImage } from './mediaUrl';
+import { resolveImageUrl, resolveOfferImage, resolveProductImage, resolveStoreCover, resolveStoreLogo } from './mediaUrl';
 
 const warmed = new Set();
 
@@ -27,6 +27,22 @@ export function warmOfferReelImages(reels = []) {
     return [];
   });
   warmImageUrls(urls);
+}
+
+export function warmStoreDetailImages(data) {
+  if (!data?.store) return;
+  const urls = [];
+  const cover = resolveStoreCover(data.store, { width: 800 });
+  const logo = resolveStoreLogo(data.store, { width: 160 });
+  if (cover) urls.push(cover);
+  if (logo) urls.push(logo);
+  for (const offer of (data.offers || []).slice(0, 12)) {
+    urls.push(resolveOfferImage(offer));
+  }
+  for (const product of (data.products || []).slice(0, 12)) {
+    urls.push(resolveProductImage(product));
+  }
+  warmImageUrls(urls.filter(Boolean), { width: 400 });
 }
 
 export function warmStoreBrowseImages(data) {

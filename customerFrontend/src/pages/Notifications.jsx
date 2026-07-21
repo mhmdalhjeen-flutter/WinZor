@@ -1,16 +1,33 @@
-import React from 'react';
-import { Bell, Gift, UserPlus, Trophy } from 'lucide-react';
+import { Bell, Clock, AlertCircle, RefreshCw, Tag, Gift, UserPlus, Trophy, MessageCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markRead, markAllRead } from '../services/notificationService';
 import { queryKeys } from '../lib/queryClient';
+import { cleanupNotifications } from '../utils/notificationCleanup';
 import LightLoadingHint from '../shared/LightLoadingHint';
+import '../styles/Notifications.css';
 
-const typeIcon = (type) => {
-  if (type === 'order_point_gift') return Gift;
-  if (type === 'referral_batch') return UserPlus;
-  if (type === 'competition_draw') return Trophy;
-  return Bell;
-};
+function typeMeta(type) {
+  switch (type) {
+    case 'offer_expiring':
+      return { Icon: Clock, tone: 'warning' };
+    case 'offer_expired':
+      return { Icon: AlertCircle, tone: 'danger' };
+    case 'offer_renewed':
+      return { Icon: RefreshCw, tone: 'info' };
+    case 'order_rejected':
+      return { Icon: AlertCircle, tone: 'danger' };
+    case 'order_point_gift':
+      return { Icon: Gift, tone: 'info' };
+    case 'referral_batch':
+      return { Icon: UserPlus, tone: 'info' };
+    case 'competition_draw':
+      return { Icon: Trophy, tone: 'warning' };
+    case 'chat_message':
+      return { Icon: MessageCircle, tone: 'info' };
+    default:
+      return { Icon: Tag, tone: 'default' };
+  }
+}
 
 export default function Notifications() {
   const qc = useQueryClient();
@@ -19,7 +36,7 @@ export default function Notifications() {
     queryKey: queryKeys.notifications,
     queryFn: async () => {
       const { data } = await getNotifications();
-      return data.notifications || [];
+      return cleanupNotifications(data.notifications || []);
     },
     staleTime: 30 * 1000,
   });
@@ -56,17 +73,17 @@ export default function Notifications() {
   };
 
   return (
-    <div className="max-w-lg mx-auto pb-8" dir="rtl">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
-          <Bell size={22} className="text-primary" /> الإشعارات
-        </h1>
+    <div className="notifications-page" dir="rtl">
+      <div className="notifications-page__head">
+        <div>
+          <h2 className="notifications-page__title">
+            <Bell size={24} strokeWidth={2.2} />
+            الإشعارات
+          </h2>
+          <p className="notifications-page__sub">كل التنبيهات والتحديثات في مكان واحد</p>
+        </div>
         {items.some((n) => !n.read) && (
-          <button
-            type="button"
-            onClick={handleMarkAll}
-            className="text-xs font-bold text-primary bg-primary/10 px-3 py-2 rounded-xl"
-          >
+          <button type="button" className="notifications-mark-all" onClick={handleMarkAll}>
             تعليم الكل كمقروء
           </button>
         )}
@@ -76,40 +93,38 @@ export default function Notifications() {
         <LightLoadingHint label="جاري تحميل الإشعارات..." />
       )}
 
-      {!isLoading && error && (
-        <p className="text-center text-red-500 font-bold py-10">{error}</p>
-      )}
-
+      {error && <p className="notifications-error">{error}</p>}
       {!isLoading && !error && items.length === 0 && (
-        <p className="text-center text-gray-400 font-bold py-16">لا توجد إشعارات بعد</p>
+        <div className="notifications-empty">
+          <Bell size={40} strokeWidth={1.5} />
+          <p>لا توجد إشعارات</p>
+        </div>
       )}
 
-      <div className="space-y-3">
+      <div className="notifications-list">
         {items.map((n) => {
-          const Icon = typeIcon(n.type);
+          const { Icon, tone } = typeMeta(n.type);
           return (
-            <button
+            <article
               key={n._id}
-              type="button"
+              className={`notif-full-card${n.read ? '' : ' notif-full-card--unread'}`}
               onClick={() => handleClick(n)}
-              className={`w-full text-right flex gap-3 items-start p-4 rounded-2xl border transition-colors ${
-                n.read ? 'bg-white border-gray-100' : 'bg-amber-50/80 border-amber-200'
-              }`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleClick(n)}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${n.read ? 'bg-gray-100' : 'bg-amber-100'}`}>
-                <Icon size={18} className={n.read ? 'text-gray-500' : 'text-amber-600'} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start gap-2">
-                  <strong className="text-sm text-gray-900">{n.title}</strong>
-                  {!n.read && <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+              <span className={`notif-card__icon notif-card__icon--${tone}`}>
+                <Icon size={22} strokeWidth={2} />
+              </span>
+              <div className="notif-full-card__body">
+                <div className="notif-full-card__row">
+                  <strong>{n.title}</strong>
+                  {!n.read && <span className="notif-card__dot" />}
                 </div>
-                <p className="text-sm text-gray-600 mt-1">{n.body}</p>
-                <small className="text-[11px] text-gray-400 mt-1 block">
-                  {new Date(n.createdAt).toLocaleString('ar')}
-                </small>
+                {n.body && <p>{n.body}</p>}
+                <time>{new Date(n.createdAt).toLocaleString('ar-EG')}</time>
               </div>
-            </button>
+            </article>
           );
         })}
       </div>

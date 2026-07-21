@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { CornerUpLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  Send, Camera, ChevronRight, Check, CheckCheck,
+  MessageCircle, X, Paperclip,
+} from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { mergeChatMessages, messagesShallowEqual } from '../utils/chatMessages';
@@ -77,6 +80,7 @@ export default function Chats() {
   const pollingRef = useRef(null);
   const activeConvRef = useRef(null);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const chatContextHandledRef = useRef(null);
 
   useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
@@ -302,8 +306,23 @@ export default function Chats() {
     const diff = Date.now() - d;
     if (diff < 86400000) return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     if (diff < 172800000) return 'أمس';
-    return d.toLocaleDateString('ar-EG');
+    if (diff < 604800000) {
+      return d.toLocaleDateString('ar-EG', { weekday: 'short' });
+    }
+    return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
   };
+
+  const formatListTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const diff = Date.now() - d;
+    if (diff < 60000) return 'الآن';
+    if (diff < 86400000) return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    if (diff < 172800000) return 'أمس';
+    return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+  };
+
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
   const backToList = () => {
     stopPolling();
@@ -317,52 +336,114 @@ export default function Chats() {
   const referencedItems = activeConv ? getReferencedItems(activeConv) : [];
 
   if (loading) {
-    return <p className="text-center py-12 text-gray-500 font-bold">⏳ جاري التحميل...</p>;
+    return (
+      <div className="chats-page" dir="rtl">
+        <div className="messenger-container chat-skeleton">
+          <div className="chats-sidebar">
+            <div className="sidebar-header">
+              <div className="chat-skeleton__line chat-skeleton__line--title" />
+            </div>
+            <div className="chats-list">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="chat-skeleton__item">
+                  <div className="chat-skeleton__avatar" />
+                  <div className="chat-skeleton__body">
+                    <div className="chat-skeleton__line chat-skeleton__line--name" />
+                    <div className="chat-skeleton__line chat-skeleton__line--msg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="chat-window chat-window--empty chat-skeleton__window">
+            <MessageCircle size={48} strokeWidth={1.5} className="chat-empty-icon" />
+            <p>جاري تحميل المحادثات...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="chats-page" dir="rtl">
       {showWarning && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[99] bg-slate-800 text-white p-4 rounded-xl max-w-sm w-[90%] shadow-xl text-sm">
-          <p className="font-bold mb-1">⏳ الرسائل تُحذف بعد 4 أيام</p>
-          <button type="button" onClick={dismissWarning} className="mt-2 w-full py-2 bg-indigo-500 rounded-lg font-bold">فهمت ✓</button>
+        <div className="chat-expiry-toast">
+          <div className="chat-expiry-toast__inner">
+            <span className="chat-expiry-toast__icon">⏳</span>
+            <div>
+              <p className="chat-expiry-toast__title">تنبيه: الرسائل تُحذف تلقائياً</p>
+              <p className="chat-expiry-toast__text">
+                تُحذف الرسائل بعد <strong>4 أيام</strong> من إرسالها لتخفيف التخزين.
+              </p>
+            </div>
+          </div>
+          <button type="button" className="chat-expiry-toast__btn" onClick={dismissWarning}>
+            فهمت ✓
+          </button>
         </div>
       )}
 
-      {bootError && (
-        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-          {bootError}
-        </div>
-      )}
+      {bootError && <div className="chat-boot-error">{bootError}</div>}
 
-      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleImageSelect(e.target.files[0])} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden-input"
+        onChange={(e) => handleImageSelect(e.target.files[0])}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        className="hidden-input"
+        onChange={(e) => handleImageSelect(e.target.files[0])}
+      />
 
       <div className="messenger-container">
         <div className={`chats-sidebar ${showWindow ? 'mobile-hidden' : ''}`}>
-          <div className="sidebar-header flex justify-between items-center">
-            <h3 className="font-black text-gray-800">💬 الرسائل</h3>
-            <span className="text-xs text-gray-400">{conversations.length} محادثة</span>
+          <div className="sidebar-header">
+            <h3><MessageCircle size={20} strokeWidth={2.2} /> الرسائل</h3>
+            <span>{conversations.length} محادثة</span>
           </div>
-          <div className="chats-list-scroll">
+          <div className="chats-list">
             {conversations.length === 0 ? (
-              <p className="text-center text-gray-400 py-12 text-sm">لا توجد محادثات بعد</p>
+              <div className="chats-empty-state">
+                <MessageCircle size={40} strokeWidth={1.5} />
+                <p>لا توجد محادثات بعد</p>
+                <span>تواصل مع المتاجر من صفحة المنتج أو العرض</span>
+              </div>
             ) : (
               conversations.map((conv) => {
                 const other = getOther(conv);
+                const unread = getUnreadCountForUser(conv.unreadCount, myId);
                 const isActive = activeConv?._id === conv._id;
-                const refCount = getReferencedItems(conv).length;
-                const lastMsg = conv.lastMessage?.image ? '📷 صورة' : conv.lastMessage?.text || 'ابدأ المحادثة';
+                const lastMsgTxt = conv.lastMessage?.image
+                  ? '📷 صورة'
+                  : conv.lastMessage?.text || 'ابدأ المحادثة';
+
                 return (
-                  <div key={conv._id} className={`chat-item ${isActive ? 'active' : ''}`} onClick={() => openConversation(conv)}>
-                    <div className="chat-avatar">{getInitial(other?.name)}</div>
+                  <div
+                    key={conv._id}
+                    className={`chat-item${isActive ? ' active' : ''}${unread > 0 ? ' has-unread' : ''}`}
+                    onClick={() => openConversation(conv)}
+                  >
+                    <div className="chat-avatar">
+                      {getInitial(other?.name)}
+                    </div>
                     <div className="chat-info">
                       <h4>{other?.name || 'مستخدم'}</h4>
-                      <p className="truncate">{lastMsg}</p>
-                      {refCount > 0 && (
-                        <span className="text-[10px] text-indigo-600 font-bold">{refCount} عنصر مرتبط</span>
+                      <p className={unread > 0 ? 'chat-preview-unread' : ''}>{lastMsgTxt}</p>
+                    </div>
+                    <div className="chat-meta">
+                      <span className={`chat-time${unread > 0 ? ' chat-time--unread' : ''}`}>{formatListTime(conv.updatedAt)}</span>
+                      {unread > 0 && (
+                        <span className="chat-unread-badge">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-gray-400">{formatTime(conv.updatedAt)}</span>
                   </div>
                 );
               })
@@ -371,99 +452,184 @@ export default function Chats() {
         </div>
 
         {!activeConv ? (
-          <div className={`chat-window ${showList ? 'mobile-hidden md:flex' : 'hidden md:flex'} items-center justify-center text-gray-400`}>
-            <div className="text-center">
-              <div className="text-5xl mb-2">💬</div>
-              <p className="font-bold">اختر محادثة للبدء</p>
-            </div>
+          <div className={`chat-window chat-window--empty ${showList ? 'mobile-hidden' : ''}`}>
+            <MessageCircle size={56} strokeWidth={1.2} className="chat-empty-icon" />
+            <p className="chat-empty-title">اختر محادثة للبدء</p>
+            <span className="chat-empty-sub">رسائلك مع المتاجر تظهر هنا</span>
           </div>
         ) : (
           <div className={`chat-window ${showList ? 'mobile-hidden' : ''}`}>
             <div className="window-header">
-              <button type="button" className="back-mobile" onClick={backToList}>→</button>
+              <button type="button" className="back-mobile" onClick={backToList} aria-label="رجوع">
+                <ChevronRight size={22} />
+              </button>
               <div className="user-details">
-                <div className="chat-avatar">{getInitial(getOther(activeConv)?.name)}</div>
-                <div>
-                  <h4 className="font-black text-sm m-0">{getOther(activeConv)?.name || 'مستخدم'}</h4>
-                  <span className="text-[10px] text-gray-400">⏳ تُحذف بعد 4 أيام</span>
+                <div className="chat-avatar" style={{ cursor: 'default' }}>
+                  {getInitial(getOther(activeConv)?.name)}
                 </div>
+                <div>
+                  <h4>{getOther(activeConv)?.name || 'مستخدم'}</h4>
+                  <span>⏳ الرسائل تُحذف بعد 4 أيام</span>
+                </div>
+              </div>
+              <div className="header-links">
+                <button
+                  type="button"
+                  className="mini-wa"
+                  onClick={() => {
+                    const other = getOther(activeConv);
+                    const phone = other?.phone || other?.whatsapp;
+                    if (!phone) return alert('رقم الواتساب غير متاح');
+                    window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+                  }}
+                >
+                  📱 واتساب
+                </button>
               </div>
             </div>
 
             <ReferencedItemsBar items={referencedItems} onItemClick={goContext} />
 
             <div className="chat-messages">
-              {messages.length === 0 && <p className="text-center text-gray-400 py-8">ابدأ المحادثة الآن 👋</p>}
+              {messages.length === 0 && (
+                <div className="chat-messages-empty">
+                  <span>👋</span>
+                  <p>ابدأ المحادثة الآن</p>
+                </div>
+              )}
               {messages.map((msg, i) => {
                 const senderId = msg.sender?._id || msg.sender;
                 const isMine = normalizeId(senderId) === normalizeId(myId) && !!myId;
                 return (
                   <div
                     key={msg.clientKey || msg._id || i}
-                    className={`msg-wrap ${isMine ? 'msg-wrap-mine' : 'msg-wrap-theirs'}`}
+                    className={`msg msg--animate ${isMine ? 'sent' : 'received'}`}
+                    onDoubleClick={() => setReplyTo(msg)}
+                    title="انقر مرتين للرد"
                   >
-                    <div className={`msg ${isMine ? 'sent' : 'received'}`}>
-                      {msg.replyTo?.text && (
-                        <div className="msg-reply-quote">
-                          <strong>{msg.replyTo.senderName}:</strong> {msg.replyTo.text}
-                        </div>
-                      )}
-                      {msg.image && (
+                    {msg.replyTo?.text && (
+                      <div className="msg-reply-quote">
+                        <span className="msg-reply-name">
+                          {msg.replyTo.senderName}:
+                        </span>{' '}
+                        {msg.replyTo.text}
+                      </div>
+                    )}
+                    {msg.image && (
+                      <button
+                        type="button"
+                        className="msg-image-btn"
+                        onClick={() => setLightboxUrl(resolveImageUrl(msg.image, { width: 1200 }))}
+                      >
                         <img
                           src={resolveImageUrl(msg.image, { width: 600 })}
                           alt=""
-                          className="max-w-[200px] rounded-lg mb-1 cursor-pointer"
-                          onClick={() => window.open(msg.image, '_blank')}
+                          className="msg-image"
                         />
+                      </button>
+                    )}
+                    {msg.text && <p className="msg-text">{msg.text}</p>}
+                    <span className="msg-meta">
+                      {formatTime(msg.createdAt)}
+                      {isMine && (
+                        <span className="read-status" aria-label={msg.read ? 'مقروء' : 'مُرسَل'}>
+                          {msg.read ? <CheckCheck size={14} /> : <Check size={14} />}
+                        </span>
                       )}
-                      {msg.text && <p className="m-0 whitespace-pre-wrap">{msg.text}</p>}
-                      <span className="msg-time">{formatTime(msg.createdAt)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="msg-reply-btn"
-                      onClick={() => setReplyTo(msg)}
-                      aria-label="رد على الرسالة"
-                      title="رد"
-                    >
-                      <CornerUpLeft size={16} />
-                    </button>
+                    </span>
                   </div>
                 );
               })}
+              {sending && (
+                <div className="typing-indicator" aria-label="جاري الإرسال">
+                  <span /><span /><span />
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
             {replyTo && (
-              <div className="px-4 py-2 bg-indigo-50 flex justify-between items-center text-sm">
-                <span>رداً على: {replyTo.text?.slice(0, 40)}</span>
-                <button type="button" onClick={() => setReplyTo(null)}>✕</button>
+              <div className="reply-preview-bar">
+                <div>
+                  <span style={{ color: '#667eea', fontWeight: 'bold' }}>
+                    رداً على: {replyTo.sender?.name || 'مستخدم'}
+                  </span>
+                  <p>
+                    {replyTo.image ? '📷 صورة' : replyTo.text}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setReplyTo(null)} aria-label="إلغاء الرد">
+                  ✕
+                </button>
               </div>
             )}
 
             {imagePreview && (
-              <div className="px-4 py-2 flex items-center gap-2 border-t">
-                <img src={imagePreview} alt="" className="w-12 h-12 rounded object-cover" />
-                <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }} className="text-red-500">✕</button>
+              <div className="image-preview-bar">
+                <img src={imagePreview} alt="" />
+                <span>صورة مرفقة</span>
+                <button
+                  type="button"
+                  onClick={() => { setImagePreview(null); setImageFile(null); }}
+                  aria-label="إزالة الصورة"
+                >
+                  <X size={18} />
+                </button>
               </div>
             )}
 
             <div className="chat-input-area">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xl">🖼️</button>
+              <button
+                type="button"
+                className="chat-media-btn"
+                title="التقاط صورة"
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera size={20} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                className="chat-media-btn"
+                title="إرفاق صورة"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={20} strokeWidth={2} />
+              </button>
               <input
+                type="text"
+                placeholder="اكتب رسالتك..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
-                placeholder="اكتب رسالتك..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
                 disabled={sending}
               />
-              <button type="button" className="send-msg-btn" onClick={sendMessage} disabled={sending || (!text.trim() && !imageFile)}>
-                {sending ? '⏳' : 'إرسال'}
+              <button
+                type="button"
+                className="send-msg-btn"
+                onClick={sendMessage}
+                disabled={sending || (!text.trim() && !imageFile)}
+                aria-label="إرسال"
+              >
+                <Send size={20} strokeWidth={2.2} />
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {lightboxUrl && (
+        <div className="chat-lightbox" onClick={() => setLightboxUrl(null)} role="presentation">
+          <button type="button" className="chat-lightbox__close" onClick={() => setLightboxUrl(null)} aria-label="إغلاق">
+            <X size={24} />
+          </button>
+          <img src={lightboxUrl} alt="" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

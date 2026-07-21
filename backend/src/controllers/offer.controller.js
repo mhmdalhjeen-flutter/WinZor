@@ -19,7 +19,7 @@ const {
 const OFFER_TYPES = ["discount", "fixed_price", "bogo", "fixed_discount", "free_item", "custom"];
 const MAX_OFFER_DAYS = 7;
 const OFFER_LIST_SELECT =
-    "title description offerType value originalPrice finalPrice freeDelivery currency image priority isActive expiresAt autoDeleteAt store createdAt";
+    "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority isActive expiresAt autoDeleteAt store createdAt";
 
 function stripBase64Images(offer) {
     if (!offer || typeof offer !== "object") return offer;
@@ -51,6 +51,7 @@ function buildOfferPayload(body, storeId, userId) {
         freeDelivery,
         expiresAt,
         currency,
+        priceUnit,
     } = body;
 
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
@@ -90,6 +91,7 @@ function buildOfferPayload(body, storeId, userId) {
         image: safeImage,
         freeDelivery: !!freeDelivery,
         currency: normalizeCurrency(currency),
+        priceUnit: cleanString(priceUnit, { field: "priceUnit", max: 40 }),
         expiresAt: expDate,
         autoDeleteAt: resolveAutoDeleteAt(expDate),
         store: storeId,
@@ -284,7 +286,7 @@ exports.updateOffer = async (req, res) => {
 
         const allowed = [
             "title", "description", "offerType", "value", "originalPrice",
-            "finalPrice", "image", "freeDelivery", "expiresAt", "currency",
+            "finalPrice", "image", "freeDelivery", "expiresAt", "currency", "priceUnit",
         ];
         for (const field of allowed) {
             if (field === "image") {
@@ -306,6 +308,7 @@ exports.updateOffer = async (req, res) => {
             else if (field === "finalPrice") offer.finalPrice = patch.finalPrice;
             else if (field === "freeDelivery") offer.freeDelivery = !!patch.freeDelivery;
             else if (field === "currency") offer.currency = normalizeCurrency(patch.currency);
+            else if (field === "priceUnit") offer.priceUnit = cleanString(patch.priceUnit, { field: "priceUnit", max: 40 });
             else if (field === "expiresAt") {
                 const expDate = new Date(patch.expiresAt);
                 if (Number.isNaN(expDate.getTime())) return res.status(400).json({ message: "تاريخ انتهاء غير صالح" });

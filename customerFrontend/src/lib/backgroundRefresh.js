@@ -6,6 +6,8 @@ import {
   DEFAULT_HOME_FEED_KEY,
   DEFAULT_STORES_BROWSE_KEY,
 } from './cacheConfig';
+import { getVisitedStoreIds } from '../utils/visitedStores';
+import { warmStoreDetailImages } from '../utils/cacheImages';
 
 async function fetchCompetitionsList() {
   const { data } = await api.get('/competitions');
@@ -102,6 +104,20 @@ export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
             return data?.notifications || [];
           },
           staleTime: 30 * 1000,
+        }),
+      );
+    }
+
+    for (const storeId of getVisitedStoreIds().slice(0, 5)) {
+      tasks.push(
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.storeDetail(storeId),
+          queryFn: async () => {
+            const { data } = await api.get(`/stores/${storeId}`);
+            warmStoreDetailImages(data);
+            return data;
+          },
+          staleTime: 5 * 60 * 1000,
         }),
       );
     }

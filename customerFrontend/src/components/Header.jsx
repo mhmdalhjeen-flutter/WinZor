@@ -1,57 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
-  Bell, MessageCircle, ShoppingCart, CircleDot, Medal,
+  MessageCircle, Package, CircleDot, Medal,
   BarChart3, Settings, LogOut, X, Heart, Store, Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import PointsBadge from './PointsBadge';
+import NotificationDropdown from './NotificationDropdown';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
 import { BRAND_LOGO_64, BRAND_NAME } from '../utils/brandAssets';
 import { usePwaInstall } from '../context/PwaInstallContext';
+import '../styles/HeaderActions.css';
 
 const PointsBalanceModal = lazy(() => import('./PointsBalanceModal'));
 
-const HEADER_ICON_THEMES = {
-  bell: {
-    wrap: 'bg-gradient-to-br from-rose-50 to-red-100/80',
-    icon: 'text-red-600',
-  },
-  cart: {
-    wrap: 'bg-gradient-to-br from-amber-50 to-orange-100/80',
-    icon: 'text-amber-600',
-  },
-  message: {
-    wrap: 'bg-gradient-to-br from-sky-50 to-blue-100/80',
-    icon: 'text-blue-600',
-  },
-};
-
-const HeaderIconBtn = ({ icon: Icon, label, onClick, badge, theme, onboardingId }) => {
-  const t = HEADER_ICON_THEMES[theme];
+function HeaderBadge({ count }) {
+  if (!count || count <= 0) return null;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-onboarding={onboardingId}
-      className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl active:scale-95 transition-transform shrink-0"
-      aria-label={label}
-    >
-      <span className={`absolute inset-1 rounded-lg ${t.wrap} border border-white/60 shadow-sm`} aria-hidden />
-      <Icon size={22} className={`relative z-[1] ${t.icon} sm:hidden`} strokeWidth={2.2} fill="currentColor" fillOpacity={0.2} />
-      <Icon size={26} className={`relative z-[1] ${t.icon} hidden sm:block`} strokeWidth={2.2} fill="currentColor" fillOpacity={0.2} />
-      {badge > 0 && (
-        <span className="absolute top-0 left-0 z-[2] min-w-[17px] h-[17px] px-1 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none ring-2 ring-white">
-          {badge > 9 ? '9+' : badge}
-        </span>
-      )}
-    </button>
+    <span className="header-badge" aria-label={`${count} غير مقروء`}>
+      {count > 99 ? '99+' : count}
+    </span>
   );
-};
+}
 
 const MoreMenuBtn = ({ onClick }) => (
   <button
@@ -124,6 +98,7 @@ const Header = () => {
   const { isAuth, user, updateUser, logout } = useAuth();
   const [pointsOpen, setPointsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
   const [pointsPulse, setPointsPulse] = useState(null);
   const lastMeSyncAt = useRef(0);
   const hasSyncedPointsFromMe = useRef(false);
@@ -168,7 +143,11 @@ const Header = () => {
   const showCompetitions = features.storeCompetitions !== false;
 
   const unreadCount = unreadData?.count || 0;
-  const notifCount = notifData?.count || 0;
+  const notifCountRemote = notifData?.count || 0;
+
+  useEffect(() => {
+    setNotifCount(notifCountRemote);
+  }, [notifCountRemote]);
   const points = user?.points ?? meData?.points ?? meData?.user?.points ?? 0;
 
   useEffect(() => {
@@ -294,33 +273,36 @@ const Header = () => {
               />
               <div
                 data-onboarding="header-icons"
-                className="flex items-center gap-0 sm:gap-0.5 shrink-0 min-w-0"
+                className="header-actions shrink-0 min-w-0"
               >
                 <PointsBadge
                   points={points}
                   pulse={pointsPulse}
                   onClick={openPoints}
                 />
-                <HeaderIconBtn
-                  icon={Bell}
-                  label="إشعارات"
-                  theme="bell"
-                  badge={notifCount}
-                  onClick={() => navigate('/notifications')}
+                <NotificationDropdown
+                  count={notifCount}
+                  onCountChange={setNotifCount}
                 />
-                <HeaderIconBtn
-                  icon={ShoppingCart}
-                  label="طلباتي"
-                  theme="cart"
-                  onClick={() => navigate('/cart', { state: { tab: 'orders' } })}
-                />
-                <HeaderIconBtn
-                  icon={MessageCircle}
-                  label="رسائل"
-                  theme="message"
-                  badge={unreadCount}
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="طلباتي"
+                  aria-label="طلباتي"
+                  onClick={() => navigate('/orders')}
+                >
+                  <Package size={22} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="الرسائل"
+                  aria-label="الرسائل"
                   onClick={() => navigate('/chat')}
-                />
+                >
+                  <MessageCircle size={22} strokeWidth={2} />
+                  <HeaderBadge count={unreadCount} />
+                </button>
                 <MoreMenuBtn onClick={() => setMoreOpen(true)} />
               </div>
             </>

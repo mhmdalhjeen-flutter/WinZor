@@ -37,6 +37,7 @@ export const queryKeys = {
   bazaarDetail: (id) => ['bazaar', 'detail', id],
   bazaarFavorites: ['bazaar', 'favorites'],
   storesBrowse: (params) => ['stores', 'browse', params],
+  storeDetail: (id) => ['stores', 'detail', id],
   storesByRegions: (params) => ['stores', 'byRegions', params],
   pointsProgramStores: (params) => ['stores', 'points', params],
   pointsLeaderboard: ['pointsLeaderboard'],

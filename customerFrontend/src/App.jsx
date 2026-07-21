@@ -175,7 +175,8 @@ function AppShell() {
             <Route path="/wallet" element={<Navigate to="/center" replace />} />
             <Route path="/personalization" element={<Navigate to="/center" replace />} />
             <Route path="/favorites" element={<ProtectedRoute><LazyPage><Favorites /></LazyPage></ProtectedRoute>} />
-            <Route path="/cart" element={<ProtectedRoute><LazyPage><Cart /></LazyPage></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><LazyPage><Cart /></LazyPage></ProtectedRoute>} />
+            <Route path="/cart" element={<Navigate to="/orders" replace />} />
             <Route path="/notifications" element={<ProtectedRoute><LazyPage><Notifications /></LazyPage></ProtectedRoute>} />
             <Route path="/competitions" element={<ProtectedRoute><LazyPage><Competitions /></LazyPage></ProtectedRoute>} />
             <Route path="/competitions/:id" element={<ProtectedRoute><LazyPage><CompetitionDetail /></LazyPage></ProtectedRoute>} />

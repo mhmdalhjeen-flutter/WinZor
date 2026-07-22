@@ -24,6 +24,8 @@ const {
   forgotPasswordReset,
 } = require("../controllers/password.controller");
 
+const { sendOtp, verifyOtp } = require("../controllers/otp.controller");
+
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -53,6 +55,27 @@ const emailLinkLimiter = rateLimit({
   max: 20,
   message: "محاولات كثيرة — يرجى المحاولة لاحقاً",
 });
+const otpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "محاولات إرسال OTP كثيرة — يرجى الانتظار",
+  keyFn: (req) => {
+    const phone = req.body?.phone ? String(req.body.phone).replace(/\D/g, "") : "";
+    return `otp-send:${phone || req.ip}`;
+  },
+});
+const otpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "محاولات تحقق OTP كثيرة — يرجى الانتظار",
+  keyFn: (req) => {
+    const phone = req.body?.phone ? String(req.body.phone).replace(/\D/g, "") : "";
+    return `otp-verify:${phone || req.ip}`;
+  },
+});
+
+router.post("/send-otp", otpSendLimiter, sendOtp);
+router.post("/verify-otp", otpVerifyLimiter, verifyOtp);
 
 router.post("/register-customer", authLimiter, registerCustomer);
 router.post("/register-business", authLimiter, registerBusiness);

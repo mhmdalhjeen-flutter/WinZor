@@ -13,7 +13,7 @@ const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.ut
 const { normalizeCurrency } = require("../utils/currency.util");
 
 const PRODUCT_LIST_SELECT =
-    "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
+    "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive store createdAt";
 
 function stripBase64Image(product) {
     if (!product || typeof product !== "object") return product;
@@ -147,7 +147,7 @@ exports.searchProducts = async (req, res) => {
     }
 };
 
-// ================= حذف منتج (إخفاء) =================
+// ================= حذف منتج نهائياً =================
 exports.deleteProduct = async (req, res) => {
     try {
         const productId = requireObjectId(req.params.id, "id");
@@ -157,10 +157,32 @@ exports.deleteProduct = async (req, res) => {
             return res.status(404).json({ message: "المنتج غير موجود" });
         }
 
-        product.isActive = false;
+        await Product.findByIdAndDelete(productId);
+
+        res.json({ message: "تم حذف المنتج نهائياً", deleted: true });
+
+    } catch (error) {
+        res.status(error.status || 500).json({ message: error.message });
+    }
+};
+
+// ================= إيقاف / تفعيل منتج =================
+exports.toggleProductActive = async (req, res) => {
+    try {
+        const productId = requireObjectId(req.params.id, "id");
+        const product = await Product.findById(productId);
+
+        if (!product) {
+            return res.status(404).json({ message: "المنتج غير موجود" });
+        }
+
+        product.isActive = !product.isActive;
         await product.save();
 
-        res.json({ message: "تم حذف المنتج بنجاح" });
+        res.json({
+            message: product.isActive ? "تم تفعيل المنتج" : "تم إيقاف المنتج",
+            product: stripBase64Image(product.toObject()),
+        });
 
     } catch (error) {
         res.status(error.status || 500).json({ message: error.message });
@@ -174,7 +196,10 @@ exports.getMyProducts = async (req, res) => {
                 
 
 
-        const products = await Product.find({ store: store._id, isActive: true })
+        const filter = { store: store._id };
+        if (req.query.all !== "true") filter.isActive = true;
+
+        const products = await Product.find(filter)
             .select(PRODUCT_LIST_SELECT)
             .sort({ createdAt: -1 })
             .lean();

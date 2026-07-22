@@ -258,9 +258,26 @@ exports.deleteOffer = async (req, res) => {
         const offer = await Offer.findById(offerId);
         if (!offer) return res.status(404).json({ message: "العرض غير موجود" });
 
-        offer.isActive = false;
+        await Offer.findByIdAndDelete(offerId);
+        res.json({ message: "تم حذف العرض نهائياً", deleted: true });
+    } catch (err) {
+        res.status(err.status || 500).json({ message: err.message });
+    }
+};
+
+exports.toggleOfferActive = async (req, res) => {
+    try {
+        const offerId = requireObjectId(req.params.id, "id");
+        const offer = await Offer.findById(offerId);
+        if (!offer) return res.status(404).json({ message: "العرض غير موجود" });
+
+        offer.isActive = !offer.isActive;
         await offer.save();
-        res.json({ message: "تم حذف العرض بنجاح" });
+
+        res.json({
+            message: offer.isActive ? "تم تفعيل العرض" : "تم إيقاف العرض",
+            offer: attachPricingToOffer(offer),
+        });
     } catch (err) {
         res.status(err.status || 500).json({ message: err.message });
     }

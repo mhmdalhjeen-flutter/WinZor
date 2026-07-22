@@ -30,6 +30,7 @@ const {
   cleanOtpCode,
 } = require("../utils/authValidation.util");
 const { assertNoMongoOperators, cleanString } = require("../utils/inputSecurity.util");
+const registrationOtp = require("../utils/registrationOtp.util");
 
 async function buildAuthResponse(user, req, extra = {}) {
   const deviceId = tokenService.extractDeviceId(req) || req.body?.deviceId;
@@ -87,6 +88,16 @@ const registerCustomer = async (req, res) => {
       return res.status(400).json({ message: LOCAL_PHONE_MESSAGE });
     }
 
+    if (cleanPhone) {
+      const phoneVerified = await registrationOtp.isPhoneVerifiedForRegistration(cleanPhone);
+      if (!phoneVerified) {
+        return res.status(400).json({
+          message: "يجب التحقق من رقم الهاتف عبر OTP قبل إنشاء الحساب",
+          code: "PHONE_NOT_VERIFIED",
+        });
+      }
+    }
+
     // 2. التحقق من وجود المستخدم مسبقاً
     const existingUser = await User.findOne({
       $or: [
@@ -114,10 +125,14 @@ const registerCustomer = async (req, res) => {
       password: hashedPassword,
       role: "customer",
       emailVerified: false,
-      phoneVerified: false,
-      isVerified: false,
+      phoneVerified: Boolean(cleanPhone),
+      isVerified: Boolean(cleanPhone),
       referredBy: referrer?._id || null,
     });
+
+    if (cleanPhone) {
+      await registrationOtp.consumePhoneVerification(cleanPhone);
+    }
 
     const response = await buildAuthResponse(user, req, {
       message: "تم إنشاء حساب الزبون بنجاح",

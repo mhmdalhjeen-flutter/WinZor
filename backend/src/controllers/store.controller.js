@@ -28,7 +28,7 @@ const {
 } = require("../utils/phone.util");
 const { getDefaultBrandingForCategory } = require("../utils/defaultStoreBranding.util");
 const offerService = require("../services/offer.service");
-const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
+const { resolveMonthlyVisits, incrementStoreVisits } = require("../utils/storeVisits.util");
 
 const OFFER_LIST_SELECT =
   "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";
@@ -204,8 +204,7 @@ exports.getStoreById = async (req, res) => {
             return res.status(404).json({ message: "المتجر غير متاح" });
         }
 
-        store.totalVisits += 1;
-        store.todayVisits += 1;
+        incrementStoreVisits(store);
         await store.save();
 
         const storePlain = store.toObject();
@@ -448,7 +447,10 @@ exports.getMyStore = async (req, res) => {
         const suggestedDefaults = getDefaultBrandingForCategory(store.category);
         const needsWelcome = !store.brandingWelcomeSeen && (!store.logo || !store.coverImage);
 
-        res.json({ store, suggestedDefaults, needsWelcome });
+        const storePayload = resolveStoreMediaFields(store.toObject());
+        storePayload.monthlyVisits = resolveMonthlyVisits(store);
+
+        res.json({ store: storePayload, suggestedDefaults, needsWelcome });
     } catch (error) {
         res.status(error.status || 500).json({ message: error.message });
     }

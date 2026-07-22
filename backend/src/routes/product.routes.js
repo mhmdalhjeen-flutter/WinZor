@@ -13,6 +13,7 @@ const {
     getWholesaleProducts,
     searchProducts,
     deleteProduct,
+    toggleProductActive,
     updateProduct,
     getMyProducts,
 } = require("../controllers/product.controller");
@@ -70,6 +71,8 @@ router.get("/:id", async (req, res) => {
 });
 
 router.delete("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Product, "id", "المنتج غير موجود"), deleteProduct);
+
+router.patch("/:id/toggle-active", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Product, "id", "المنتج غير موجود"), toggleProductActive);
 
 router.put("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Product, "id", "المنتج غير موجود"), updateProduct);
 

@@ -97,6 +97,18 @@ const storeSchema = new mongoose.Schema({
         default: 0
     },
 
+    /** Visits during the current calendar month (resets when month changes). */
+    monthlyVisits: {
+        type: Number,
+        default: 0,
+    },
+
+    /** Month bucket for monthlyVisits, e.g. 2026-07 */
+    monthlyVisitsKey: {
+        type: String,
+        default: "",
+    },
+
     customersCount: {
         type: Number,
         default: 0

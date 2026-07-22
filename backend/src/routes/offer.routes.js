@@ -10,6 +10,7 @@ const offerService = require("../services/offer.service");
 const {
   createOffer,
   deleteOffer,
+  toggleOfferActive,
   updateOffer,
   renewOffer,
 } = require("../controllers/offer.controller");
@@ -129,6 +130,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
 
 router.post("/", authMiddleware, roleMiddleware.businessOrAdmin, createOffer);
 router.delete("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Offer, "id", "العرض غير موجود"), deleteOffer);
+router.patch("/:id/toggle-active", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Offer, "id", "العرض غير موجود"), toggleOfferActive);
 router.put("/:id", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Offer, "id", "العرض غير موجود"), updateOffer);
 router.patch("/:id/renew", authMiddleware, roleMiddleware.businessOrAdmin, requireOwnedStoreResource(Offer, "id", "العرض غير موجود"), renewOffer);
 

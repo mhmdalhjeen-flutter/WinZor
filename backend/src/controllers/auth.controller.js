@@ -53,6 +53,7 @@ const {
   isValidLocalPhone,
   normalizeWhatsApp,
   isValidWhatsApp,
+  resolveRegistrationPhone,
   LOCAL_PHONE_MESSAGE,
   WHATSAPP_MESSAGE,
 } = require("../utils/phone.util");
@@ -73,7 +74,10 @@ const registerCustomer = async (req, res) => {
     const cleanPassword = cleanAuthPassword(password);
 
     const cleanEmail = email ? cleanString(email, { field: "email", max: 120 }).toLowerCase() : undefined;
-    const cleanPhone = phone ? normalizeLocalPhone(phone) : undefined;
+    let cleanPhone;
+    if (phone) {
+      ({ localPhone: cleanPhone } = resolveRegistrationPhone(phone));
+    }
     const cleanReferral = referralCode ? cleanString(referralCode, { field: "referralCode", max: 20 }) : undefined;
 
     if (cleanEmail && !isValidEmail(cleanEmail)) {
@@ -82,10 +86,6 @@ const registerCustomer = async (req, res) => {
 
     if (!cleanEmail && !cleanPhone) {
       return res.status(400).json({ message: "يجب إدخال بريد إلكتروني أو رقم هاتف" });
-    }
-
-    if (cleanPhone && !isValidLocalPhone(cleanPhone)) {
-      return res.status(400).json({ message: LOCAL_PHONE_MESSAGE });
     }
 
     if (cleanPhone) {

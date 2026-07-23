@@ -1,17 +1,9 @@
 const { getTwilioClient, getVerifyServiceSid, isTwilioVerifyConfigured } = require("../config/twilio");
-const { toE164Palestine } = require("./sms.service");
-const { normalizeLocalPhone, isValidLocalPhone, LOCAL_PHONE_MESSAGE } = require("../utils/phone.util");
+const { resolveRegistrationPhone } = require("../utils/phone.util");
 const { maskIdentifier, safeLog } = require("../utils/logSanitize.util");
 
 function normalizeVerifyPhone(phone) {
-  const local = normalizeLocalPhone(phone);
-  if (!local || !isValidLocalPhone(local)) {
-    const err = new Error(LOCAL_PHONE_MESSAGE);
-    err.status = 400;
-    err.code = "INVALID_PHONE";
-    throw err;
-  }
-  return toE164Palestine(local);
+  return resolveRegistrationPhone(phone);
 }
 
 function mapTwilioError(error) {
@@ -70,20 +62,20 @@ function assertTwilioConfigured() {
 async function sendRegistrationOtp(phone) {
   assertTwilioConfigured();
 
-  const e164 = normalizeVerifyPhone(phone);
+  const { localPhone, e164Phone } = resolveRegistrationPhone(phone);
   const client = getTwilioClient();
   const serviceSid = getVerifyServiceSid();
 
   try {
     const verification = await client.verify.v2
       .services(serviceSid)
-      .verifications.create({ to: e164, channel: "sms" });
+      .verifications.create({ to: e164Phone, channel: "sms" });
 
-    safeLog("info", "twilio_verify_sent", { to: maskIdentifier(e164), status: verification.status });
+    safeLog("info", "twilio_verify_sent", { to: maskIdentifier(e164Phone), status: verification.status });
 
     return {
-      phone: e164,
-      localPhone: normalizeLocalPhone(e164),
+      phone: e164Phone,
+      localPhone,
       status: verification.status,
     };
   } catch (error) {
@@ -94,14 +86,14 @@ async function sendRegistrationOtp(phone) {
 async function verifyRegistrationOtp(phone, code) {
   assertTwilioConfigured();
 
-  const e164 = normalizeVerifyPhone(phone);
+  const { localPhone, e164Phone } = resolveRegistrationPhone(phone);
   const client = getTwilioClient();
   const serviceSid = getVerifyServiceSid();
 
   try {
     const check = await client.verify.v2
       .services(serviceSid)
-      .verificationChecks.create({ to: e164, code: String(code).trim() });
+      .verificationChecks.create({ to: e164Phone, code: String(code).trim() });
 
     if (check.status !== "approved") {
       const err = new Error("رمز التحقق غير صحيح");
@@ -110,11 +102,11 @@ async function verifyRegistrationOtp(phone, code) {
       throw err;
     }
 
-    safeLog("info", "twilio_verify_approved", { to: maskIdentifier(e164) });
+    safeLog("info", "twilio_verify_approved", { to: maskIdentifier(e164Phone) });
 
     return {
-      phone: e164,
-      localPhone: normalizeLocalPhone(e164),
+      phone: e164Phone,
+      localPhone,
       verified: true,
     };
   } catch (error) {

@@ -1,4 +1,4 @@
-const { normalizeLocalPhone } = require("../utils/phone.util");
+const { toE164ForTwilio } = require("../utils/phone.util");
 const { maskIdentifier, safeLog } = require("../utils/logSanitize.util");
 
 function isSmsConfigured() {
@@ -9,14 +9,8 @@ function isSmsConfigured() {
   );
 }
 
-/** 05XXXXXXXX → +9705XXXXXXXX */
-function toE164Palestine(phone) {
-  const local = normalizeLocalPhone(phone);
-  if (!local) return phone;
-  if (local.startsWith("+")) return local;
-  if (local.startsWith("0")) return `+970${local.slice(1)}`;
-  return local;
-}
+/** @deprecated use toE164ForTwilio from phone.util */
+const toE164Palestine = toE164ForTwilio;
 
 async function sendSms({ to, body }) {
   if (!to || !body) throw new Error("رقم الهاتف والرسالة مطلوبان");

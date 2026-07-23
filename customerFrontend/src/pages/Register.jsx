@@ -1,16 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowLeft, RotateCw, Phone, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
-import { registerCustomer, isGoogleAuthAvailable } from '../services/authService';
+import {
+  registerCustomer,
+  sendRegistrationOtp,
+  verifyRegistrationOtp,
+  isGoogleAuthAvailable,
+  isFacebookAuthAvailable,
+} from '../services/authService';
 import { getAuthErrorMessage } from '../utils/authValidation';
 import { getLocalPhoneError } from '../utils/phoneValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import FacebookSignInButton from '../components/auth/FacebookSignInButton';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
-import api from '../api/axios';
 import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import {
@@ -63,9 +69,15 @@ function RegisterLightField({
   );
 }
 
-function PhoneVerificationStep({ phone, onVerified, onBack }) {
+function PhoneVerificationStep({
+  phone,
+  password,
+  referralCode,
+  login,
+  onVerified,
+  onBack,
+}) {
   const { toast } = useToast();
-  const { updateUser } = useAuth();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,7 +100,7 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
       setLoading(true);
       setError('');
       try {
-        const { data } = await api.post('/auth/verify/request', { channel: 'phone' });
+        const data = await sendRegistrationOtp(phone);
         if (!cancelled) {
           setInitialSent(true);
           setResendSeconds(RESEND_COOLDOWN_SEC);
@@ -96,7 +108,7 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.response?.data?.message || 'تعذّر إرسال رمز التحقق');
+          setError(getAuthErrorMessage(err, 'تعذّر إرسال رمز التحقق'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -105,18 +117,18 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
 
     sendCode();
     return () => { cancelled = true; };
-  }, [initialSent, toast]);
+  }, [initialSent, phone, toast]);
 
   const resendCode = async () => {
     if (loading || resendSeconds > 0) return;
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/verify/request', { channel: 'phone' });
+      const data = await sendRegistrationOtp(phone);
       setResendSeconds(RESEND_COOLDOWN_SEC);
       toast(data.message || 'تم إعادة إرسال الرمز', 'success');
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر إعادة الإرسال');
+      setError(getAuthErrorMessage(err, 'تعذّر إعادة الإرسال'));
     } finally {
       setLoading(false);
     }
@@ -130,17 +142,24 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/verify/confirm', { channel: 'phone', code: code.trim() });
-      updateUser({
-        ...data.user,
-        points: data.points,
-        isVerified: true,
-        phoneVerified: data.user?.phoneVerified,
+      await verifyRegistrationOtp(phone, code.trim());
+
+      const data = await registerCustomer({
+        name: 'مستخدم جديد',
+        phone,
+        password,
+        referralCode: referralCode || undefined,
       });
-      toast(data.message || 'تم تفعيل حسابك', 'success');
+
+      login(data.user, data.token, {
+        refreshToken: data.refreshToken,
+        deviceId: data.deviceId,
+      });
+      clearReferralSession();
+      toast(data.message || 'تم إنشاء حسابك بنجاح', 'success');
       onVerified?.();
     } catch (err) {
-      setError(err.response?.data?.message || 'رمز غير صحيح');
+      setError(getAuthErrorMessage(err, 'رمز غير صحيح أو فشل إنشاء الحساب'));
     } finally {
       setLoading(false);
     }
@@ -149,9 +168,9 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
   return (
     <div className="space-y-5">
       <div className="text-center space-y-2">
-        <h2 className="text-xl font-black text-gray-900">تفعيل الحساب</h2>
+        <h2 className="text-xl font-black text-gray-900">التحقق من رقم الهاتف</h2>
         <p className="text-sm font-bold leading-relaxed text-gray-600">
-          لقد أرسلنا رمز التحقق إلى رقم هاتفك
+          أرسلنا رمز التحقق إلى رقم هاتفك
           {phone ? (
             <>
               <br />
@@ -160,7 +179,7 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
           ) : null}
         </p>
         <p className="text-xs font-bold text-gray-500">
-          Please enter the code to activate your account.
+          أدخل الرمز لإكمال إنشاء حسابك.
         </p>
       </div>
 
@@ -194,7 +213,7 @@ function PhoneVerificationStep({ phone, onVerified, onBack }) {
         disabled={loading || !code.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-red-600 via-red-500 to-amber-500 py-4 text-sm font-black text-white shadow-[0_12px_32px_rgba(220,38,38,0.28)] transition hover:brightness-105 disabled:opacity-60"
       >
-        {loading ? <Loader2 className="animate-spin" size={20} /> : 'تأكيد وتفعيل الحساب'}
+        {loading ? <Loader2 className="animate-spin" size={20} /> : 'تأكيد وإنشاء الحساب'}
       </button>
 
       <div className="flex items-center justify-between gap-3">
@@ -228,7 +247,6 @@ const Register = () => {
     password: '',
     confirmPassword: '',
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
@@ -238,6 +256,7 @@ const Register = () => {
   const refFromUrl = (searchParams.get('ref') || '').trim().toUpperCase();
   const refCode = refFromUrl || getReferralCode();
   const showGoogle = isGoogleAuthAvailable();
+  const showFacebook = isFacebookAuthAvailable();
 
   useEffect(() => {
     const code = refFromUrl || getReferralCode();
@@ -274,7 +293,7 @@ const Register = () => {
     return null;
   };
 
-  const handleRegister = async (e) => {
+  const handleRegister = (e) => {
     e.preventDefault();
     setError('');
 
@@ -285,31 +304,10 @@ const Register = () => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const data = await registerCustomer({
-        name: 'مستخدم جديد',
-        phone: formData.phone,
-        password: formData.password,
-        referralCode: refCode || undefined,
-      });
-
-      login(data.user, data.token, {
-        refreshToken: data.refreshToken,
-        deviceId: data.deviceId,
-      });
-      clearReferralSession();
-      setStep('verify');
-    } catch (err) {
-      const message = getAuthErrorMessage(err, 'حدث خطأ أثناء إنشاء الحساب');
-      setError(message);
-      toast(message, 'error');
-    } finally {
-      setLoading(false);
-    }
+    setStep('verify');
   };
 
-  const busy = loading || socialLoading;
+  const busy = socialLoading;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#fff9f5] font-['Cairo'] text-gray-900" dir="rtl">
@@ -359,6 +357,9 @@ const Register = () => {
           {step === 'verify' ? (
             <PhoneVerificationStep
               phone={formData.phone}
+              password={formData.password}
+              referralCode={refCode}
+              login={login}
               onVerified={finishRegistration}
               onBack={() => setStep('form')}
             />
@@ -385,6 +386,23 @@ const Register = () => {
                     <div className="pointer-events-none absolute -inset-0.5 rounded-[1.4rem] bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#34A853] opacity-25 blur-[2px]" aria-hidden />
                     <GoogleSignInButton
                       label="المتابعة باستخدام Google"
+                      onSuccess={handleSocialSuccess}
+                      onStart={startSocialLoading}
+                      onError={(msg) => {
+                        setError(msg);
+                        handleSocialError(msg);
+                      }}
+                      disabled={busy}
+                      loading={socialLoading}
+                    />
+                  </div>
+                )}
+
+                {showFacebook && (
+                  <div className="relative register-premium-facebook [&_button]:relative [&_button]:z-[1] [&_button]:min-h-[4.35rem] [&_button]:rounded-[1.35rem] [&_button]:px-5 [&_button]:py-5 [&_button]:text-base [&_button]:font-black [&_button]:shadow-[0_14px_36px_rgba(24,119,242,0.28),0_6px_18px_rgba(15,23,42,0.08)] [&_button]:ring-2 [&_button]:ring-blue-100 [&_svg]:h-9 [&_svg]:w-9">
+                    <div className="pointer-events-none absolute -inset-0.5 rounded-[1.4rem] bg-[#1877F2] opacity-20 blur-[2px]" aria-hidden />
+                    <FacebookSignInButton
+                      label="المتابعة باستخدام Facebook"
                       onSuccess={handleSocialSuccess}
                       onStart={startSocialLoading}
                       onError={(msg) => {
@@ -476,14 +494,10 @@ const Register = () => {
                         disabled={busy || formData.password.length < 6}
                         className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-red-600 via-red-500 to-amber-500 py-4 text-sm font-black text-white shadow-[0_12px_32px_rgba(220,38,38,0.28)] transition hover:brightness-105 disabled:opacity-60"
                       >
-                        {loading ? (
-                          <Loader2 className="animate-spin" size={20} />
-                        ) : (
-                          <>
-                            إنشاء حساب
-                            <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
-                          </>
-                        )}
+                        <>
+                          إنشاء حساب
+                          <ArrowLeft size={18} className="transition group-hover:-translate-x-0.5" />
+                        </>
                       </button>
                     </form>
                   </motion.div>

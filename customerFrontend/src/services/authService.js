@@ -1,7 +1,11 @@
 import api from '../api/axios';
-import { normalizePhone } from '../utils/phoneValidation';
+import { normalizePhone, normalizeLocalPhone, normalizeWhatsApp } from '../utils/phoneValidation';
 import { getDeviceId, clearDeviceId } from '../utils/deviceId';
 import { getReferralCode } from '../utils/referralStorage';
+
+function toRegistrationPhone(phone) {
+  return normalizeWhatsApp(normalizeLocalPhone(phone));
+}
 
 export const loginCustomer = async (identifier, password) => {
   const { data } = await api.post('/auth/login', {
@@ -28,6 +32,21 @@ export const registerCustomer = async ({ name, email, phone, password, referralC
 
   const { data } = await api.post('/auth/register-customer', payload, {
     headers: { 'x-device-id': getDeviceId() },
+  });
+  return data;
+};
+
+export const sendRegistrationOtp = async (phone) => {
+  const { data } = await api.post('/auth/send-otp', {
+    phone: toRegistrationPhone(phone),
+  });
+  return data;
+};
+
+export const verifyRegistrationOtp = async (phone, code) => {
+  const { data } = await api.post('/auth/verify-otp', {
+    phone: toRegistrationPhone(phone),
+    code: String(code).trim(),
   });
   return data;
 };
@@ -65,10 +84,14 @@ export const googleAuth = async (credential) => {
 };
 
 export const facebookAuth = async (accessToken) => {
-  const { data } = await api.post('/auth/facebook', {
+  const referralCode = getReferralCode();
+  const payload = {
     accessToken,
     deviceId: getDeviceId(),
-  }, {
+  };
+  if (referralCode?.trim()) payload.referralCode = referralCode.trim();
+
+  const { data } = await api.post('/auth/facebook', payload, {
     headers: { 'x-device-id': getDeviceId() },
   });
   return data;
@@ -91,13 +114,19 @@ export const isGoogleAuthAvailable = () => {
   return !!googleId && import.meta.env.VITE_ENABLE_GOOGLE !== 'false';
 };
 
+/** Facebook Login متاح عند وجود App ID */
+export const isFacebookAuthAvailable = () => {
+  const appId = String(import.meta.env.VITE_FACEBOOK_APP_ID || '').trim();
+  return !!appId && import.meta.env.VITE_ENABLE_FACEBOOK !== 'false';
+};
+
 /** المزودون المفعّلون عبر متغيرات VITE_* */
 export const getEnabledSocialProviders = () => {
   const googleEnabled = isGoogleAuthAvailable();
 
   return {
     google: googleEnabled,
-    facebook: !!import.meta.env.VITE_FACEBOOK_APP_ID,
+    facebook: isFacebookAuthAvailable(),
     tiktok: !!import.meta.env.VITE_TIKTOK_CLIENT_KEY,
   };
 };

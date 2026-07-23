@@ -559,48 +559,98 @@ const googleAuth = async (req, res) => {
 
 const facebookAuth = async (req, res) => {
   try {
-    const { accessToken } = req.body;
+    const { accessToken, referralCode } = req.body;
     if (!accessToken) {
       return res.status(400).json({ message: "رمز Facebook مطلوب" });
     }
 
-    const url = `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
-    const fbRes = await fetch(url);
-    const profile = await fbRes.json();
-
-    if (!profile?.id) {
-      return res.status(400).json({ message: "فشل التحقق من Facebook" });
+    const appId = process.env.FACEBOOK_APP_ID;
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    if (!appId || !appSecret) {
+      return res.status(503).json({ message: "Facebook OAuth غير مهيّأ" });
     }
 
-    let user = await User.findOne({
-      $or: [{ facebookId: profile.id }, profile.email ? { email: profile.email } : null].filter(Boolean),
-    });
+    const appAccessToken = `${appId}|${appSecret}`;
+    const debugRes = await fetch(
+      `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appAccessToken)}`
+    );
+    const debugPayload = await debugRes.json();
 
-    if (!user) {
+    if (!debugPayload?.data?.is_valid || String(debugPayload.data.app_id) !== String(appId)) {
+      return res.status(401).json({ message: "رمز Facebook غير صالح أو منتهٍ" });
+    }
+
+    const profileRes = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`
+    );
+    const profile = await profileRes.json();
+
+    if (profile?.error || !profile?.id) {
+      return res.status(400).json({
+        message: profile?.error?.message || "فشل التحقق من Facebook",
+      });
+    }
+
+    const facebookId = String(profile.id);
+    const email = profile.email?.trim()?.toLowerCase();
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({ message: "البريد الإلكتروني من Facebook غير صالح" });
+    }
+
+    const facebookOwner = await User.findOne({ facebookId });
+    if (facebookOwner) {
+      assertUserNotBlocked(facebookOwner);
+      const response = await buildAuthResponse(facebookOwner, req);
+      return res.json(response);
+    }
+
+    let user = email ? await User.findOne({ email }) : null;
+
+    if (user) {
+      if (user.facebookId && user.facebookId !== facebookId) {
+        return res.status(400).json({ message: "هذا الحساب مرتبط بFacebook آخر" });
+      }
+      user.facebookId = facebookId;
+      if (!user.avatar && profile.picture?.data?.url) {
+        user.avatar = profile.picture.data.url;
+      }
+      if (!user.name?.trim() && profile.name) {
+        user.name = profile.name;
+      }
+      syncVerifiedFlag(user);
+      await user.save();
+      assertUserNotBlocked(user);
+    } else {
+      const cleanReferral = referralCode
+        ? cleanString(referralCode, { field: "referralCode", max: 20 })
+        : undefined;
+      const { resolveReferrer } = require("../services/referral.service");
+      const referrer = await resolveReferrer(cleanReferral);
+
       user = await User.create({
         name: profile.name || "مستخدم Facebook",
-        email: profile.email || undefined,
+        email: email || undefined,
         avatar: profile.picture?.data?.url,
-        facebookId: profile.id,
+        facebookId,
         provider: "facebook",
         role: "customer",
         password: null,
         emailVerified: false,
+        phoneVerified: false,
         isVerified: false,
+        referredBy: referrer?._id || null,
       });
-    } else {
-      if (!user.facebookId) user.facebookId = profile.id;
-      syncVerifiedFlag(user);
-      await user.save();
+      assertUserNotBlocked(user);
     }
-
-    assertUserNotBlocked(user);
 
     const response = await buildAuthResponse(user, req);
     return res.json(response);
   } catch (error) {
     if (error.status === 403) {
       return res.status(403).json({ message: error.message, code: error.code });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "هذا الحساب موجود مسبقاً" });
     }
     safeLog("error", "facebook_auth_failed", { message: error.message });
     return res.status(500).json({ message: "فشل تسجيل الدخول عبر Facebook" });

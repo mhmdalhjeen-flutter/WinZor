@@ -29,6 +29,7 @@ const {
 const { getDefaultBrandingForCategory } = require("../utils/defaultStoreBranding.util");
 const offerService = require("../services/offer.service");
 const { resolveMonthlyVisits, incrementStoreVisits } = require("../utils/storeVisits.util");
+const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const OFFER_LIST_SELECT =
   "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";

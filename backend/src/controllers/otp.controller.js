@@ -3,13 +3,15 @@ const twilioVerifyService = require("../services/twilioVerify.service");
 const registrationOtp = require("../utils/registrationOtp.util");
 const { assertAuthBody, cleanOtpCode } = require("../utils/authValidation.util");
 const { cleanString } = require("../utils/inputSecurity.util");
+const { normalizeLocalPhone } = require("../utils/phone.util");
 
 const sendOtp = async (req, res) => {
   try {
     assertAuthBody(req.body, "send-otp");
     const phone = cleanString(req.body.phone, { field: "phone", max: 20, required: true });
 
-    const { localPhone } = twilioVerifyService.normalizeVerifyPhone(phone);
+    const e164 = twilioVerifyService.normalizeVerifyPhone(phone);
+    const localPhone = normalizeLocalPhone(e164);
 
     const existingUser = await User.findOne({ phone: localPhone });
     if (existingUser) {

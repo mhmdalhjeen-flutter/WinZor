@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowLeft, Phone, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
-import { loginCustomer, isGoogleAuthAvailable } from '../services/authService';
+import { loginCustomer, isGoogleAuthAvailable, isFacebookAuthAvailable } from '../services/authService';
 import { getAuthErrorMessage } from '../utils/authValidation';
 import { getLocalPhoneError } from '../utils/phoneValidation';
 import { useSocialAuth } from '../hooks/useSocialAuth';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import FacebookSignInButton from '../components/auth/FacebookSignInButton';
 import PalestinianPhoneInput from '../components/PalestinianPhoneInput';
 import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
@@ -67,6 +68,7 @@ const Login = () => {
   const { login } = useAuth();
   const { toast } = useToast();
   const showGoogle = isGoogleAuthAvailable();
+  const showFacebook = isFacebookAuthAvailable();
 
   useEffect(() => {
     const refFromUrl = (searchParams.get('ref') || '').trim();
@@ -192,6 +194,23 @@ const Login = () => {
                   <div className="pointer-events-none absolute -inset-0.5 rounded-[1.4rem] bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#34A853] opacity-25 blur-[2px]" aria-hidden />
                   <GoogleSignInButton
                     label="المتابعة باستخدام Google"
+                    onSuccess={handleSocialSuccess}
+                    onStart={startSocialLoading}
+                    onError={(msg) => {
+                      setError(msg);
+                      handleSocialError(msg);
+                    }}
+                    disabled={busy}
+                    loading={socialLoading}
+                  />
+                </div>
+              )}
+
+              {showFacebook && (
+                <div className="relative login-premium-facebook [&_button]:relative [&_button]:z-[1] [&_button]:min-h-[4.35rem] [&_button]:rounded-[1.35rem] [&_button]:px-5 [&_button]:py-5 [&_button]:text-base [&_button]:font-black [&_button]:shadow-[0_14px_36px_rgba(24,119,242,0.28),0_6px_18px_rgba(15,23,42,0.08)] [&_button]:ring-2 [&_button]:ring-blue-100 [&_svg]:h-9 [&_svg]:w-9">
+                  <div className="pointer-events-none absolute -inset-0.5 rounded-[1.4rem] bg-[#1877F2] opacity-20 blur-[2px]" aria-hidden />
+                  <FacebookSignInButton
+                    label="المتابعة باستخدام Facebook"
                     onSuccess={handleSocialSuccess}
                     onStart={startSocialLoading}
                     onError={(msg) => {

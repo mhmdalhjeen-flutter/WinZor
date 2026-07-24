@@ -59,6 +59,36 @@ function assertTwilioConfigured() {
   }
 }
 
+function isLocaleUnsupportedError(error) {
+  const message = String(error?.message || "");
+  return /locale/i.test(message);
+}
+
+async function createSmsVerification(client, serviceSid, e164Phone) {
+  const baseParams = { to: e164Phone, channel: "sms" };
+
+  try {
+    return await client.verify.v2
+      .services(serviceSid)
+      .verifications.create({ ...baseParams, locale: "ar" });
+  } catch (error) {
+    // Twilio may reject Arabic for some destinations; fall back to default language.
+    if (!isLocaleUnsupportedError(error)) {
+      throw error;
+    }
+
+    safeLog("warn", "twilio_verify_locale_fallback", {
+      to: maskIdentifier(e164Phone),
+      code: error?.code,
+      message: error?.message,
+    });
+
+    return await client.verify.v2
+      .services(serviceSid)
+      .verifications.create(baseParams);
+  }
+}
+
 async function sendRegistrationOtp(phone) {
   assertTwilioConfigured();
 
@@ -67,9 +97,7 @@ async function sendRegistrationOtp(phone) {
   const serviceSid = getVerifyServiceSid();
 
   try {
-    const verification = await client.verify.v2
-      .services(serviceSid)
-      .verifications.create({ to: e164Phone, channel: "sms" });
+    const verification = await createSmsVerification(client, serviceSid, e164Phone);
 
     safeLog("info", "twilio_verify_sent", { to: maskIdentifier(e164Phone), status: verification.status });
 

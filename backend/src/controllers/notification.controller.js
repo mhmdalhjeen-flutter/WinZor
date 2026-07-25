@@ -1,5 +1,96 @@
 const Notification = require("../models/notification");
+const PushDevice = require("../models/pushDevice");
+const { getVapidPublicKey } = require("../config/vapid");
 const cache = require("../utils/responseCache.util");
+
+const PUSH_APPS = new Set(["customer", "store"]);
+
+function normalizePushSubscription(subscription) {
+  if (!subscription || typeof subscription !== "object") return null;
+  const endpoint = typeof subscription.endpoint === "string" ? subscription.endpoint.trim() : "";
+  const p256dh = subscription.keys?.p256dh;
+  const auth = subscription.keys?.auth;
+  if (!endpoint || !p256dh || !auth) return null;
+  return {
+    endpoint,
+    expirationTime: subscription.expirationTime ?? null,
+    keys: { p256dh, auth },
+  };
+}
+
+exports.getPushPublicKey = async (req, res) => {
+  try {
+    const publicKey = getVapidPublicKey();
+    if (!publicKey) {
+      return res.status(503).json({ message: "Push notifications are not configured" });
+    }
+    res.json({ publicKey });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.subscribePush = async (req, res) => {
+  try {
+    const { app, platform = "web", subscription } = req.body || {};
+
+    if (!PUSH_APPS.has(app)) {
+      return res.status(400).json({ message: 'app must be "customer" or "store"' });
+    }
+    if (platform !== "web") {
+      return res.status(400).json({ message: 'platform must be "web"' });
+    }
+
+    const normalized = normalizePushSubscription(subscription);
+    if (!normalized) {
+      return res.status(400).json({ message: "Invalid push subscription" });
+    }
+
+    const device = await PushDevice.findOneAndUpdate(
+      { "subscription.endpoint": normalized.endpoint },
+      {
+        userId: req.user.id,
+        app,
+        platform: "web",
+        subscription: normalized,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({
+      ok: true,
+      device: {
+        id: device._id,
+        app: device.app,
+        platform: device.platform,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.unsubscribePush = async (req, res) => {
+  try {
+    const endpoint =
+      req.body?.subscription?.endpoint ||
+      req.body?.endpoint ||
+      "";
+
+    if (!endpoint || typeof endpoint !== "string") {
+      return res.status(400).json({ message: "subscription.endpoint is required" });
+    }
+
+    const result = await PushDevice.deleteOne({
+      userId: req.user.id,
+      "subscription.endpoint": endpoint.trim(),
+    });
+
+    res.json({ ok: true, removed: result.deletedCount > 0 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // إشعاراتي (اختياري ?unread=true لغير المقروءة فقط).
 exports.getMine = async (req, res) => {

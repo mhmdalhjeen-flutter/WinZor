@@ -7,7 +7,12 @@ const {
   notificationsUnreadCache,
 } = require("../middleware/responseCache.middleware");
 
+router.get("/push/public-key", c.getPushPublicKey);
+
 router.use(authMiddleware);
+
+router.post("/push/subscribe", c.subscribePush);
+router.post("/push/unsubscribe", c.unsubscribePush);
 
 router.get("/", notificationsListCache, c.getMine);
 router.get("/unread-count", notificationsUnreadCache, c.unreadCount);

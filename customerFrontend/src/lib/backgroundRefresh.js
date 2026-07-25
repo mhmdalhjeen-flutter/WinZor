@@ -1,5 +1,6 @@
 import api from '../api/axios';
 import { unwrapList } from '../utils/unwrapList';
+import { getFavorites } from '../utils/activity';
 import { queryKeys } from './queryClient';
 import {
   DEFAULT_BAZAAR_BROWSE_KEY,
@@ -8,6 +9,9 @@ import {
 } from './cacheConfig';
 import { getVisitedStoreIds } from '../utils/visitedStores';
 import { warmStoreDetailImages } from '../utils/cacheImages';
+
+/** Same key shape as Cart.jsx (not yet exported on queryKeys). */
+const ORDERS_MY_KEY = ['orders', 'my'];
 
 async function fetchCompetitionsList() {
   const { data } = await api.get('/competitions');
@@ -23,7 +27,7 @@ async function fetchFeaturedCompetitions() {
 
 /**
  * Background refresh on PWA open — never blocks UI.
- * Uses React Query refetch (conditional GET) so only changed payloads download.
+ * Uses React Query prefetch so pages hydrate from the same cache offline.
  */
 export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
   if (typeof window === 'undefined') return;
@@ -37,6 +41,14 @@ export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
           return data?.reels || [];
         },
         staleTime: 60 * 1000,
+      }),
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.regionTree,
+        queryFn: async () => {
+          const { data } = await api.get('/regions', { params: { tree: 'true' } });
+          return Array.isArray(data) ? data : [];
+        },
+        staleTime: 5 * 60 * 1000,
       }),
       queryClient.prefetchQuery({
         queryKey: queryKeys.categoryTree('store'),
@@ -88,6 +100,43 @@ export function scheduleBackgroundRefresh(queryClient, { isAuth } = {}) {
             return data;
           },
           staleTime: 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.me,
+          queryFn: async () => (await api.get('/users/me')).data,
+          staleTime: 5 * 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.favorites,
+          queryFn: async () => {
+            const { data: response } = await getFavorites();
+            return {
+              favorites: response?.favorites || [],
+              favoriteIds: (response?.favoriteIds || []).map(String),
+            };
+          },
+          staleTime: 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.bazaarFavorites,
+          queryFn: async () => {
+            const { data } = await api.get('/bazaar/favorites');
+            return unwrapList(data, ['listings']);
+          },
+          staleTime: 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ORDERS_MY_KEY,
+          queryFn: async () => {
+            const { data: d } = await api.get('/orders/my');
+            return d.orders || [];
+          },
+          staleTime: 30 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.unreadChat,
+          queryFn: async () => (await api.get('/chats/unread-count')).data,
+          staleTime: 5 * 60 * 1000,
         }),
         queryClient.prefetchQuery({
           queryKey: queryKeys.unreadNotifications,

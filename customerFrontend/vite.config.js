@@ -111,6 +111,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ['sw-push.js'],
         globPatterns: ['**/*.{js,css,html,webp,png,svg,ico,woff,woff2,txt}'],
         cleanupOutdatedCaches: true,
         skipWaiting: false,

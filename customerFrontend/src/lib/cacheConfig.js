@@ -71,6 +71,9 @@ const PERSIST_ROOTS = new Set([
   'notifications',
   'unreadNotifications',
   'competitions',
+  'me',
+  'orders',
+  'unreadChat',
 ]);
 
 function isDefaultObjectKey(obj, defaults) {
@@ -127,6 +130,12 @@ export function shouldPersistQuery(query) {
   if (root === 'regions' && key[1] === 'tree') return true;
 
   if (root === 'users' && key[1] === 'center') return true;
+
+  if (root === 'me') return true;
+
+  if (root === 'orders' && key[1] === 'my') return true;
+
+  if (root === 'unreadChat') return true;
 
   if (root === 'favorites') return true;
 
@@ -203,6 +212,16 @@ export function trimDehydratedState(dehydratedState) {
         state: {
           ...entry.state,
           data: entry.state.data.slice(0, CACHE_LIMITS.competitions.maxItems),
+        },
+      };
+    }
+
+    if (root === 'orders' && key[1] === 'my' && Array.isArray(entry.state?.data)) {
+      return {
+        ...entry,
+        state: {
+          ...entry.state,
+          data: entry.state.data.slice(0, 30),
         },
       };
     }

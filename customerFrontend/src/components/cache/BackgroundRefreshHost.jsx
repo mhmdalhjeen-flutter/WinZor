@@ -8,11 +8,15 @@ import { pruneStaleVisitedStores } from '../../utils/visitedStores';
 /**
  * Runs selective background refresh when the PWA opens or regains connectivity.
  * Does not block rendering — cached data is shown immediately via persist hydration.
+ *
+ * Auth-aware: guest can warm public cache; login (false → true) schedules again
+ * so auth-scoped keys are not skipped by an early guest run.
  */
 export default function BackgroundRefreshHost() {
   const queryClient = useQueryClient();
   const { isAuth } = useAuth();
-  const ranRef = useRef(false);
+  /** Auth flag last passed to scheduleBackgroundRefresh; null before first run. */
+  const lastScheduledAuthRef = useRef(null);
 
   useEffect(() => {
     pruneStaleRecentlyViewed();
@@ -20,8 +24,8 @@ export default function BackgroundRefreshHost() {
   }, []);
 
   useEffect(() => {
-    if (ranRef.current) return undefined;
-    ranRef.current = true;
+    if (lastScheduledAuthRef.current === isAuth) return undefined;
+    lastScheduledAuthRef.current = isAuth;
     scheduleBackgroundRefresh(queryClient, { isAuth });
     return undefined;
   }, [queryClient, isAuth]);

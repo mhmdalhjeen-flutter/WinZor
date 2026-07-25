@@ -15,6 +15,7 @@ import StartupSplashGate from './components/StartupSplashGate';
 import BackgroundRefreshHost from './components/cache/BackgroundRefreshHost';
 import useBrowserBackGuard from './hooks/useBrowserBackGuard';
 import PwaHost from './components/pwa/PwaHost';
+import PushSubscriptionHost from './components/pwa/PushSubscriptionHost';
 import PwaShortcutHandler from './components/pwa/PwaShortcutHandler';
 import GiftActivationHandler from './components/giftActivation/GiftActivationHandler';
 import GiftActivationPostFlowHost from './components/giftActivation/GiftActivationPostFlowHost';
@@ -124,6 +125,7 @@ function AppShell() {
           <NotificationListener />
         </Suspense>
       )}
+      {isAuth && deferChrome && <PushSubscriptionHost />}
       {deferChrome && <BackgroundRefreshHost />}
       {isAuth && (
         <Suspense fallback={null}>

@@ -1,13 +1,85 @@
 const Notification = require("../models/notification");
 const ReferralBatchBuffer = require("../models/referralBatchBuffer");
+const pushService = require("./push.service");
 const { safeLog } = require("../utils/logSanitize.util");
 const cache = require("../utils/responseCache.util");
+
+function buildPushPayload(doc) {
+  if (!doc) return null;
+  const data =
+    doc.data && typeof doc.data === "object" && !Array.isArray(doc.data)
+      ? doc.data
+      : {};
+  return {
+    title: doc.title,
+    body: doc.body || "",
+    data: {
+      type: doc.type,
+      notificationId: String(doc._id),
+      ...data,
+    },
+  };
+}
+
+/** Fire-and-forget Web Push — must never affect MongoDB notification creation. */
+function dispatchPushAsync(doc) {
+  if (!doc?.user) return;
+  const payload = buildPushPayload(doc);
+  if (!payload) return;
+  setImmediate(() => {
+    pushService.sendPushToUser(doc.user, payload).catch((err) => {
+      safeLog("warn", "push_dispatch_failed", {
+        message: err.message,
+        userId: String(doc.user),
+      });
+    });
+  });
+}
 
 function invalidateNotificationCache(userId) {
   if (!userId) return;
   const uid = String(userId);
   cache.invalidate(`notif:unread:${uid}`);
   cache.invalidate(`notif:list:${uid}:`);
+}
+
+function toIdString(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "object" && value._id != null) return String(value._id);
+  return String(value);
+}
+
+/**
+ * Normalize notification payload data for storage and push.
+ * Keeps app-neutral IDs only — route resolution is handled per PWA service worker.
+ * Callers may pass url explicitly; relative paths are preserved.
+ */
+function enrichNotificationData(type, data = {}) {
+  const safe =
+    data && typeof data === "object" && !Array.isArray(data) ? { ...data } : {};
+
+  if (typeof safe.url === "string" && safe.url.startsWith("/")) {
+    return safe;
+  }
+
+  if (safe.offerId != null) {
+    const id = toIdString(safe.offerId);
+    if (id) safe.offerId = id;
+  }
+  if (safe.orderId != null) {
+    const id = toIdString(safe.orderId);
+    if (id) safe.orderId = id;
+  }
+  if (safe.competitionId != null) {
+    const id = toIdString(safe.competitionId);
+    if (id) safe.competitionId = id;
+  }
+  if (safe.listingId != null) {
+    const id = toIdString(safe.listingId);
+    if (id) safe.listingId = id;
+  }
+
+  return safe;
 }
 
 const REFERRAL_FLUSH_MS = 2500;
@@ -32,9 +104,10 @@ async function flushReferralBatch(userId) {
       type: "referral_batch",
       title: count === 1 ? "دعوة ناجحة!" : "دعوات ناجحة!",
       body: formatReferralBatchBody(count, totalPoints),
-      data: { count, totalPoints },
+      data: enrichNotificationData("referral_batch", { count, totalPoints }),
     });
     invalidateNotificationCache(userId);
+    dispatchPushAsync(doc);
     return doc;
   } catch (err) {
     safeLog("error", "notification_flush_referral_failed", { message: err.message, userId });
@@ -82,15 +155,17 @@ async function queueReferralReward({ user, pointsAdded }) {
 // إنشاء إشعار واحد. آمن: لا يرمي استثناءً يُسقط العملية المستدعية.
 async function create({ user, type, title, body, data } = {}) {
   if (!user || !title) return null;
+  const notifType = type || "general";
   try {
     const doc = await Notification.create({
       user,
-      type: type || "general",
+      type: notifType,
       title,
       body: body || "",
-      data: data || {},
+      data: enrichNotificationData(notifType, data),
     });
     invalidateNotificationCache(user);
+    dispatchPushAsync(doc);
     return doc;
   } catch (err) {
     safeLog("error", "notification_create_failed", { message: err.message, userId: user, type });
@@ -103,18 +178,22 @@ async function createMany(items = []) {
   if (!Array.isArray(items) || items.length === 0) return [];
   const docs = items
     .filter((i) => i && i.user && i.title)
-    .map((i) => ({
-      user: i.user,
-      type: i.type || "general",
-      title: i.title,
-      body: i.body || "",
-      data: i.data || {},
-    }));
+    .map((i) => {
+      const notifType = i.type || "general";
+      return {
+        user: i.user,
+        type: notifType,
+        title: i.title,
+        body: i.body || "",
+        data: enrichNotificationData(notifType, i.data),
+      };
+    });
   if (docs.length === 0) return [];
   try {
     const created = await Notification.insertMany(docs);
     const userIds = [...new Set(docs.map((d) => String(d.user)))];
     userIds.forEach(invalidateNotificationCache);
+    created.forEach(dispatchPushAsync);
     return created;
   } catch (err) {
     safeLog("error", "notification_create_many_failed", { message: err.message, count: docs.length });

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../data/models/wheel_models.dart';
@@ -65,7 +67,12 @@ class _LuckyWheelPageState extends ConsumerState<LuckyWheelPage>
 
     final isAuth = ref.read(authProvider).isAuth;
     if (!isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            () => ref.read(verificationGateProvider.notifier).runWithVerification(
+                  () => _doSpin(config),
+                ),
+            message: AuthGateMessages.pointsRewards,
+          );
       return;
     }
 
@@ -135,44 +142,6 @@ class _LuckyWheelPageState extends ConsumerState<LuckyWheelPage>
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    if (!auth.isAuth) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'سجّل الدخول لتجربة عجلة الحظ',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => context.push('/login'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  child: const Text(
-                    'تسجيل الدخول',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     final configAsync = ref.watch(wheelConfigProvider);
 
     return Scaffold(

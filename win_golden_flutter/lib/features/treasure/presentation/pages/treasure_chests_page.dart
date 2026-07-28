@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../data/models/treasure_box_model.dart';
@@ -27,7 +29,12 @@ class TreasureChestsPage extends ConsumerWidget {
   ) {
     final auth = ref.read(authProvider);
     if (!auth.isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            () => ref.read(verificationGateProvider.notifier).runWithVerification(
+                  () => _open(context, ref, boxId),
+                ),
+            message: AuthGateMessages.pointsRewards,
+          );
       return;
     }
     ref.read(verificationGateProvider.notifier).runWithVerification(
@@ -74,27 +81,9 @@ class TreasureChestsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    if (!auth.isAuth) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        body: SafeArea(
-          child: Center(
-            child: ElevatedButton(
-              onPressed: () => context.push('/login'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text(
-                'تسجيل الدخول',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final boxesAsync = ref.watch(availableTreasureBoxesProvider);
     final openingId = ref.watch(treasureOpeningIdProvider);
-    final energy = auth.user?['energy'] ?? 0;
+    final energy = auth.isAuth ? (auth.user?['energy'] ?? 0) : 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),

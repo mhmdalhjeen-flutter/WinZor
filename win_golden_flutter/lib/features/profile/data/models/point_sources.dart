@@ -10,6 +10,24 @@ class PointSourceItem {
     required this.points,
     this.date,
   });
+
+  factory PointSourceItem.fromJson(Map<String, dynamic> json) {
+    return PointSourceItem(
+      id: json['id']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      points: (json['points'] as num?)?.toInt() ?? 0,
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'].toString())
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        'points': points,
+        'date': date?.toIso8601String(),
+      };
 }
 
 int _parsePointsFromText(String? text) {

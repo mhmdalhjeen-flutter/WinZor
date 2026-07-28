@@ -17,6 +17,7 @@ import '../../features/marketplace/presentation/pages/bazaar_detail_page.dart';
 import '../../features/marketplace/presentation/pages/marketplace_publish_page.dart';
 import '../../features/draws/presentation/pages/draws_page.dart';
 import '../../features/profile/presentation/pages/user_center_page.dart';
+import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/competitions/presentation/pages/competitions_page.dart';
 import '../../features/competitions/presentation/pages/competition_detail_page.dart';
 import '../../features/wheel/presentation/pages/lucky_wheel_page.dart';
@@ -24,6 +25,8 @@ import '../../features/wheel/presentation/pages/wheel_wins_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/chat/presentation/pages/chats_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
+import '../../features/orders/presentation/pages/cart_page.dart';
+import '../../features/orders/presentation/pages/order_history_page.dart';
 import '../../features/products/presentation/pages/product_detail_page.dart';
 import '../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../features/treasure/presentation/pages/treasure_chests_page.dart';
@@ -213,9 +216,34 @@ final appRouter = GoRouter(
       builder: (context, state) => const WheelWinsPage(),
     ),
     GoRoute(
+      path: '/settings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(
       path: '/notifications',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const NotificationsPage(),
+      pageBuilder: (context, state) => CustomTransitionPage<void>(
+        key: state.pageKey,
+        child: const NotificationsPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
     ),
     GoRoute(
       path: '/chat',
@@ -234,6 +262,11 @@ final appRouter = GoRouter(
       path: '/orders',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const OrdersPage(),
+    ),
+    GoRoute(
+      path: '/orders/history',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OrderHistoryPage(),
     ),
     GoRoute(
       path: '/favorites',
@@ -278,7 +311,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/cart',
       parentNavigatorKey: _rootNavigatorKey,
-      redirect: (context, state) => '/orders',
+      builder: (context, state) => const CartPage(),
     ),
     GoRoute(
       path: '/product/:id',

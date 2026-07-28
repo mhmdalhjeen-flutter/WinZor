@@ -6,6 +6,8 @@ import '../providers/explore_providers.dart';
 import '../widgets/store_region_suggestion.dart';
 import '../../../../core/widgets/store_card.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/hierarchy_path.dart';
+import '../../../../core/widgets/filter_title_header.dart';
 import '../../data/models/store_model.dart';
 
 class ExplorePage extends ConsumerWidget {
@@ -14,12 +16,20 @@ class ExplorePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final browseAsync = ref.watch(storeBrowseProvider);
+    final regionsAsync = ref.watch(exploreRegionsProvider);
+    final categoriesAsync = ref.watch(exploreCategoriesProvider);
     
     final regionPath = ref.watch(exploreRegionPathProvider);
     final categoryPath = ref.watch(exploreCategoryPathProvider);
     final searchQuery = ref.watch(exploreSearchQueryProvider);
 
     final hasActiveSearch = searchQuery.isNotEmpty || regionPath.isNotEmpty || categoryPath.isNotEmpty;
+    final hasPathFilters = regionPath.isNotEmpty || categoryPath.isNotEmpty;
+    final filterLabels = [
+      ...resolveHierarchyLabels(regionsAsync.asData?.value ?? [], regionPath),
+      ...resolveHierarchyLabels(categoriesAsync.asData?.value ?? [], categoryPath),
+      if (searchQuery.isNotEmpty) searchQuery,
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),
@@ -31,19 +41,36 @@ class ExplorePage extends ConsumerWidget {
           child: CustomScrollView(
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'المتاجر',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'Cairo'),
+                      FilterTitleHeader(
+                        title: 'المتاجر',
+                        icon: LucideIcons.store,
+                        iconColor: AppColors.primary,
+                        filterLabels: hasPathFilters || searchQuery.isNotEmpty
+                            ? filterLabels
+                            : const [],
+                        onClear: hasActiveSearch
+                            ? () {
+                                ref.read(exploreSearchQueryProvider.notifier).state = '';
+                                ref.read(exploreRegionPathProvider.notifier).state = [];
+                                ref.read(exploreCategoryPathProvider.notifier).state = [];
+                              }
+                            : null,
                       ),
+                      const SizedBox(height: 6),
                       browseAsync.when(
                         data: (data) => Text(
                           '${data['total'] ?? 0} متجر نشط',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Cairo',
+                          ),
                         ),
                         loading: () => const SizedBox.shrink(),
                         error: (_, __) => const SizedBox.shrink(),
@@ -154,7 +181,7 @@ class ExplorePage extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFDDD6FE))),
       ),
-      child: const Text('إلغاء البحث', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
+      child: const Text('إلغاء الفلترة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
     );
   }
 
@@ -258,8 +285,7 @@ class ExplorePage extends ConsumerWidget {
             ),
           ),
           SizedBox(
-            // Match larger StoreCard (220×132 logo + body)
-            height: 320,
+            height: 268,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),

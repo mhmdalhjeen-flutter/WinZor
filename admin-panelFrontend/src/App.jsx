@@ -33,6 +33,7 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const HeatMaps = lazy(() => import('./pages/HeatMaps'));
 const AdminChats = lazy(() => import('./pages/AdminChats'));
 const PromoCodes = lazy(() => import('./pages/PromoCodes'));
+const OrderHistory = lazy(() => import('./pages/OrderHistory'));
 
 const LazyPage = ({ children }) => (
   <Suspense fallback={<LightLoadingHint />}>{children}</Suspense>
@@ -90,6 +91,7 @@ function AdminRoutes() {
           <Route path="bazaar-approvals" element={<LazyPage><BazaarApprovals /></LazyPage>} />
           <Route path="achievements" element={<LazyPage><AchievementManagement /></LazyPage>} />
           <Route path="suggestions" element={<LazyPage><UserSuggestions /></LazyPage>} />
+          <Route path="order-history" element={<LazyPage><OrderHistory /></LazyPage>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

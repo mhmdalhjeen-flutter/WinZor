@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_styles.dart';
 import '../../../../core/utils/auth_error_utils.dart';
 import '../../../../core/utils/phone_validation.dart';
+import '../../utils/auth_navigation.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_repository_provider.dart';
 import '../widgets/auth_welcome_background.dart';
@@ -61,7 +62,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             );
 
         if (mounted) {
-          context.go('/');
+          navigateAfterAuth(context);
         }
       } else {
         setState(() => _error = 'استجابة غير صالحة من الخادم');
@@ -100,7 +101,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               data['token'] as String,
               refreshToken: data['refreshToken']?.toString(),
             );
-        if (mounted) context.go('/');
+        if (mounted) navigateAfterAuth(context);
       } else {
         setState(() => _error = 'استجابة غير صالحة من الخادم');
       }
@@ -145,7 +146,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildBackButton() {
     return FadeIn(
       child: InkWell(
-        onTap: () => context.go('/intro'),
+        onTap: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        },
         borderRadius: BorderRadius.circular(100),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -161,7 +168,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               Icon(LucideIcons.arrowLeft, size: 14, color: Color(0xFF374151)),
               SizedBox(width: 6),
               Text(
-                'العودة للترحيب',
+                'رجوع',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,

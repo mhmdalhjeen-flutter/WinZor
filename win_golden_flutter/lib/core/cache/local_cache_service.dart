@@ -154,9 +154,11 @@ class LocalCacheService {
 
   // ── Onboarding flags ──────────────────────────────────────────────────────
 
-  static bool getBoolSetting(String key) {
+  static bool getBoolSetting(String key, {bool defaultValue = false}) {
     final box = Hive.box(_settingsBoxName);
-    return box.get(key) == true;
+    final v = box.get(key);
+    if (v == null) return defaultValue;
+    return v == true;
   }
 
   static Future<void> setBoolSetting(String key, bool value) async {

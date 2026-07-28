@@ -1,11 +1,19 @@
 import {
   LayoutDashboard, Store, Ticket, Settings, Layers, Trophy, Activity, Users, ShieldAlert,
   Award, Medal, MapPin, CircleDot, ShoppingBag, Route, Lightbulb, BarChart3, Flame, KeyRound,
-  MessageCircle, ArrowUpDown,
+  MessageCircle, ArrowUpDown, ClipboardList,
 } from 'lucide-react';
 
 /** مصدر واحد لتنظيم صفحات لوحة الأدمن — Sidebar + Dashboard */
 export const ADMIN_NAV_GROUPS = [
+  {
+    id: 'orders',
+    title: 'الطلبات',
+    color: '#14b8a6',
+    items: [
+      { name: 'سجل الطلبات', path: '/order-history', icon: ClipboardList, desc: 'بحث وتصدير الطلبات' },
+    ],
+  },
   {
     id: 'reports',
     title: 'التقارير والإحصائيات',

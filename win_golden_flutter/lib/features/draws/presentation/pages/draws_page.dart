@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../../verification/utils/verification_api_error.dart';
@@ -27,8 +29,11 @@ class _DrawsPageState extends ConsumerState<DrawsPage> {
   }
 
   void _onJoinClick(String drawId) {
-    ref.read(verificationGateProvider.notifier).runWithVerification(
-          () => _join(drawId),
+    ref.read(authGateProvider.notifier).runWithAuth(
+          () => ref.read(verificationGateProvider.notifier).runWithVerification(
+                () => _join(drawId),
+              ),
+          message: AuthGateMessages.pointsRewards,
         );
   }
 
@@ -46,39 +51,6 @@ class _DrawsPageState extends ConsumerState<DrawsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-
-    if (!auth.isAuth) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF7F5F2),
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'سجّل الدخول لعرض السحوبات',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, fontFamily: 'Cairo'),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.push('/login'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                    child: const Text(
-                      'تسجيل الدخول',
-                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final drawsAsync = ref.watch(openDrawsProvider);
     final joiningId = ref.watch(joiningDrawIdProvider);
 

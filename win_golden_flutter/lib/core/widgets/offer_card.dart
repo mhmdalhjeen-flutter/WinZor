@@ -6,9 +6,8 @@ import 'package:dio/dio.dart';
 import '../theme/app_colors.dart';
 import '../utils/currency_utils.dart';
 import '../utils/media_url.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/orders/presentation/widgets/direct_order_sheet.dart';
-import 'app_image.dart';
+import '../widgets/app_image.dart';
 
 class OfferCard extends ConsumerWidget {
   final Map<String, dynamic> offer;
@@ -31,11 +30,6 @@ class OfferCard extends ConsumerWidget {
 
   Future<void> _orderNow(BuildContext context, WidgetRef ref) async {
     if (_id.isEmpty) return;
-    final auth = ref.read(authProvider);
-    if (!auth.isAuth) {
-      context.push('/login');
-      return;
-    }
 
     final pricing = offer['pricing'];
     final unit = (pricing is Map

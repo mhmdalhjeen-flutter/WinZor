@@ -6,6 +6,8 @@ const Store = require("../models/store");
 const Order = require("../models/order");
 const pricingService = require("./pricing.service");
 const cache = require("../utils/responseCache.util");
+const { generateOrderNumber } = require("../utils/orderNumber.util");
+const { generateUniqueVerificationCode } = require("../utils/verificationCode.util");
 const { assertNoMongoOperators, requireObjectId, cleanString } = require("../utils/inputSecurity.util");
 
 function invalidateCartCache(userId) {
@@ -23,7 +25,6 @@ function normalizeItemType(itemType) {
   return TYPE_MAP[itemType] || null;
 }
 
-/** stock > 0 = مخزون مُدار؛ stock === 0 = بدون حد (منتجات قديمة) */
 function isStockManaged(stock) {
   return typeof stock === "number" && stock > 0;
 }
@@ -36,6 +37,53 @@ function parsePositiveQuantity(quantity, label = "الكمية") {
     throw err;
   }
   return qty;
+}
+
+function syncFlatItemsFromContainers(containers) {
+  const flat = [];
+  for (const c of containers || []) {
+    if (c.locked) continue;
+    for (const it of c.items || []) {
+      const idx = flat.findIndex(
+        (f) => f.item.toString() === it.item.toString() && f.itemType === it.itemType
+      );
+      if (idx >= 0) flat[idx].quantity += it.quantity;
+      else flat.push({ item: it.item, itemType: it.itemType, quantity: it.quantity });
+    }
+  }
+  return flat;
+}
+
+function mergeIntoContainerItems(items, itemId, itemType, qty) {
+  const idx = items.findIndex(
+    (i) => i.item.toString() === itemId.toString() && i.itemType === itemType
+  );
+  if (idx >= 0) items[idx].quantity += qty;
+  else items.push({ item: itemId, itemType, quantity: qty });
+}
+
+function findUnlockedContainer(cart, storeId) {
+  return (cart.containers || []).find(
+    (c) => !c.locked && c.store.toString() === storeId.toString()
+  );
+}
+
+function findOrCreateUnlockedContainer(cart, storeId, storeName) {
+  if (!cart.containers) cart.containers = [];
+  let container = findUnlockedContainer(cart, storeId);
+  if (!container) {
+    cart.containers.push({
+      store: storeId,
+      storeName: storeName || "",
+      locked: false,
+      items: [],
+      customerNotes: "",
+    });
+    container = cart.containers[cart.containers.length - 1];
+  } else if (storeName && !container.storeName) {
+    container.storeName = storeName;
+  }
+  return container;
 }
 
 async function getProductStockInfo(productId) {
@@ -275,28 +323,113 @@ function filterValidCheckoutItems(populatedItems, userRole = "customer") {
   });
 }
 
+async function migrateLegacyItemsToContainers(cart) {
+  if (!cart) return cart;
+  if (!cart.containers) cart.containers = [];
+
+  const hasUnlockedWithItems = cart.containers.some((c) => !c.locked && c.items?.length);
+  if (hasUnlockedWithItems || !cart.items?.length) {
+    cart.items = syncFlatItemsFromContainers(cart.containers);
+    return cart;
+  }
+
+  const populated = await populateCartItems(cart.items);
+  const byStore = new Map();
+
+  for (const row of populated) {
+    if (!row.item?.store?._id) continue;
+    const storeId = row.item.store._id.toString();
+    const storeName = row.item.store.name || "";
+    if (!byStore.has(storeId)) byStore.set(storeId, { storeId, storeName, items: [] });
+    mergeIntoContainerItems(byStore.get(storeId).items, row.item._id, row.itemType, row.quantity);
+  }
+
+  for (const [, group] of byStore) {
+    const container = findOrCreateUnlockedContainer(cart, group.storeId, group.storeName);
+    for (const it of group.items) {
+      mergeIntoContainerItems(container.items, it.item, it.itemType, it.quantity);
+    }
+  }
+
+  cart.items = syncFlatItemsFromContainers(cart.containers);
+  if (cart.isModified?.() ?? true) await cart.save();
+  return cart;
+}
+
+async function buildCartResponse(cartDoc) {
+  const cart = cartDoc.toObject ? cartDoc : cartDoc;
+  const activeContainers = (cart.containers || []).filter((c) => !c.locked);
+
+  const containerResponses = [];
+  let grandTotal = 0;
+  const allFlat = [];
+
+  for (const c of activeContainers) {
+    const populatedItems = await populateCartItems(c.items || []);
+    const validItems = populatedItems.filter((i) => i.item && i.item.isActive !== false);
+    const total = calculateCartTotal(validItems);
+    grandTotal += total;
+    allFlat.push(...validItems);
+
+    const storeDoc = validItems[0]?.item?.store;
+    containerResponses.push({
+      id: c._id?.toString?.() ?? String(c._id),
+      store: storeDoc
+        ? { _id: storeDoc._id, name: storeDoc.name, phone: storeDoc.phone }
+        : { _id: c.store, name: c.storeName || "" },
+      storeName: c.storeName || storeDoc?.name || "",
+      customerNotes: c.customerNotes || "",
+      locked: false,
+      items: validItems,
+      total: Math.round(total * 100) / 100,
+    });
+  }
+
+  return {
+    containers: containerResponses,
+    items: allFlat,
+    total: Math.round(grandTotal * 100) / 100,
+  };
+}
+
 async function restoreCartSnapshot(userId, cartItems, session) {
   if (!cartItems?.length) return;
   const opts = session ? { session } : {};
   let cart = await Cart.findOne({ user: userId });
-  if (!cart) {
-    cart = new Cart({ user: userId, items: [] });
-  }
-  for (const ci of cartItems) {
-    const idx = cart.items.findIndex(
-      (i) => i.item.toString() === ci.item.toString() && i.itemType === ci.itemType
+  if (!cart) cart = new Cart({ user: userId, items: [], containers: [] });
+
+  await migrateLegacyItemsToContainers(cart);
+
+  const populated = await populateCartItems(cartItems);
+  for (const row of populated) {
+    const storeId = row.item?.store?._id;
+    if (!storeId) continue;
+    const container = findOrCreateUnlockedContainer(
+      cart,
+      storeId,
+      row.item.store?.name || ""
     );
-    if (idx >= 0) {
-      cart.items[idx].quantity += ci.quantity;
-    } else {
-      cart.items.push({
-        item: ci.item,
-        itemType: ci.itemType,
-        quantity: ci.quantity,
-      });
-    }
+    mergeIntoContainerItems(container.items, row.item._id, row.itemType, row.quantity);
   }
+  cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save(opts);
+}
+
+async function restoreItemsToStoreContainer(userId, orderItems, storeId, session) {
+  const opts = session ? { session } : {};
+  let cart = await Cart.findOne({ user: userId });
+  if (!cart) cart = new Cart({ user: userId, items: [], containers: [] });
+
+  await migrateLegacyItemsToContainers(cart);
+  const store = await Store.findById(storeId).select("name").lean();
+  const container = findOrCreateUnlockedContainer(cart, storeId, store?.name || "");
+
+  for (const oi of orderItems) {
+    mergeIntoContainerItems(container.items, oi.item, oi.itemType, oi.quantity);
+  }
+  cart.items = syncFlatItemsFromContainers(cart.containers);
+  await cart.save(opts);
+  await restoreStockForOrderItems(orderItems, session);
 }
 
 const CHECKOUT_DEDUP_MS = 60_000;
@@ -323,7 +456,13 @@ async function assertNoRecentDuplicateOrders(userId, orderPayloads, session) {
   }
 }
 
-async function buildOrdersFromCartItems(userId, cartItems, session, userRole = "customer") {
+async function buildOrdersFromCartItems(
+  userId,
+  cartItems,
+  session,
+  userRole = "customer",
+  extraOrderFields = {}
+) {
   const populatedItems = await populateCartItems(cartItems);
   const validItems = filterValidCheckoutItems(populatedItems, userRole);
 
@@ -387,17 +526,29 @@ async function buildOrdersFromCartItems(userId, cartItems, session, userRole = "
       session
     );
 
+    const now = new Date();
     const orders = [];
     for (const { storeId, items } of Object.values(storeMap)) {
       const storeTotal = items.reduce((s, i) => s + i._lineTotal, 0);
       const orderItems = items.map(({ _lineTotal, ...rest }) => rest);
+      const verificationCode = await generateUniqueVerificationCode(session);
       const payload = {
         customer: userId,
         store: storeId,
         items: orderItems,
         total: Math.round(storeTotal * 100) / 100,
         status: "pending",
+        orderNumber:
+          orders.length === 0 && extraOrderFields.orderNumber
+            ? extraOrderFields.orderNumber
+            : generateOrderNumber(),
+        verificationCode,
+        containerId: extraOrderFields.containerId || "",
+        containerName: extraOrderFields.containerName || "",
+        customerNotes: extraOrderFields.customerNotes || "",
+        statusTimeline: extraOrderFields.statusTimeline || [{ status: "pending", at: now }],
       };
+
       if (session) {
         const created = await Order.create([payload], { session });
         orders.push(created[0]);
@@ -414,25 +565,34 @@ async function buildOrdersFromCartItems(userId, cartItems, session, userRole = "
 }
 
 async function checkoutCore(userId, session, userRole = "customer") {
-  let cartQuery = Cart.findOneAndUpdate(
-    { user: userId, "items.0": { $exists: true } },
-    { $set: { items: [] } },
-    { new: false }
-  );
+  let cartQuery = Cart.findOne({ user: userId });
   if (session) cartQuery = cartQuery.session(session);
-
   const cart = await cartQuery;
-  if (!cart || !cart.items.length) {
+  if (!cart) {
     const err = new Error("السلة فارغة");
     err.status = 400;
     throw err;
   }
 
-  const snapshot = cart.items.map((i) => ({
-    item: i.item,
-    itemType: i.itemType,
-    quantity: i.quantity,
-  }));
+  await migrateLegacyItemsToContainers(cart);
+  const activeContainers = (cart.containers || []).filter((c) => !c.locked && c.items?.length);
+  const flatItems = activeContainers.flatMap((c) =>
+    c.items.map((i) => ({ item: i.item, itemType: i.itemType, quantity: i.quantity }))
+  );
+
+  if (!flatItems.length && !cart.items?.length) {
+    const err = new Error("السلة فارغة");
+    err.status = 400;
+    throw err;
+  }
+
+  const snapshot = flatItems.length
+    ? flatItems
+    : cart.items.map((i) => ({ item: i.item, itemType: i.itemType, quantity: i.quantity }));
+
+  cart.containers = (cart.containers || []).filter((c) => c.locked);
+  cart.items = [];
+  await cart.save(session ? { session } : {});
 
   try {
     const orders = await buildOrdersFromCartItems(userId, snapshot, session, userRole);
@@ -443,6 +603,8 @@ async function checkoutCore(userId, session, userRole = "customer") {
         store: o.store,
         total: o.total,
         status: o.status,
+        orderNumber: o.orderNumber,
+        verificationCode: o.verificationCode,
       })),
     };
   } catch (err) {
@@ -454,16 +616,10 @@ async function checkoutCore(userId, session, userRole = "customer") {
 }
 
 async function getCartForUser(userId) {
-  const cart = await Cart.findOne({ user: userId }).lean();
-  if (!cart || cart.items.length === 0) {
-    return { items: [], total: 0 };
-  }
-
-  const populatedItems = await populateCartItems(cart.items);
-  const validItems = populatedItems.filter((i) => i.item && i.item.isActive !== false);
-  const total = calculateCartTotal(validItems);
-
-  return { items: validItems, total };
+  let cart = await Cart.findOne({ user: userId });
+  if (!cart) return { items: [], containers: [], total: 0 };
+  await migrateLegacyItemsToContainers(cart);
+  return buildCartResponse(cart);
 }
 
 async function addToCart(user, body) {
@@ -481,8 +637,8 @@ async function addToCart(user, body) {
 
   const Model = normalizedType === "Product" ? Product : Offer;
   const exists = await Model.findById(itemId)
-    .select("_id isActive store stock")
-    .populate({ path: "store", populate: { path: "owner", select: "role" } });
+    .select("_id isActive store stock name title")
+    .populate({ path: "store", select: "name owner", populate: { path: "owner", select: "role" } });
 
   if (!exists) {
     const err = new Error("العنصر غير موجود");
@@ -501,33 +657,30 @@ async function addToCart(user, body) {
   }
 
   let cart = await Cart.findOne({ user: user.id });
-  if (!cart) cart = new Cart({ user: user.id, items: [] });
+  if (!cart) cart = new Cart({ user: user.id, items: [], containers: [] });
+
+  await migrateLegacyItemsToContainers(cart);
+
+  const storeId = exists.store._id.toString();
+  const storeName = exists.store.name || "";
+  const container = findOrCreateUnlockedContainer(cart, storeId, storeName);
 
   const qty = parsePositiveQuantity(quantity);
-  const idx = cart.items.findIndex(
+  const existing = container.items.find(
     (i) => i.item.toString() === itemId && i.itemType === normalizedType
   );
+  const nextQty = existing ? existing.quantity + qty : qty;
 
-  const nextQty = idx >= 0 ? cart.items[idx].quantity + qty : qty;
   if (normalizedType === "Product") {
     await assertProductStockAvailable(itemId, nextQty);
   }
 
-  if (idx >= 0) {
-    cart.items[idx].quantity += qty;
-  } else {
-    cart.items.push({ item: itemId, itemType: normalizedType, quantity: qty });
-  }
-
+  mergeIntoContainerItems(container.items, itemId, normalizedType, qty);
+  cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save();
   invalidateCartCache(user.id);
 
-  const populatedItems = await populateCartItems(cart.items);
-  const total = calculateCartTotal(
-    populatedItems.filter((i) => i.item && i.item.isActive !== false)
-  );
-
-  return { items: populatedItems, total };
+  return buildCartResponse(cart);
 }
 
 async function updateCartItem(userId, body) {
@@ -544,20 +697,30 @@ async function updateCartItem(userId, body) {
     throw err;
   }
 
-  const idx = cart.items.findIndex(
-    (i) => i.item.toString() === itemId && i.itemType === normalizedType
-  );
-  if (idx === -1) {
+  await migrateLegacyItemsToContainers(cart);
+
+  let updated = false;
+  for (const container of cart.containers || []) {
+    if (container.locked) continue;
+    const idx = container.items.findIndex(
+      (i) => i.item.toString() === itemId && i.itemType === normalizedType
+    );
+    if (idx === -1) continue;
+    if (normalizedType === "Product") {
+      await assertProductStockAvailable(itemId, qty);
+    }
+    container.items[idx].quantity = qty;
+    updated = true;
+    break;
+  }
+
+  if (!updated) {
     const err = new Error("العنصر غير موجود في السلة");
     err.status = 404;
     throw err;
   }
 
-  if (normalizedType === "Product") {
-    await assertProductStockAvailable(itemId, qty);
-  }
-
-  cart.items[idx].quantity = qty;
+  cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save();
   invalidateCartCache(userId);
 
@@ -577,9 +740,18 @@ async function removeFromCart(userId, body) {
     throw err;
   }
 
-  cart.items = cart.items.filter(
-    (i) => !(i.item.toString() === itemId && i.itemType === normalizedType)
+  await migrateLegacyItemsToContainers(cart);
+
+  for (const container of cart.containers || []) {
+    if (container.locked) continue;
+    container.items = container.items.filter(
+      (i) => !(i.item.toString() === itemId && i.itemType === normalizedType)
+    );
+  }
+  cart.containers = (cart.containers || []).filter(
+    (c) => c.locked || (c.items && c.items.length > 0)
   );
+  cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save();
   invalidateCartCache(userId);
 
@@ -588,11 +760,156 @@ async function removeFromCart(userId, body) {
 
 async function clearCart(userId) {
   const cart = await Cart.findOne({ user: userId });
-  if (!cart) return { items: [], total: 0 };
+  if (!cart) return { items: [], containers: [], total: 0 };
   cart.items = [];
+  cart.containers = (cart.containers || []).filter((c) => c.locked);
   await cart.save();
   invalidateCartCache(userId);
-  return { items: [], total: 0 };
+  return { items: [], containers: [], total: 0 };
+}
+
+async function confirmStoreContainer(userId, storeIdRaw, body = {}, userRole = "customer") {
+  const storeId = requireObjectId(storeIdRaw, "storeId");
+  const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 500 }) || "";
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    let cart = await Cart.findOne({ user: userId }).session(session);
+    if (!cart) {
+      const err = new Error("السلة فارغة");
+      err.status = 400;
+      throw err;
+    }
+
+    await migrateLegacyItemsToContainers(cart);
+
+    const containerIdx = (cart.containers || []).findIndex(
+      (c) => !c.locked && c.store.toString() === storeId.toString()
+    );
+    if (containerIdx === -1) {
+      const err = new Error("لا توجد سلة نشطة لهذا المتجر");
+      err.status = 404;
+      throw err;
+    }
+
+    const container = cart.containers[containerIdx];
+    if (!container.items?.length) {
+      const err = new Error("سلة المتجر فارغة");
+      err.status = 400;
+      throw err;
+    }
+
+    const snapshot = container.items.map((i) => ({
+      item: i.item,
+      itemType: i.itemType,
+      quantity: i.quantity,
+    }));
+
+    const storeDoc = await Store.findById(storeId).select("name").lean();
+    const containerName = container.storeName || storeDoc?.name || "";
+
+    const orders = await buildOrdersFromCartItems(userId, snapshot, session, userRole, {
+      containerId: container._id.toString(),
+      containerName,
+      customerNotes: customerNotes || container.customerNotes || "",
+      orderNumber: generateOrderNumber(),
+      statusTimeline: [{ status: "pending", at: new Date() }],
+    });
+
+    cart.containers.splice(containerIdx, 1);
+    cart.items = syncFlatItemsFromContainers(cart.containers);
+    await cart.save({ session });
+
+    await session.commitTransaction();
+    invalidateCartCache(userId);
+
+    const order = orders[0];
+    return {
+      message: "تم إرسال طلبك — بانتظار تأكيد صاحب المحل",
+      verificationCode: order.verificationCode,
+      order: {
+        id: order._id,
+        orderNumber: order.orderNumber,
+        verificationCode: order.verificationCode,
+        store: order.store,
+        total: order.total,
+        status: order.status,
+      },
+    };
+  } catch (err) {
+    await session.abortTransaction().catch(() => {});
+    if (
+      err.message?.includes("Transaction numbers") ||
+      err.code === 20 ||
+      err.code === 251 ||
+      err.code === 263
+    ) {
+      return confirmStoreContainerFallback(userId, storeIdRaw, body, userRole);
+    }
+    throw err;
+  } finally {
+    session.endSession();
+  }
+}
+
+async function confirmStoreContainerFallback(userId, storeIdRaw, body, userRole) {
+  const storeId = requireObjectId(storeIdRaw, "storeId");
+  const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 500 }) || "";
+
+  let cart = await Cart.findOne({ user: userId });
+  if (!cart) {
+    const err = new Error("السلة فارغة");
+    err.status = 400;
+    throw err;
+  }
+
+  await migrateLegacyItemsToContainers(cart);
+
+  const containerIdx = (cart.containers || []).findIndex(
+    (c) => !c.locked && c.store.toString() === storeId.toString()
+  );
+  if (containerIdx === -1) {
+    const err = new Error("لا توجد سلة نشطة لهذا المتجر");
+    err.status = 404;
+    throw err;
+  }
+
+  const container = cart.containers[containerIdx];
+  const snapshot = container.items.map((i) => ({
+    item: i.item,
+    itemType: i.itemType,
+    quantity: i.quantity,
+  }));
+
+  const storeDoc = await Store.findById(storeId).select("name").lean();
+  const orders = await buildOrdersFromCartItems(userId, snapshot, null, userRole, {
+    containerId: container._id.toString(),
+    containerName: container.storeName || storeDoc?.name || "",
+    customerNotes: customerNotes || container.customerNotes || "",
+    orderNumber: generateOrderNumber(),
+    statusTimeline: [{ status: "pending", at: new Date() }],
+  });
+
+  cart.containers.splice(containerIdx, 1);
+  cart.items = syncFlatItemsFromContainers(cart.containers);
+  await cart.save();
+  invalidateCartCache(userId);
+
+  const order = orders[0];
+  return {
+    message: "تم إرسال طلبك — بانتظار تأكيد صاحب المحل",
+    verificationCode: order.verificationCode,
+    order: {
+      id: order._id,
+      orderNumber: order.orderNumber,
+      verificationCode: order.verificationCode,
+      store: order.store,
+      total: order.total,
+      status: order.status,
+    },
+  };
 }
 
 async function checkout(userId, userRole = "customer") {
@@ -630,5 +947,7 @@ module.exports = {
   removeFromCart,
   clearCart,
   checkout,
+  confirmStoreContainer,
   restoreStockForOrderItems,
+  restoreItemsToStoreContainer,
 };

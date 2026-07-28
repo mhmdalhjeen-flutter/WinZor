@@ -9,6 +9,8 @@ import '../../../../core/cache/app_image_cache.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/utils/media_url.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/chat_context_store.dart';
 import '../../../home/data/models/offer_model.dart';
@@ -114,7 +116,10 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
     if (_chatBusy) return;
     final auth = ref.read(authProvider);
     if (!auth.isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            _openChat,
+            message: AuthGateMessages.generic,
+          );
       return;
     }
 

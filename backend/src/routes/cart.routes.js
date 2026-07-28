@@ -34,8 +34,34 @@ router.get("/", cartCache, async (req, res) => {
 router.post("/add", verifiedMiddleware, async (req, res) => {
   try {
     const result = await cartService.addToCart(req.user, req.body);
-    res.json({ message: "تم إضافة المنتج للسلة", ...result });
+    res.json({ message: "تمت إضافة العنصر إلى السلة.", ...result });
   } catch (err) {
+    handleServiceError(res, err);
+  }
+});
+
+router.post("/containers/:storeId/confirm", verifiedMiddleware, checkoutLimiter, async (req, res) => {
+  try {
+    const result = await cartService.confirmStoreContainer(
+      req.user.id,
+      req.params.storeId,
+      req.body,
+      req.user.role
+    );
+    await auditService.logSensitiveOperation(req, {
+      action: "تأكيد طلب متجر (container confirm)",
+      details: `متجر ${req.params.storeId}`,
+      metadata: { storeId: String(req.params.storeId), orderId: String(result.order?.id) },
+    });
+    res.json(result);
+  } catch (err) {
+    if (err.code === "DUPLICATE_ORDER") {
+      await auditService.logSensitiveOperation(req, {
+        action: "محاولة تأكيد طلب مكررة",
+        details: err.message,
+        success: false,
+      });
+    }
     handleServiceError(res, err);
   }
 });

@@ -3,14 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_brand_assets.dart';
-import '../theme/app_colors.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/home/presentation/providers/home_providers.dart';
 
 /// Session flag — splash runs once per cold start.
 final startupSplashDoneProvider = StateProvider<bool>((ref) => false);
 
-/// Full-screen startup splash over the live router tree so Home can load behind it.
+/// Full-screen startup splash — user sees only splash until ready, then Home.
 class StartupSplashGate extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -28,12 +27,13 @@ class _StartupSplashGateState extends ConsumerState<StartupSplashGate>
     'جوائز • مسابقات • عروض يومية',
   ];
 
-  static const _minVisible = Duration(seconds: 5);
-  static const _sloganInterval = Duration(seconds: 2);
+  static const _minVisible = Duration(seconds: 6);
+  static const _sloganInterval = Duration(milliseconds: 2000);
 
   int _sloganIndex = 0;
   Timer? _sloganTimer;
   bool _visible = true;
+  bool _ready = false;
   late final AnimationController _fadeOut;
 
   @override
@@ -41,7 +41,7 @@ class _StartupSplashGateState extends ConsumerState<StartupSplashGate>
     super.initState();
     _fadeOut = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 400),
     );
     _sloganTimer = Timer.periodic(_sloganInterval, (_) {
       if (!mounted || !_visible) return;
@@ -52,11 +52,15 @@ class _StartupSplashGateState extends ConsumerState<StartupSplashGate>
 
   Future<void> _runStartup() async {
     if (ref.read(startupSplashDoneProvider)) {
-      if (mounted) setState(() => _visible = false);
+      if (mounted) {
+        setState(() {
+          _visible = false;
+          _ready = true;
+        });
+      }
       return;
     }
 
-    // Kick off Home data while splash is on screen.
     Future<void> preload(Future<dynamic> future) async {
       try {
         await future;
@@ -75,7 +79,10 @@ class _StartupSplashGateState extends ConsumerState<StartupSplashGate>
     ref.read(startupSplashDoneProvider.notifier).state = true;
     await _fadeOut.forward();
     if (!mounted) return;
-    setState(() => _visible = false);
+    setState(() {
+      _visible = false;
+      _ready = true;
+    });
   }
 
   Future<void> _waitAuthSettled() async {
@@ -96,17 +103,19 @@ class _StartupSplashGateState extends ConsumerState<StartupSplashGate>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Live app (Home loads underneath).
-        widget.child,
+        if (_ready) widget.child,
         if (_visible)
           FadeTransition(
             opacity: Tween<double>(begin: 1, end: 0).animate(
               CurvedAnimation(parent: _fadeOut, curve: Curves.easeOutCubic),
             ),
-            child: IgnorePointer(
-              child: _StartupSplashVisual(
-                slogan: _slogans[_sloganIndex],
-                sloganKey: ValueKey(_sloganIndex),
+            child: Material(
+              type: MaterialType.transparency,
+              child: IgnorePointer(
+                child: _StartupSplashVisual(
+                  slogan: _slogans[_sloganIndex],
+                  sloganKey: ValueKey(_sloganIndex),
+                ),
               ),
             ),
           ),
@@ -139,7 +148,7 @@ class _StartupSplashVisual extends StatelessWidget {
               height: 220,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.06),
+                color: const Color(0xFF059669).withOpacity(0.06),
               ),
             ),
           ),
@@ -151,7 +160,7 @@ class _StartupSplashVisual extends StatelessWidget {
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withOpacity(0.05),
+                color: const Color(0xFFD97706).withOpacity(0.06),
               ),
             ),
           ),

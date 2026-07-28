@@ -7,6 +7,8 @@ import '../../features/notifications/presentation/widgets/notification_listener_
 import '../onboarding/onboarding_tour_host.dart';
 import 'app_header.dart';
 import 'bottom_nav_bar.dart';
+import 'cart_summary_bar.dart';
+import 'floating_actions_stack.dart';
 
 class MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
@@ -53,14 +55,19 @@ class MainShell extends ConsumerWidget {
             Scaffold(
               appBar: AppHeader(isAuth: isAuth),
               body: navigationShell,
-              bottomNavigationBar: isAuth
-                  ? BottomNavBar(navigationShell: navigationShell)
-                  : null,
+              bottomNavigationBar: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isAuth) const CartSummaryBar(),
+                  BottomNavBar(navigationShell: navigationShell),
+                ],
+              ),
             ),
             if (isAuth)
               Positioned.fill(
                 child: OnboardingTourHost(navigationShell: navigationShell),
               ),
+            const FloatingActionsStack(),
           ],
         ),
       ),

@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_image.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../data/models/competition_model.dart';
@@ -15,18 +17,27 @@ Future<CompetitionModel?> showCompetitionJoinSheet({
   required WidgetRef ref,
   required CompetitionModel competition,
 }) {
-  final isAuth = ref.read(authProvider).isAuth;
-  if (!isAuth) {
-    context.push('/login');
-    return Future.value(null);
+  if (ref.read(authProvider).isAuth) {
+    return showModalBottomSheet<CompetitionModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => CompetitionJoinSheet(initial: competition),
+    );
   }
 
-  return showModalBottomSheet<CompetitionModel>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => CompetitionJoinSheet(initial: competition),
-  );
+  ref.read(authGateProvider.notifier).runWithAuth(
+        () {
+          showModalBottomSheet<CompetitionModel>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => CompetitionJoinSheet(initial: competition),
+          );
+        },
+        message: AuthGateMessages.pointsRewards,
+      );
+  return Future.value(null);
 }
 
 class CompetitionJoinSheet extends ConsumerStatefulWidget {

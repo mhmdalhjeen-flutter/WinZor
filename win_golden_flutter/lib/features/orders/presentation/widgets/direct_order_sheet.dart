@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../../verification/utils/verification_gate_config.dart';
@@ -22,31 +24,23 @@ Future<void> showDirectOrderSheet({
   String? storeName,
   int? maxQuantity,
 }) async {
-  final auth = ref.read(authProvider);
-  if (!auth.isAuth) {
-    context.push('/login');
-    return;
-  }
-
-  ref.read(verificationGateProvider.notifier).runWithVerification(() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return _DirectOrderSheet(
-          itemId: itemId,
-          itemType: itemType,
-          title: title,
-          unitPrice: unitPrice,
-          currency: currency,
-          imageUrl: imageUrl,
-          storeName: storeName,
-          maxQuantity: maxQuantity,
-        );
-      },
-    );
-  }, cartVerification);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      return _DirectOrderSheet(
+        itemId: itemId,
+        itemType: itemType,
+        title: title,
+        unitPrice: unitPrice,
+        currency: currency,
+        imageUrl: imageUrl,
+        storeName: storeName,
+        maxQuantity: maxQuantity,
+      );
+    },
+  );
 }
 
 class _DirectOrderSheet extends ConsumerStatefulWidget {
@@ -89,14 +83,21 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
 
   Future<void> _submit() async {
     if (_submitting || _success) return;
-    _performSubmit();
+
+    ref.read(authGateProvider.notifier).runWithAuth(
+          () => ref.read(verificationGateProvider.notifier).runWithVerification(
+                _performSubmit,
+                cartVerification,
+              ),
+          message: AuthGateMessages.addToCart,
+        );
   }
 
   Future<void> _performSubmit() async {
     if (_submitting || _success) return;
     setState(() => _submitting = true);
     
-    final result = await ref.read(ordersActionsProvider).placeDirectOrder(
+    final result = await ref.read(ordersActionsProvider).addItemToCart(
           itemId: widget.itemId,
           itemType: widget.itemType,
           quantity: _quantity,
@@ -127,10 +128,20 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
       _success = true;
     });
     
-    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     Navigator.pop(context);
-    context.push('/orders');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.message,
+          style: const TextStyle(fontFamily: 'Cairo'),
+        ),
+        action: SnackBarAction(
+          label: 'السلة',
+          onPressed: () => context.push('/cart'),
+        ),
+      ),
+    );
   }
 
   @override
@@ -150,7 +161,7 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                   SizedBox(height: 24),
                   Icon(LucideIcons.checkCircle2, size: 48, color: Color(0xFF22C55E)),
                   SizedBox(height: 12),
-                  Text('تم إرسال الطلب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
+                  Text('تمت إضافة العنصر إلى السلة.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
                   SizedBox(height: 24),
                 ],
               )
@@ -214,7 +225,7 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
                           : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(LucideIcons.send, size: 18),
                                 SizedBox(width: 8),
-                                Text('إرسال الطلب', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900)),
+                                Text('اشتري الآن', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w900)),
                             ]),
                     ),
                   ),

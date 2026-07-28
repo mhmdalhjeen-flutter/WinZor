@@ -8,6 +8,7 @@ import '../../../../core/utils/currency_utils.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/order_models.dart';
 import '../providers/orders_providers.dart';
+import '../widgets/order_verification_dialog.dart';
 
 /// Customer orders history only — no cart UI.
 class OrdersPage extends ConsumerWidget {
@@ -101,7 +102,7 @@ class OrdersPage extends ConsumerWidget {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'طلباتي',
+                      'طلباتي النشطة',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -175,8 +176,13 @@ class _OrderCard extends StatelessWidget {
     switch (order.status) {
       case 'pending':
         return const Color(0xFFFEF3C7);
+      case 'store_accepted':
       case 'confirmed':
         return const Color(0xFFDCFCE7);
+      case 'preparing':
+        return const Color(0xFFDBEAFE);
+      case 'delivered_to_driver':
+        return const Color(0xFFE0E7FF);
       default:
         return const Color(0xFFF3F4F6);
     }
@@ -186,8 +192,13 @@ class _OrderCard extends StatelessWidget {
     switch (order.status) {
       case 'pending':
         return const Color(0xFF92400E);
+      case 'store_accepted':
       case 'confirmed':
         return const Color(0xFF166534);
+      case 'preparing':
+        return const Color(0xFF1D4ED8);
+      case 'delivered_to_driver':
+        return const Color(0xFF4338CA);
       default:
         return const Color(0xFF4B5563);
     }
@@ -277,6 +288,23 @@ class _OrderCard extends StatelessWidget {
               fontFamily: 'Cairo',
             ),
           ),
+          OrderVerificationBadge(code: order.verificationCode),
+          if (order.verificationCode?.isNotEmpty == true)
+            TextButton(
+              onPressed: () => showOrderVerificationDialog(
+                context,
+                codes: [OrderVerificationEntry(code: order.verificationCode!, label: order.storeName)],
+              ),
+              child: const Text(
+                'عرض رمز التحقق',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  color: Color(0xFF059669),
+                ),
+              ),
+            ),
           if (onCancel != null)
             TextButton(
               onPressed: onCancel,

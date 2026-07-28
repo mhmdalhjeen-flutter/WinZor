@@ -80,6 +80,15 @@ class IntroPage extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          if (context.canPop())
+            IconButton(
+              onPressed: () => context.pop(),
+              icon: const Icon(LucideIcons.arrowRight, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.75),
+              ),
+            )
+          else
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -882,6 +891,14 @@ class _BottomStickyActions extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => context.go('/'),
+              child: const Text(
+                'تصفح التطبيق بدون حساب',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 8),

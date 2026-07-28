@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/chat_context_store.dart';
 import '../../../orders/presentation/widgets/direct_order_sheet.dart';
@@ -52,7 +54,10 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
   Future<void> _contact(ProductModel product) async {
     final auth = ref.read(authProvider);
     if (!auth.isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            () => _contact(product),
+            message: AuthGateMessages.generic,
+          );
       return;
     }
     final ownerId = product.storeOwnerId;

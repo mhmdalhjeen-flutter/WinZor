@@ -8,6 +8,7 @@ import 'core/cache/local_cache_service.dart';
 import 'core/cache/app_image_cache.dart';
 import 'core/cache/background_sync_host.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/widgets/auth_gate_host.dart';
 import 'features/verification/presentation/widgets/verification_gate_host.dart';
 
 void main() async {
@@ -49,12 +50,14 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: VerificationGateHost(
-          child: BackgroundSyncHost(
-            child: StartupSplashGate(
-              child: child ?? const SizedBox.shrink(),
+          child: AuthGateHost(
+            child: VerificationGateHost(
+              child: BackgroundSyncHost(
+                child: StartupSplashGate(
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
             ),
-          ),
           ),
         );
       },

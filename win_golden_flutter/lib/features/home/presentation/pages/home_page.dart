@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../providers/home_providers.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/widgets/startup_splash_gate.dart';
 import '../../../competitions/presentation/providers/competitions_providers.dart';
 import '../widgets/home_hero.dart';
 import '../widgets/featured_competitions.dart';
@@ -11,21 +10,20 @@ import '../widgets/home_search_cards.dart';
 import '../widgets/progressive_category_reels.dart';
 import '../../../../core/onboarding/onboarding_target.dart';
 import '../../../../core/onboarding/onboarding_targets.dart';
+import '../../../../core/utils/hierarchy_path.dart';
+import '../../../../core/widgets/filter_title_header.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authProvider);
+    final splashDone = ref.watch(startupSplashDoneProvider);
 
-    // React `/` → Intro when guest
-    if (!auth.isLoading && !auth.isAuth) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) context.go('/intro');
-      });
+    if (!splashDone) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Color(0xFFF7F5F2),
+        body: SizedBox.shrink(),
       );
     }
 
@@ -37,6 +35,18 @@ class HomePage extends ConsumerWidget {
     final categoryPath = ref.watch(categoryPathProvider);
 
     final hasActiveFilters = regionPath.isNotEmpty || categoryPath.isNotEmpty;
+    final regionLabels = resolveHierarchyLabels(
+      regionsAsync.asData?.value ?? [],
+      regionPath,
+    );
+    final categoryLabels = resolveHierarchyLabels(
+      categoriesAsync.asData?.value ?? [],
+      categoryPath,
+    );
+    final filterSummary = [
+      ...regionLabels,
+      ...categoryLabels,
+    ];
 
     return Scaffold(
       body: Stack(
@@ -91,49 +101,17 @@ class HomePage extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.auto_awesome, color: Color(0xFFB91C1C), size: 18),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'العروض',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900,
-                                          color: Color(0xFF111827),
-                                          fontFamily: 'Cairo',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (hasActiveFilters)
-                                    GestureDetector(
-                                      onTap: () {
+                              FilterTitleHeader(
+                                title: 'العروض',
+                                icon: Icons.auto_awesome,
+                                iconColor: const Color(0xFFB91C1C),
+                                filterLabels: filterSummary,
+                                onClear: hasActiveFilters
+                                    ? () {
                                         ref.read(regionPathProvider.notifier).state = [];
                                         ref.read(categoryPathProvider.notifier).state = [];
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF5F3FF),
-                                          borderRadius: BorderRadius.circular(100),
-                                          border: Border.all(color: const Color(0xFFDDD6FE)),
-                                        ),
-                                        child: const Text(
-                                          'إلغاء التصفية',
-                                          style: TextStyle(
-                                            color: Color(0xFF7C3AED),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'Cairo',
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                      }
+                                    : null,
                               ),
                               const SizedBox(height: 12),
                               if (reels.isEmpty)

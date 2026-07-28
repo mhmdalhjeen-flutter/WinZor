@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/star_rating.dart';
 import '../../../../core/utils/currency_utils.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/chat_context_store.dart';
 import '../../../home/data/models/offer_model.dart';
@@ -94,7 +96,14 @@ class OfferDetailPage extends ConsumerWidget {
                                         ? null
                                         : () async {
                                             if (!auth.isAuth) {
-                                              context.push('/login');
+                                              ref.read(authGateProvider.notifier).runWithAuth(
+                                                    () async {
+                                                      await ref
+                                                          .read(favoritesActionsProvider)
+                                                          .toggle(id);
+                                                    },
+                                                    message: AuthGateMessages.generic,
+                                                  );
                                               return;
                                             }
                                             await ref
@@ -363,11 +372,6 @@ class OfferDetailPage extends ConsumerWidget {
             height: 56,
             child: ElevatedButton(
               onPressed: () {
-                final auth = ref.read(authProvider);
-                if (!auth.isAuth) {
-                  context.push('/login');
-                  return;
-                }
                 final price = offer.finalPrice ??
                     double.tryParse(
                         offer.pricing?['finalPrice']?.toString() ?? '') ??
@@ -443,7 +447,10 @@ class OfferDetailPage extends ConsumerWidget {
   ) async {
     final auth = ref.read(authProvider);
     if (!auth.isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            () => _contactStore(context, ref, offer),
+            message: AuthGateMessages.generic,
+          );
       return;
     }
     try {

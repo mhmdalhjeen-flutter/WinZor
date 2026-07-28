@@ -15,48 +15,8 @@ class CompetitionsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    if (!auth.isAuth) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'سجّل الدخول لعرض المسابقات',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Cairo',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.push('/login'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                    child: const Text(
-                      'تسجيل الدخول',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final listAsync = ref.watch(competitionsListProvider);
-    final points = (auth.user?['points'] as num?)?.toInt() ?? 0;
+    final points = auth.isAuth ? ((auth.user?['points'] as num?)?.toInt() ?? 0) : 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),

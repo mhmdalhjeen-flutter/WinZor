@@ -11,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_styles.dart';
 import '../../../../core/utils/auth_error_utils.dart';
 import '../../../../core/utils/phone_validation.dart';
+import '../../utils/auth_navigation.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_repository_provider.dart';
 import '../widgets/auth_welcome_background.dart';
@@ -134,7 +135,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       });
 
       if (mounted) {
-        context.go('/');
+        navigateAfterAuth(context);
       }
     } catch (e) {
       setState(() {
@@ -192,8 +193,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         onTap: () {
           if (_currentStep == RegisterStep.verify) {
             setState(() => _currentStep = RegisterStep.form);
+          } else if (context.canPop()) {
+            context.pop();
           } else {
-            context.go('/intro');
+            context.go('/');
           }
         },
         borderRadius: BorderRadius.circular(100),
@@ -289,7 +292,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               data['token'] as String,
               refreshToken: data['refreshToken']?.toString(),
             );
-        if (mounted) context.go('/');
+        if (mounted) navigateAfterAuth(context);
       } else {
         setState(() => _error = 'استجابة غير صالحة من الخادم');
       }

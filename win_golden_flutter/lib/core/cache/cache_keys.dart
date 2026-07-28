@@ -14,6 +14,8 @@ abstract final class CacheKeys {
   static String productDetail(String id) => 'product_detail_$id';
 
   static const userProfile = 'user_profile';
+  static const userCenterData = 'user_center_data';
+  static const recentPointSources = 'recent_point_sources';
   static const unreadNotifications = 'unread_notifications_count';
   static const unreadChat = 'unread_chat_count';
 

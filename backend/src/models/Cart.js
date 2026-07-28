@@ -1,33 +1,57 @@
-// models/cart.js
+// models/cart.js — store-based shopping containers
 const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema(
-    {
-        item: {
-            type:     mongoose.Schema.Types.ObjectId,
-            // ❌ لا نضع refPath هنا — سنتولى الـ populate يدوياً في الـ route
-            required: true,
-        },
-        itemType: {
-            type:     String,
-            enum:     ['Product', 'Offer'],
-            required: true,
-        },
-        quantity: {
-            type:    Number,
-            default: 1,
-            min:     1,
-        },
+  {
+    item: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
     },
-    { _id: false }
+    itemType: {
+      type: String,
+      enum: ['Product', 'Offer'],
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+  },
+  { _id: false }
+);
+
+const cartContainerSchema = new mongoose.Schema(
+  {
+    store: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Store',
+      required: true,
+    },
+    storeName: { type: String, default: '' },
+    locked: { type: Boolean, default: false },
+    lockedAt: { type: Date },
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    customerNotes: { type: String, default: '', maxlength: 500 },
+    items: [cartItemSchema],
+  },
+  { _id: true }
 );
 
 const cartSchema = new mongoose.Schema(
-    {
-        user:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-        items: [cartItemSchema],
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      unique: true,
     },
-    { timestamps: true }
+    /** @deprecated flat list — kept in sync for backward compatibility */
+    items: [cartItemSchema],
+    /** Per-store editable baskets until confirm */
+    containers: [cartContainerSchema],
+  },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model('Cart', cartSchema);

@@ -8,6 +8,8 @@ import '../../../../core/widgets/offer_card.dart';
 import '../../../../core/widgets/product_card.dart';
 import '../providers/store_detail_providers.dart';
 import '../providers/explore_providers.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class StoreDetailPage extends ConsumerWidget {
@@ -195,7 +197,18 @@ class StoreDetailPage extends ConsumerWidget {
                             : ElevatedButton(
                                 onPressed: joining ? null : () async {
                                   if (!isAuth) {
-                                    context.push('/login');
+                                    ref.read(authGateProvider.notifier).runWithAuth(
+                                          () async {
+                                            ref.read(joiningStoreProvider.notifier).state = true;
+                                            try {
+                                              await ref.read(exploreRepositoryProvider).joinStore(id);
+                                              ref.invalidate(storeDetailProvider(id));
+                                            } finally {
+                                              ref.read(joiningStoreProvider.notifier).state = false;
+                                            }
+                                          },
+                                          message: AuthGateMessages.activationCode,
+                                        );
                                     return;
                                   }
                                   ref.read(joiningStoreProvider.notifier).state = true;
@@ -276,7 +289,12 @@ class StoreDetailPage extends ConsumerWidget {
                           activeColor: AppColors.primary,
                           onChanged: (value) {
                             if (!isAuth) {
-                              context.push('/login');
+                              ref.read(authGateProvider.notifier).runWithAuth(
+                                    () => ref
+                                        .read(storeNotificationEnabledProvider(id).notifier)
+                                        .setEnabled(value),
+                                    message: AuthGateMessages.generic,
+                                  );
                               return;
                             }
                             ref.read(storeNotificationEnabledProvider(id).notifier).setEnabled(value);

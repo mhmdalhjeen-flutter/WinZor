@@ -6,6 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_image.dart';
+import '../../../auth/presentation/providers/auth_gate_provider.dart';
+import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../data/models/competition_model.dart';
@@ -34,7 +36,12 @@ class _CompetitionDetailPageState extends ConsumerState<CompetitionDetailPage> {
   Future<void> _join(CompetitionModel competition) async {
     final isAuth = ref.read(authProvider).isAuth;
     if (!isAuth) {
-      context.push('/login');
+      ref.read(authGateProvider.notifier).runWithAuth(
+            () => ref.read(verificationGateProvider.notifier).runWithVerification(
+                  () => _performJoin(competition),
+                ),
+            message: AuthGateMessages.pointsRewards,
+          );
       return;
     }
     ref.read(verificationGateProvider.notifier).runWithVerification(

@@ -187,11 +187,11 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
     return GestureDetector(
       onTap: () => _toggleMode(mode),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 68),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isActive ? activeColor : const Color(0xFFF3F4F6),
             width: isActive ? 2 : 1,
@@ -201,20 +201,20 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 28,
-              height: 28,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
                 color: iconBg,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(icon, size: 15, color: iconColor),
+              child: Icon(icon, size: 11, color: iconColor),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               label,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF1F2937),
                 fontFamily: 'Cairo',
@@ -230,11 +230,11 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
     return GestureDetector(
       onTap: _toggleSearch,
       child: Container(
-        width: 60,
-        constraints: const BoxConstraints(minHeight: 68),
+        width: 48,
+        constraints: const BoxConstraints(minHeight: 52),
         decoration: BoxDecoration(
           color: searchOpen ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: searchOpen ? AppColors.primary : const Color(0xFFF3F4F6),
           ),
@@ -245,13 +245,13 @@ class _HomeSearchCardsState extends ConsumerState<HomeSearchCards> {
             Icon(
               searchOpen ? Icons.close : Icons.search,
               color: searchOpen ? Colors.white : AppColors.primary,
-              size: 18,
+              size: 15,
             ),
             const SizedBox(height: 4),
             Text(
               'بحث',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
                 color: searchOpen ? Colors.white : const Color(0xFF1F2937),
                 fontFamily: 'Cairo',

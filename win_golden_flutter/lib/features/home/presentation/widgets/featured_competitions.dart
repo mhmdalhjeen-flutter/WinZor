@@ -64,7 +64,7 @@ class FeaturedCompetitions extends ConsumerWidget {
         children: [
           Expanded(
             child: Container(
-              height: 140,
+              height: 100,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
@@ -75,7 +75,7 @@ class FeaturedCompetitions extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Container(
-              height: 140,
+              height: 100,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),

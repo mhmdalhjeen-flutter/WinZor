@@ -46,13 +46,13 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
       onClick={onClick}
       id="points-header-anchor"
       aria-label={`${displayPoints.toLocaleString('en-US')} نقطة — تسوق واربح`}
-      className={`flex items-center gap-2.5 sm:gap-3 min-w-0 max-w-[68%] sm:max-w-none active:scale-95 transition-transform ${
+      className={`flex items-center gap-2 sm:gap-2.5 min-w-0 max-w-[58%] sm:max-w-none active:scale-95 transition-transform ${
         isUp || isDown ? 'animate-pulse' : ''
       }`}
       dir="rtl"
     >
       <span
-        className={`relative flex items-center justify-center min-w-[4.25rem] sm:min-w-[5rem] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl overflow-hidden border border-white/80 shadow-md home-rewards-badge shrink-0 ${
+        className={`relative flex items-center justify-center min-w-[3.5rem] sm:min-w-[4rem] px-2 sm:px-2.5 py-1.5 sm:py-1.5 rounded-lg sm:rounded-xl overflow-hidden border border-white/80 shadow-md home-rewards-badge shrink-0 ${
           isUp || isDown ? 'animate-pulse' : ''
         }`}
       >
@@ -70,7 +70,7 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
           aria-hidden
         />
         <span
-          className={`relative text-[17px] sm:text-[19px] font-black tabular-nums tracking-tight leading-none ${
+          className={`relative text-[14px] sm:text-[15px] font-black tabular-nums tracking-tight leading-none ${
             isDown ? 'text-rose-700' : 'text-[#1e3a8a]'
           }`}
         >
@@ -78,7 +78,7 @@ export default function PointsBadge({ points = 0, onClick, pulse = null }) {
         </span>
       </span>
 
-      <span className="text-[12px] sm:text-[13px] font-black text-gray-900 tracking-tight whitespace-nowrap shrink-0">
+      <span className="text-[11px] sm:text-[12px] font-black text-gray-900 tracking-tight whitespace-nowrap shrink-0">
         تسوق واربح
       </span>
     </button>

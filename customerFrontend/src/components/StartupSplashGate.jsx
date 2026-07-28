@@ -10,7 +10,7 @@ import {
 import { warmOfferReelImages, warmStoreBrowseImages } from '../utils/cacheImages';
 import { BRAND_LOGO_256, BRAND_NAME } from '../utils/brandAssets';
 
-const SPLASH_DONE_KEY = 'app-startup-splash-done';
+export const SPLASH_DONE_KEY = 'app-startup-splash-done';
 const SLOGAN_INTERVAL_MS = 2000;
 const SLOGAN_FADE_MS = 420;
 
@@ -30,7 +30,7 @@ function warmFromPersistedCache() {
   if (stores) warmStoreBrowseImages(stores);
 }
 
-async function prefetchHomeData() {
+export async function prefetchHomeData() {
   warmFromPersistedCache();
 
   await Promise.allSettled([
@@ -97,16 +97,33 @@ async function prefetchHomeData() {
       },
       staleTime: 30 * 60 * 1000,
     }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.userCenter,
+      queryFn: async () => (await api.get('/users/me/center')).data,
+      staleTime: 60 * 1000,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ['pointSources', 5],
+      queryFn: async () => {
+        const [notifRes, winsRes] = await Promise.all([
+          api.get('/notifications', { params: { limit: 40 } }),
+          api.get('/wheel/my-wins').catch(() => ({ data: { wins: [] } })),
+        ]);
+        return { notifications: notifRes.data?.notifications || [], wheelWins: winsRes.data?.wins || [] };
+      },
+      staleTime: 60 * 1000,
+    }),
   ]);
 
   warmFromPersistedCache();
 }
 
 /**
- * Full-screen splash over the live app shell so Home can load underneath.
- * Shown once per browser tab session on authenticated Home.
+ * Single splash experience — app shell hidden until splash completes.
  */
 export default function StartupSplashGate({ active, children }) {
+  const alreadyDone = typeof window !== 'undefined' && sessionStorage.getItem(SPLASH_DONE_KEY) === '1';
+  const [appReady, setAppReady] = useState(!active || alreadyDone);
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
   const [sloganIndex, setSloganIndex] = useState(0);
@@ -114,6 +131,7 @@ export default function StartupSplashGate({ active, children }) {
 
   useEffect(() => {
     if (!active) {
+      setAppReady(true);
       setVisible(false);
       setFading(false);
       return undefined;
@@ -122,9 +140,12 @@ export default function StartupSplashGate({ active, children }) {
     if (sessionStorage.getItem(SPLASH_DONE_KEY) === '1') {
       warmFromPersistedCache();
       prefetchHomeData();
+      setAppReady(true);
+      setVisible(false);
       return undefined;
     }
 
+    setAppReady(false);
     setVisible(true);
     setFading(false);
     setSloganIndex(0);
@@ -151,7 +172,10 @@ export default function StartupSplashGate({ active, children }) {
       sessionStorage.setItem(SPLASH_DONE_KEY, '1');
       setFading(true);
       window.setTimeout(() => {
-        if (!cancelled) setVisible(false);
+        if (!cancelled) {
+          setVisible(false);
+          setAppReady(true);
+        }
       }, 420);
     })();
 
@@ -163,20 +187,20 @@ export default function StartupSplashGate({ active, children }) {
 
   return (
     <>
-      {children}
+      {appReady ? children : null}
       {visible && (
         <div
-          className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white transition-opacity duration-[420ms] ease-out ${
+          className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 transition-opacity duration-[420ms] ease-out ${
             fading ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
           dir="rtl"
           aria-hidden={fading}
         >
-          <div className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/5" aria-hidden />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-44 w-44 rounded-full bg-blue-500/5" aria-hidden />
+          <div className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-emerald-200/20 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 h-44 w-44 rounded-full bg-amber-200/25 blur-3xl" aria-hidden />
 
           <div className="relative z-10 flex flex-col items-center px-8 text-center">
-            <div className="mb-7 flex h-28 w-28 items-center justify-center rounded-[28px] bg-white p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+            <div className="mb-7 flex h-28 w-28 items-center justify-center rounded-[28px] bg-white p-3.5 shadow-[0_10px_40px_rgba(16,185,129,0.12)] ring-1 ring-emerald-100/80">
               <img
                 src={BRAND_LOGO_256}
                 alt=""

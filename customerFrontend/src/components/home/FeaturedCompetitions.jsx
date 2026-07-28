@@ -45,8 +45,8 @@ export default function FeaturedCompetitions() {
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto px-1.5 sm:px-2 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
-        <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
-        <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
+        <div className="h-[5.5rem] sm:h-[6rem] rounded-[16px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+        <div className="h-[5.5rem] sm:h-[6rem] rounded-[16px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
       </div>
     );
   }

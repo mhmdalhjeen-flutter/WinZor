@@ -3,7 +3,9 @@ import { Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
 import { toggleFavorite } from '../utils/activity';
-import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
+import { getEffectiveRegionId, pathStillValid, findRegionNode } from '../utils/regionTree';
+import { findCategoryNode } from '../utils/categoryTree';
+import FilterSectionHeader, { buildPathFilterBadges } from '../components/shared/FilterSectionHeader';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import HomeHero from '../components/home/HomeHero';
@@ -27,7 +29,10 @@ const Home = () => {
   const [regionPath, setRegionPath] = useState([]);
   const [categoryPath, setCategoryPath] = useState([]);
   const [favoriteIdsOverride, setFavoriteIdsOverride] = useState(null);
-  const [deferSecondary, setDeferSecondary] = useState(false);
+  const [deferSecondary, setDeferSecondary] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('app-startup-splash-done') === '1';
+  });
 
   // Let first paint + LCP image compete without search/categories network contention
   useEffect(() => {
@@ -152,6 +157,11 @@ const Home = () => {
     setCategoryPath([]);
   }, []);
 
+  const filterBadges = useMemo(() => [
+    ...buildPathFilterBadges(regionPath, regionTree, findRegionNode, 'region'),
+    ...buildPathFilterBadges(categoryPath, categories, findCategoryNode, 'category'),
+  ], [regionPath, categoryPath, regionTree, categories]);
+
   const isLoadingOffers = reelsLoading;
   const hasOffers = displayReels?.length > 0;
   const hasActiveFilters = regionPath.length > 0 || categoryPath.length > 0;
@@ -162,8 +172,8 @@ const Home = () => {
 
   const competitionsPlaceholder = (
     <div className="max-w-6xl mx-auto px-1.5 sm:px-2 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
-      <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse" />
-      <div className="h-36 sm:h-40 rounded-[20px] sm:rounded-[24px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
+      <div className="h-[5.5rem] sm:h-[6rem] rounded-[16px] bg-white border border-gray-100 shadow-sm animate-pulse" />
+      <div className="h-[5.5rem] sm:h-[6rem] rounded-[16px] bg-white border border-gray-100 shadow-sm animate-pulse hidden md:block" />
     </div>
   );
 
@@ -205,19 +215,13 @@ const Home = () => {
 
         {/* Offers */}
         <div id="home-offers" data-onboarding="home" className="max-w-6xl mx-auto space-y-3 sm:space-y-4 scroll-mt-4">
-          <div className="flex items-center justify-between gap-2 px-1.5 sm:px-2">
-            <h3 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
-              <Sparkles className="text-primary w-4 h-4 sm:w-[18px] sm:h-[18px]" /> العروض
-            </h3>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="shrink-0 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold text-violet-600 bg-violet-50 border border-violet-100 active:scale-[0.98] transition-transform"
-              >
-                إلغاء التصفية
-              </button>
-            )}
+          <div className="px-1.5 sm:px-2">
+            <FilterSectionHeader
+              title="العروض"
+              icon={Sparkles}
+              badges={filterBadges}
+              onClear={hasActiveFilters ? resetFilters : undefined}
+            />
           </div>
 
           {isLoadingOffers && (

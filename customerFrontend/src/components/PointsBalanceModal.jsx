@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import '../styles/pointsBalance.css';
+import { overlayFade, modalSpring } from '../utils/motionPresets';
 import React, { useEffect } from 'react';
-import { X, Star } from 'lucide-react';
+import { X, Star, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCountUpOnOpen } from '../hooks/useCountUpOnOpen';
 import { usePointsLeaderboard } from '../hooks/usePointsLeaderboard';
@@ -9,6 +11,7 @@ import AchievementGems from './points/AchievementGems';
 import PointsLeaderboardSection from './points/PointsLeaderboardSection';
 
 export default function PointsBalanceModal({ open, onClose, points = 0, user = null }) {
+  const navigate = useNavigate();
   const displayPoints = useCountUpOnOpen(points, open, 1200);
 
   const currentUserId = user?._id || user?.id;
@@ -39,7 +42,7 @@ export default function PointsBalanceModal({ open, onClose, points = 0, user = n
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={overlayFade}
         >
           <button
             type="button"
@@ -54,10 +57,10 @@ export default function PointsBalanceModal({ open, onClose, points = 0, user = n
             aria-labelledby="points-balance-title"
             className="points-balance-modal"
             dir="rtl"
-            initial={{ opacity: 0, y: 48, scale: 0.96 }}
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 32, scale: 0.98 }}
-            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={modalSpring}
           >
             <PointsCelebrationBackground />
 
@@ -92,6 +95,15 @@ export default function PointsBalanceModal({ open, onClose, points = 0, user = n
 
               {/* 2 — Achievement gems */}
               <AchievementGems points={points} active={open} />
+
+              <button
+                type="button"
+                onClick={() => { onClose(); navigate('/orders/history'); }}
+                className="points-balance-history-btn"
+              >
+                <History size={18} />
+                الطلبات السابقة
+              </button>
 
               {/* 3 — Leaderboard */}
               <PointsLeaderboardSection

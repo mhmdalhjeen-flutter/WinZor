@@ -4,6 +4,42 @@
   gap: 6px;
 }
 
+.app-header {
+  contain: layout style;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.app-header__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    128deg,
+    #f0fdf4 0%,
+    #ecfdf5 22%,
+    #fefce8 58%,
+    #fef9c3 82%,
+    #fde68a 100%
+  );
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.app-header {
+  border-bottom-color: rgba(167, 243, 208, 0.35) !important;
+}
+
+.app-header-spacer {
+  height: calc(3.75rem + env(safe-area-inset-top, 0px));
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .app-header-spacer {
+    height: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+}
+
 .header-icon-btn {
   position: relative;
   width: 42px;

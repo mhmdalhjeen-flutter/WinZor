@@ -1,73 +1,100 @@
-import React, { useState, lazy, Suspense } from 'react';
-import { BookOpen, Play, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { HelpCircle, X, Coins, Ticket, Trophy, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const PointsGuideModal = lazy(() => import('../PointsGuideModal'));
+const HELP_ITEMS = [
+  {
+    icon: Coins,
+    tone: 'emerald',
+    title: 'كيف تعمل النقاط؟',
+    body: 'مكافآت تحصل عليها مع كل عملية شراء من المتاجر المعتمدة — عبر التطبيق أو في المتجر.',
+  },
+  {
+    icon: Sparkles,
+    tone: 'amber',
+    title: 'كيف تجمع النقاط؟',
+    body: 'اطلب بطاقة النقاط من المتجر بعد الشراء، ثم أدخل الكود أو امسح QR من زر «ادخل الكود».',
+  },
+  {
+    icon: Ticket,
+    tone: 'violet',
+    title: 'كيف تصبح فرصاً؟',
+    body: 'استخدم نقاطك للدخول في المسابقات — كل فرصة تكلف عدداً محدداً من النقاط حسب كل سحب.',
+  },
+  {
+    icon: Trophy,
+    tone: 'rose',
+    title: 'كلما زادت فرصك…',
+    body: 'كلما زاد عدد فرصك في السحب، ارتفعت احتمالات الفوز. يمكنك زيادة فرصك في أي وقت.',
+  },
+];
 
-const INTRO_VIDEO =
-  import.meta.env.VITE_INTRO_VIDEO_URL ||
-  'https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&playsinline=1';
+const TONE_CLASSES = {
+  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-100',
+  violet: 'bg-violet-50 text-violet-700 ring-violet-100',
+  rose: 'bg-rose-50 text-rose-700 ring-rose-100',
+};
 
-const heroBtnClass =
-  'home-hero__cta flex-1 min-w-[9.5rem] max-w-[11.5rem] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] sm:text-[11px] font-bold text-white shadow-sm shadow-primary/20 active:scale-[0.98] transition-transform';
-
-function SiteVideoModal({ open, onClose }) {
-  const [playing, setPlaying] = useState(false);
-
-  if (!open) return null;
-
-  const handleClose = () => {
-    setPlaying(false);
-    onClose();
-  };
-
+function PointsHelpDialog({ open, onClose }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
-      <div
-        className="relative w-full max-w-lg overflow-hidden rounded-t-[28px] sm:rounded-[28px] bg-gray-950 border border-white/10 shadow-2xl"
-        dir="rtl"
-      >
-        <button
-          type="button"
-          onClick={handleClose}
-          className="absolute top-3 left-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white/80 hover:text-white"
-          aria-label="إغلاق"
-        >
-          <X size={18} />
-        </button>
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 bg-black/45 backdrop-blur-[3px]"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.75 }}
+            className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 text-right overflow-hidden"
+            dir="rtl"
+          >
+            <div className="bg-gradient-to-l from-emerald-50 via-white to-amber-50 px-5 pt-4 pb-3 border-b border-gray-100/80">
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-500 shadow-sm"
+                aria-label="إغلاق"
+              >
+                <X size={16} />
+              </button>
+              <h3 className="text-base font-black text-gray-900 pr-1">دليل النقاط السريع</h3>
+              <p className="text-[11px] font-bold text-gray-400 mt-0.5">كل ما تحتاج معرفته في دقيقة</p>
+            </div>
 
-        <div className="relative aspect-video bg-black">
-          {playing ? (
-            <iframe
-              className="absolute inset-0 h-full w-full"
-              src={`${INTRO_VIDEO}${INTRO_VIDEO.includes('?') ? '&' : '?'}autoplay=1`}
-              title="فيديو يوضح الموقع"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setPlaying(true)}
-              className="group absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#1a0a0a] via-[#120818] to-[#0a0a12]"
-              aria-label="تشغيل الفيديو"
-            >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-2 ring-amber-400/40 backdrop-blur transition group-hover:bg-white/20">
-                <Play size={28} className="mr-[-3px] text-amber-300" fill="currentColor" />
-              </span>
-              <span className="text-sm font-black text-white/90">فيديو يوضح الموقع</span>
-            </button>
-          )}
+            <div className="p-4 space-y-2.5 max-h-[60vh] overflow-y-auto">
+              {HELP_ITEMS.map((item) => (
+                <div
+                  key={item.title}
+                  className="flex items-start gap-3 rounded-xl bg-gray-50/80 border border-gray-100/80 p-3"
+                >
+                  <span className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-full ring-1 ${TONE_CLASSES[item.tone]}`}>
+                    <item.icon size={15} strokeWidth={2.5} />
+                  </span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-[13px] font-black text-gray-900">{item.title}</p>
+                    <p className="text-[12px] font-bold text-gray-500 leading-relaxed">{item.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }
 
 export default function HomeHero() {
-  const [guideOpen, setGuideOpen] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   return (
     <>
@@ -77,40 +104,24 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
           <div className="relative z-10 home-hero__content py-3.5 sm:py-4 px-3 sm:px-4">
-            <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center">
-              اجمع نقاطك من المتاجر المعتمدة
-            </p>
-
-            <div className="home-hero__actions mt-3 w-full">
+            <div className="flex items-center justify-center gap-2">
+              <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center">
+                اطلب نقاطك في كل عملية شراء
+              </p>
               <button
                 type="button"
-                onClick={() => setGuideOpen(true)}
-                className={heroBtnClass}
+                onClick={() => setHelpOpen(true)}
+                className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-amber-50 text-emerald-700 ring-1 ring-emerald-200/70 shadow-sm active:scale-95 transition-transform"
+                aria-label="شرح النقاط"
               >
-                <BookOpen size={12} />
-                أسئلة حول النقاط؟
-              </button>
-              <button
-                type="button"
-                onClick={() => setVideoOpen(true)}
-                className={heroBtnClass}
-              >
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/25 ring-1 ring-white/30">
-                  <Play size={8} fill="currentColor" className="mr-[-1px]" />
-                </span>
-                فيديو يوضح الموقع
+                <HelpCircle size={14} strokeWidth={2.5} />
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {guideOpen && (
-        <Suspense fallback={null}>
-          <PointsGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
-        </Suspense>
-      )}
-      <SiteVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
+      <PointsHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </>
   );
 }

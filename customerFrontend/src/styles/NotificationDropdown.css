@@ -3,27 +3,36 @@
 }
 
 .notif-bell-btn.is-open {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  color: #4f46e5;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
 }
 
 .notif-dropdown-panel {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   inset-inline-end: 0;
-  width: min(380px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(15, 23, 42, 0.05);
   z-index: 1200;
   overflow: hidden;
-  animation: notifPanelIn 0.2s ease;
+  transform-origin: top center;
+  will-change: transform, opacity;
 }
 
-@keyframes notifPanelIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+@media (max-width: 640px) {
+  .notif-dropdown-panel {
+    position: fixed;
+    top: calc(3.75rem + env(safe-area-inset-top, 0px) + 6px);
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+    inset-inline-end: unset;
+    border-radius: 20px;
+  }
 }
 
 .notif-dropdown-head {
@@ -65,8 +74,9 @@
 }
 
 .notif-dropdown-list {
-  max-height: 360px;
+  max-height: min(360px, calc(100vh - 12rem - env(safe-area-inset-top, 0px)));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .notif-dropdown-item {
@@ -88,11 +98,11 @@
 }
 
 .notif-dropdown-item.is-unread {
-  background: #f0f7ff;
+  background: #f0fdf4;
 }
 
 .notif-dropdown-item.is-unread:hover {
-  background: #e8f2ff;
+  background: #dcfce7;
 }
 
 .notif-item-icon {
@@ -146,7 +156,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: #10b981;
   margin-top: 6px;
 }
 
@@ -167,7 +177,7 @@
   border: none;
   border-top: 1px solid #f1f5f9;
   background: linear-gradient(180deg, #fafafa, #f8fafc);
-  color: #2563eb;
+  color: #059669;
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
@@ -176,5 +186,5 @@
 }
 
 .notif-view-all:hover {
-  background: #eef2ff;
+  background: #ecfdf5;
 }

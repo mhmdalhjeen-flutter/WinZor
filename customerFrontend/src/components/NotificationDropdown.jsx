@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Clock, Tag, AlertCircle, RefreshCw, Gift, UserPlus, Trophy, MessageCircle } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../services/notificationService';
@@ -131,8 +132,17 @@ export default function NotificationDropdown({ count, onCountChange, viewAllPath
         )}
       </button>
 
+      <AnimatePresence mode="wait">
       {open && (
-        <div ref={panelRef} className="notif-dropdown-panel" role="menu">
+        <motion.div
+          ref={panelRef}
+          role="menu"
+          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 32, mass: 0.65 }}
+          className="notif-dropdown-panel notif-dropdown-panel--animated"
+        >
           <div className="notif-dropdown-head">
             <div>
               <h3>الإشعارات</h3>
@@ -183,8 +193,9 @@ export default function NotificationDropdown({ count, onCountChange, viewAllPath
               عرض الكل
             </button>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

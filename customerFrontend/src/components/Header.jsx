@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
-  MessageCircle, Package, CircleDot, Medal,
-  BarChart3, Settings, LogOut, X, Heart, Store, Download,
+  MessageCircle, CircleDot, Medal, ShoppingBag,
+  BarChart3, Settings, LogOut, X, Heart, Store, Download, Gift,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +14,9 @@ import usePlatformSettings from '../hooks/usePlatformSettings';
 import { POINTS_FLOAT_EVENT } from '../utils/pointsAnimation';
 import { BRAND_LOGO_64, BRAND_NAME } from '../utils/brandAssets';
 import { usePwaInstall } from '../context/PwaInstallContext';
+import ReferralCardsModal from './ReferralCardsModal';
+import { REFERRAL_CARDS_EVENT } from '../utils/pointsGuideEvents';
+import useCartSummary from '../hooks/useCartSummary';
 import '../styles/HeaderActions.css';
 
 const PointsBalanceModal = lazy(() => import('./PointsBalanceModal'));
@@ -48,41 +51,42 @@ function MoreMenuSheet({ open, onClose, items }) {
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
         aria-label="إغلاق القائمة"
         onClick={onClose}
       />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-3xl shadow-2xl border-t border-gray-100 px-4 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] max-w-lg mx-auto animate-[slideUp_0.28s_ease-out]"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-gradient-to-b from-white to-gray-50/90 rounded-t-[1.75rem] shadow-[0_-8px_40px_rgba(15,23,42,0.12)] border-t border-gray-100/80 px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] max-w-lg mx-auto animate-[slideUp_0.24s_ease-out]"
         dir="rtl"
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-black text-gray-900">المزيد</h2>
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200/80" aria-hidden />
+        <div className="flex items-center justify-between mb-3 px-0.5">
+          <h2 className="text-[15px] font-black text-gray-800">المزيد</h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
+            className="w-8 h-8 rounded-full bg-gray-100/90 flex items-center justify-center text-gray-500 active:scale-95 transition-transform"
             aria-label="إغلاق"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           {items.map((item) => (
             <button
               key={item.label}
               type="button"
               onClick={() => { item.onClick(); onClose(); }}
-              className={`flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition active:scale-95 ${
+              className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition active:scale-[0.97] ${
                 item.danger
-                  ? 'border-red-100 bg-red-50 hover:bg-red-100/80'
-                  : 'border-gray-100 bg-gray-50 hover:bg-gray-100/80'
+                  ? 'border-red-100/80 bg-red-50/60 hover:bg-red-50'
+                  : 'border-gray-100/90 bg-white/80 hover:bg-white shadow-sm shadow-gray-100/50'
               }`}
             >
-              <span className={`flex items-center justify-center w-12 h-12 rounded-2xl ${item.iconBg}`}>
-                <item.icon size={26} className={item.iconColor} strokeWidth={2} />
+              <span className={`flex items-center justify-center w-10 h-10 rounded-xl ${item.iconBg} ring-1 ring-black/[0.03]`}>
+                <item.icon size={20} className={item.iconColor} strokeWidth={2} />
               </span>
-              <span className={`text-xs font-black leading-tight text-center ${item.danger ? 'text-red-700' : 'text-gray-800'}`}>
+              <span className={`text-[11px] font-black leading-tight text-center ${item.danger ? 'text-red-600' : 'text-gray-700'}`}>
                 {item.label}
               </span>
             </button>
@@ -98,6 +102,7 @@ const Header = () => {
   const { isAuth, user, updateUser, logout } = useAuth();
   const [pointsOpen, setPointsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [referralOpen, setReferralOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [pointsPulse, setPointsPulse] = useState(null);
   const lastMeSyncAt = useRef(0);
@@ -142,6 +147,8 @@ const Header = () => {
   const showWheel = features.wheel !== false && wheelPlacements.header !== false;
   const showCompetitions = features.storeCompetitions !== false;
 
+  const { data: cartStats } = useCartSummary({ enabled: isAuth });
+  const cartItemCount = cartStats?.itemCount ?? 0;
   const unreadCount = unreadData?.count || 0;
   const notifCountRemote = notifData?.count || 0;
 
@@ -185,63 +192,76 @@ const Header = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const openReferral = () => setReferralOpen(true);
+    window.addEventListener(REFERRAL_CARDS_EVENT, openReferral);
+    return () => window.removeEventListener(REFERRAL_CARDS_EVENT, openReferral);
+  }, []);
+
   const { canInstall, openInstallCard } = usePwaInstall();
 
   const moreItems = useMemo(() => [
     {
       icon: Heart,
       label: 'المفضلة',
-      iconBg: 'bg-rose-100',
-      iconColor: 'text-rose-600',
+      iconBg: 'bg-rose-50',
+      iconColor: 'text-rose-500',
       onClick: () => navigate('/favorites'),
+    },
+    {
+      icon: Gift,
+      label: 'كروت مجانية',
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      onClick: () => setReferralOpen(true),
     },
     showWheel && {
       icon: CircleDot,
       label: 'عجلة الحظ',
-      iconBg: 'bg-pink-100',
-      iconColor: 'text-pink-600',
+      iconBg: 'bg-pink-50',
+      iconColor: 'text-pink-500',
       onClick: () => navigate('/wheel'),
     },
     showCompetitions && {
       icon: Medal,
       label: 'مسابقات',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
+      iconBg: 'bg-purple-50',
+      iconColor: 'text-purple-500',
       onClick: () => navigate('/competitions'),
     },
     {
       icon: BarChart3,
       label: 'لوحة الشرف',
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-700',
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
       onClick: () => navigate('/honor'),
     },
     {
       icon: Store,
       label: 'متاجر النقاط',
-      iconBg: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
+      iconBg: 'bg-indigo-50',
+      iconColor: 'text-indigo-500',
       onClick: () => navigate('/stores/points'),
     },
     {
       icon: Settings,
       label: 'الإعدادات',
-      iconBg: 'bg-slate-100',
-      iconColor: 'text-slate-700',
+      iconBg: 'bg-slate-50',
+      iconColor: 'text-slate-600',
       onClick: () => navigate('/center'),
     },
     canInstall && {
       icon: Download,
       label: 'تثبيت التطبيق',
-      iconBg: 'bg-violet-100',
-      iconColor: 'text-violet-600',
+      iconBg: 'bg-violet-50',
+      iconColor: 'text-violet-500',
       onClick: () => openInstallCard(),
     },
     {
       icon: LogOut,
       label: 'تسجيل الخروج',
-      iconBg: 'bg-red-100',
-      iconColor: 'text-red-600',
+      iconBg: 'bg-red-50',
+      iconColor: 'text-red-500',
       danger: true,
       onClick: () => logout(),
     },
@@ -254,19 +274,20 @@ const Header = () => {
   return (
     <>
       <header
-        className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/70 shadow-sm"
+        className="app-header fixed top-0 left-0 right-0 z-40 border-b border-emerald-200/40 shadow-sm"
         dir="rtl"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="max-w-lg mx-auto w-full px-2 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
+        <div className="app-header__gradient" aria-hidden />
+        <div className="relative z-[1] max-w-lg mx-auto w-full px-2 sm:px-3 py-1.5 sm:py-2 flex justify-between items-center gap-1 sm:gap-2 min-w-0">
           {isAuth ? (
             <>
               <img
                 src={BRAND_LOGO_64}
                 alt=""
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain shadow-sm shrink-0"
-                width={36}
-                height={36}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-contain shadow-sm shrink-0"
+                width={44}
+                height={44}
                 loading="eager"
                 fetchpriority="high"
                 decoding="async"
@@ -287,11 +308,12 @@ const Header = () => {
                 <button
                   type="button"
                   className="header-icon-btn"
-                  title="طلباتي"
-                  aria-label="طلباتي"
-                  onClick={() => navigate('/orders')}
+                  title="السلة"
+                  aria-label="السلة"
+                  onClick={() => navigate('/cart')}
                 >
-                  <Package size={22} strokeWidth={2} />
+                  <ShoppingBag size={22} strokeWidth={2} />
+                  <HeaderBadge count={cartItemCount} />
                 </button>
                 <button
                   type="button"
@@ -316,9 +338,9 @@ const Header = () => {
               <img
                 src={BRAND_LOGO_64}
                 alt=""
-                className="w-9 h-9 rounded-lg object-contain shadow-md shrink-0"
-                width={36}
-                height={36}
+                className="w-11 h-11 rounded-xl object-contain shadow-md shrink-0"
+                width={44}
+                height={44}
                 loading="eager"
                 fetchpriority="high"
                 decoding="async"
@@ -347,6 +369,7 @@ const Header = () => {
           )}
         </div>
       </header>
+      <div className="app-header-spacer" aria-hidden />
 
       {isAuth && (
         <MoreMenuSheet
@@ -355,6 +378,8 @@ const Header = () => {
           items={moreItems}
         />
       )}
+
+      <ReferralCardsModal open={referralOpen} onClose={() => setReferralOpen(false)} />
 
       {pointsOpen && (
         <Suspense fallback={null}>

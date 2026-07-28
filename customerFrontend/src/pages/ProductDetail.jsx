@@ -55,7 +55,7 @@ const ProductDetail = () => {
       await api.post('/cart/add', { itemId: product._id, itemType: 'product', quantity: 1 });
       await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
       setAdded(true);
-      toast('تمت الإضافة للسلة', 'success');
+      toast('تمت إضافة العنصر إلى السلة.', 'success');
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       if (handleApiVerificationError(err, performAdd, CART_VERIFICATION)) return;

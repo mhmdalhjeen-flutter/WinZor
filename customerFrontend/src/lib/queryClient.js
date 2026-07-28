@@ -21,6 +21,8 @@ export const queryKeys = {
   recommendations: ['recommendations'],
   favorites: ['favorites'],
   cart: ['cart'],
+  myOrders: ['orders', 'my'],
+  myOrderHistory: ['orders', 'my', 'history'],
   honor: ['honor'],
   competitionsList: ['competitions', 'list'],
   competitionsFeatured: ['competitions', 'featured'],

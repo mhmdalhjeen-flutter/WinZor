@@ -74,6 +74,7 @@ const PERSIST_ROOTS = new Set([
   'me',
   'orders',
   'unreadChat',
+  'pointSources',
 ]);
 
 function isDefaultObjectKey(obj, defaults) {
@@ -142,6 +143,8 @@ export function shouldPersistQuery(query) {
   if (root === 'notifications' || root === 'unreadNotifications') return true;
 
   if (root === 'competitions' && (key[1] === 'list' || key[1] === 'featured')) return true;
+
+  if (root === 'pointSources') return true;
 
   return false;
 }

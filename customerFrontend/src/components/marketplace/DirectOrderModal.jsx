@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, Loader2, Send, CheckCircle2, ImageOff } from 'lucide-react';
+import { X, Plus, Minus, Loader2, ShoppingBag, CheckCircle2, ImageOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { formatPrice } from '../../utils/currency';
 import { queryClient, queryKeys } from '../../lib/queryClient';
@@ -8,8 +9,12 @@ import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { useVerificationGate } from '../../context/VerificationGateContext';
 import { getOfferPricing } from '../OfferPriceDisplay';
 import { resolveOfferImage, resolveProductImage } from '../../utils/mediaUrl';
+import { cartItemMatches, normalizeCartItemType } from '../../utils/cartHelpers';
+import { useToast } from '../../shared/Toast';
 
 export default function DirectOrderModal({ offer, itemType = 'offer', open, onClose }) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -44,29 +49,31 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
     try {
       const cartData = queryClient.getQueryData(queryKeys.cart);
       const existing = (cartData?.items || []).find(
-        (row) => String(row.item?._id) === String(offer._id) && row.itemType === itemType
+        (row) => cartItemMatches(row, offer._id, itemType),
       );
 
       if (existing) {
-        await api.patch('/cart/update', { itemId: offer._id, itemType, quantity });
+        await api.patch('/cart/update', {
+          itemId: offer._id,
+          itemType: normalizeCartItemType(itemType),
+          quantity,
+        });
       } else {
         await api.post('/cart/add', { itemId: offer._id, itemType, quantity });
       }
 
-      await api.post('/cart/checkout');
-      queryClient.setQueryData(queryKeys.cart, { items: [], total: 0 });
       await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
-      await queryClient.invalidateQueries({ queryKey: ['orders', 'my'] });
 
       setSuccess(true);
+      toast('تمت إضافة العنصر إلى السلة.', 'success');
       setTimeout(() => {
         setSuccess(false);
         setQuantity(1);
         onClose?.();
-      }, 2200);
+      }, 1800);
     } catch (err) {
       if (!handleApiVerificationError(err, performSubmit, CART_VERIFICATION)) {
-        alert(err.response?.data?.message || 'تعذّر إرسال الطلب');
+        toast(err.response?.data?.message || 'تعذّر الإضافة للسلة', 'error');
       }
     } finally {
       setSubmitting(false);
@@ -85,12 +92,17 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
     onClose?.();
   };
 
+  const goToCart = () => {
+    handleClose();
+    navigate('/cart');
+  };
+
   if (!offer) return null;
 
   return (
     <AnimatePresence>
       {open && (
-        <div className="direct-order-modal" role="dialog" aria-modal="true" aria-label="طلب مباشر">
+        <div className="direct-order-modal" role="dialog" aria-modal="true" aria-label="إضافة للسلة">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -119,8 +131,16 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
             {success ? (
               <div className="direct-order-modal__success">
                 <CheckCircle2 size={48} className="text-green-500" />
-                <p className="font-black text-gray-900 text-lg mt-3">تم إرسال الطلب</p>
-                <p className="text-sm text-gray-500 font-bold mt-1">بانتظار تأكيد المحل</p>
+                <p className="font-black text-gray-900 text-lg mt-3">تمت إضافة العنصر إلى السلة.</p>
+                <p className="text-sm text-gray-500 font-bold mt-1">يمكنك متابعة التسوق أو فتح السلة</p>
+                <button
+                  type="button"
+                  onClick={goToCart}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white"
+                >
+                  <ShoppingBag size={18} />
+                  فتح السلة
+                </button>
               </div>
             ) : (
               <>
@@ -193,9 +213,9 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
                     {submitting ? (
                       <Loader2 size={20} className="animate-spin" />
                     ) : (
-                      <Send size={20} />
+                      <ShoppingBag size={20} />
                     )}
-                    إرسال الطلب
+                    اطلب الآن
                   </button>
                   <button
                     type="button"

@@ -4,6 +4,7 @@ import { X, Copy, Share2, Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../shared/Toast';
 import { BRAND_NAME } from '../utils/brandAssets';
+import { overlayFade, sheetSpring } from '../utils/motionPresets';
 
 const ReferralCardsModal = ({ open, onClose }) => {
   const { user } = useAuth();
@@ -30,12 +31,13 @@ const ReferralCardsModal = ({ open, onClose }) => {
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={overlayFade} className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            className="relative bg-white w-full max-w-sm rounded-[32px] p-6 text-right space-y-4"
+            initial={{ y: 28, opacity: 0, scale: 0.98 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.99 }}
+            transition={sheetSpring}
+            className="relative bg-white w-full max-w-sm rounded-[28px] p-6 text-right space-y-4 will-change-transform"
             dir="rtl"
           >
             <button type="button" onClick={onClose} className="absolute top-4 left-4 text-gray-400"><X size={20} /></button>

@@ -49,10 +49,13 @@ const Marketplace = lazy(() => import('./pages/Marketplace'));
 const BazaarDetail = lazy(() => import('./pages/BazaarDetail'));
 const Chats = lazy(() => import('./pages/Chats'));
 const Favorites = lazy(() => import('./pages/Favorites'));
-const Cart = lazy(() => import('./pages/Cart'));
+const ActiveOrders = lazy(() => import('./pages/ActiveOrders'));
+const ShoppingCart = lazy(() => import('./pages/ShoppingCart'));
+const OrderHistory = lazy(() => import('./pages/OrderHistory'));
 const Notifications = lazy(() => import('./pages/Notifications'));
-const Competitions = lazy(() => import('./pages/Competitions'));
+const CartSummaryBar = lazy(() => import('./components/cart/CartSummaryBar'));
 const CompetitionDetail = lazy(() => import('./pages/CompetitionDetail'));
+const Competitions = lazy(() => import('./pages/Competitions'));
 
 const LazyPage = ({ children }) => (
   <Suspense fallback={<LightLoadingHint />}>{children}</Suspense>
@@ -109,6 +112,7 @@ function AppShell() {
 
   const hideOverlayChrome = offerViewerOpen || pointsGuideOpen;
   const hideBottomNav = hideOverlayChrome || location.pathname === '/stores/search';
+  const hideCartBar = hideOverlayChrome || !isAuth;
   const showFloatingActions = isAuth
     && !offerViewerOpen
     && (location.pathname === '/' || location.pathname === '/explore');
@@ -177,8 +181,9 @@ function AppShell() {
             <Route path="/wallet" element={<Navigate to="/center" replace />} />
             <Route path="/personalization" element={<Navigate to="/center" replace />} />
             <Route path="/favorites" element={<ProtectedRoute><LazyPage><Favorites /></LazyPage></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute><LazyPage><Cart /></LazyPage></ProtectedRoute>} />
-            <Route path="/cart" element={<Navigate to="/orders" replace />} />
+            <Route path="/orders" element={<ProtectedRoute><LazyPage><ActiveOrders /></LazyPage></ProtectedRoute>} />
+            <Route path="/cart" element={<ProtectedRoute><LazyPage><ShoppingCart /></LazyPage></ProtectedRoute>} />
+            <Route path="/orders/history" element={<ProtectedRoute><LazyPage><OrderHistory /></LazyPage></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><LazyPage><Notifications /></LazyPage></ProtectedRoute>} />
             <Route path="/competitions" element={<ProtectedRoute><LazyPage><Competitions /></LazyPage></ProtectedRoute>} />
             <Route path="/competitions/:id" element={<ProtectedRoute><LazyPage><CompetitionDetail /></LazyPage></ProtectedRoute>} />
@@ -197,6 +202,11 @@ function AppShell() {
         
         {/* شريط التنقل السفلي */}
         {isAuth && !hideBottomNav && <BottomNav />}
+        {isAuth && deferChrome && (
+          <Suspense fallback={null}>
+            <CartSummaryBar hidden={hideCartBar} />
+          </Suspense>
+        )}
       </div>
       {isAuth && deferChrome && !hideOverlayChrome && (
         <Suspense fallback={null}>

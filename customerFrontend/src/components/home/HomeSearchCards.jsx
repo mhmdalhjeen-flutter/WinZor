@@ -172,15 +172,15 @@ export default function HomeSearchCards({
                 key={mode.id}
                 type="button"
                 onClick={() => toggleMode(mode.id)}
-                className={`home-search-card flex flex-col items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 min-h-[4.25rem] sm:min-h-0 rounded-xl sm:rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition-all text-center ${
+                className={`home-search-card flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 sm:py-2 min-h-[3.5rem] sm:min-h-[3.75rem] rounded-lg sm:rounded-xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition-all text-center ${
                   isActive ? `ring-2 ${mode.activeRing} border-transparent` : ''
                 }`}
               >
-                <span className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl shrink-0 ${mode.iconBg}`}>
-                  <mode.icon size={15} className={`${mode.iconColor} sm:hidden`} strokeWidth={2.2} />
-                  <mode.icon size={16} className={`${mode.iconColor} hidden sm:block`} strokeWidth={2.2} />
+                <span className={`flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg shrink-0 ${mode.iconBg}`}>
+                  <mode.icon size={12} className={`${mode.iconColor} sm:hidden`} strokeWidth={2.2} />
+                  <mode.icon size={13} className={`${mode.iconColor} hidden sm:block`} strokeWidth={2.2} />
                 </span>
-                <span className="text-[10px] sm:text-xs font-black text-gray-800 leading-tight line-clamp-2">
+                <span className="text-[11px] sm:text-[13px] font-black text-gray-800 leading-tight line-clamp-2">
                   <span className="sm:hidden">{mode.labelMobile}</span>
                   <span className="hidden sm:inline">{mode.label}</span>
                 </span>
@@ -192,7 +192,7 @@ export default function HomeSearchCards({
         <button
           type="button"
           onClick={searchOpen ? closeSearch : openSearch}
-          className={`home-search-card flex flex-col items-center justify-center gap-1 px-2.5 py-2 min-h-[4.25rem] sm:min-h-0 w-[3.75rem] sm:w-[4.25rem] shrink-0 rounded-xl sm:rounded-2xl border shadow-sm active:scale-[0.99] transition-all ${
+          className={`home-search-card flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 min-h-[3.5rem] sm:min-h-[3.75rem] w-[3.25rem] sm:w-[3.75rem] shrink-0 rounded-lg sm:rounded-xl border shadow-sm active:scale-[0.99] transition-all ${
             searchOpen
               ? 'bg-violet-600 border-violet-600 text-white ring-2 ring-violet-400/40'
               : 'bg-white border-gray-100 text-gray-800'

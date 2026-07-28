@@ -18,6 +18,7 @@ export function useRecentPointSources(limit = 3, { enabled = true } = {}) {
 
       return mergeRecentPointSources(notifications, wheelWins, limit);
     },
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }

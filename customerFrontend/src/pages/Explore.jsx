@@ -11,8 +11,9 @@ import StoreRegionSuggestion from '../components/StoreRegionSuggestion';
 import { useRegionTree } from '../hooks/useRegionTree';
 import { useCategoryTree } from '../hooks/useCategories';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-import { getEffectiveRegionId, pathStillValid } from '../utils/regionTree';
-import { getEffectiveCategoryId, pathStillValid as categoryPathStillValid } from '../utils/categoryTree';
+import { getEffectiveRegionId, pathStillValid, findRegionNode } from '../utils/regionTree';
+import { getEffectiveCategoryId, pathStillValid as categoryPathStillValid, findCategoryNode } from '../utils/categoryTree';
+import FilterSectionHeader, { buildPathFilterBadges } from '../components/shared/FilterSectionHeader';
 import { queryKeys } from '../lib/queryClient';
 import { normalizeStoreParentGroups } from '../utils/categoryDisplay';
 import LightLoadingHint from '../shared/LightLoadingHint';
@@ -111,6 +112,18 @@ const Explore = () => {
   const suggestion = data?.suggestion || null;
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر تحميل المتاجر' : '');
   const hasActiveSearch = Boolean(debouncedQ || regionPath.length || categoryPath.length);
+  const hasRegionOrCategoryFilter = Boolean(regionPath.length || categoryPath.length);
+
+  const filterBadges = useMemo(() => {
+    const badges = [
+      ...buildPathFilterBadges(regionPath, regionTree, findRegionNode, 'region'),
+      ...buildPathFilterBadges(categoryPath, categoryTree, findCategoryNode, 'category'),
+    ];
+    if (debouncedQ) {
+      badges.push({ key: 'search-q', label: debouncedQ, tone: 'search' });
+    }
+    return badges;
+  }, [regionPath, categoryPath, regionTree, categoryTree, debouncedQ]);
 
   const clearSearch = () => {
     setProductQuery('');
@@ -120,11 +133,14 @@ const Explore = () => {
 
   return (
     <div className="space-y-5 pb-28 text-right" dir="rtl">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">المتاجر</h1>
-          <p className="text-xs text-gray-400 font-bold">{total} متجر نشط</p>
-        </div>
+      <div className="space-y-1">
+        <FilterSectionHeader
+          title="المتاجر"
+          icon={StoreIcon}
+          badges={filterBadges}
+          onClear={hasRegionOrCategoryFilter || debouncedQ ? clearSearch : undefined}
+        />
+        <p className="text-xs text-gray-400 font-bold px-0.5">{total} متجر نشط</p>
       </div>
 
       <div className="flex gap-2">
@@ -145,9 +161,9 @@ const Explore = () => {
           <button
             type="button"
             onClick={clearSearch}
-            className="shrink-0 inline-flex items-center gap-2 px-4 rounded-2xl border border-violet-100 bg-violet-50 text-sm font-black text-violet-700 shadow-sm hover:bg-violet-100 transition-colors"
+            className="shrink-0 inline-flex items-center gap-2 px-3 rounded-2xl border border-violet-100 bg-violet-50 text-xs font-black text-violet-700 shadow-sm hover:bg-violet-100 transition-colors"
           >
-            إلغاء البحث
+            إلغاء الفلترة
           </button>
         ) : (
           <button
@@ -241,7 +257,7 @@ const Explore = () => {
                       )}
 
                       <Suspense fallback={<div className="h-40 animate-pulse bg-gray-100 rounded-2xl" />}>
-                        <HorizontalSwipe spaceBetween={14} className="!px-1">
+                        <HorizontalSwipe spaceBetween={10} className="!px-1">
                           {section.stores.map((store) => (
                             <StoreCard
                               key={store._id}

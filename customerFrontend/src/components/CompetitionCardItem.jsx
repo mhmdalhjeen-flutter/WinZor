@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Users, Clock, Coins,
+  Trophy, Clock, Coins,
   X, Minus, Plus, PartyPopper, AlertTriangle, Loader2, CheckCircle2,
   Sparkles, ExternalLink,
 } from 'lucide-react';
@@ -12,7 +12,6 @@ import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
 import { resolveImageUrl } from '../utils/mediaUrl';
 import { useSecondTick } from '../hooks/useSecondTick';
-import CompetitionCountdownLabel, { formatCompetitionCountdown } from './CompetitionCountdownLabel';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -22,6 +21,14 @@ const getRemaining = (endDate) => {
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   return { days, hours, ended: false };
 };
+
+function formatDaysHoursOnly(endDate) {
+  const remaining = getRemaining(endDate);
+  if (!remaining) return '—';
+  if (remaining.ended) return 'انتهت';
+  if (remaining.days > 0) return `${remaining.days} يوم · ${remaining.hours} س`;
+  return `${remaining.hours} س`;
+}
 
 export default function CompetitionCardItem({
   competition: initialCompetition,
@@ -54,9 +61,8 @@ export default function CompetitionCardItem({
 
   const remaining = getRemaining(competition.endDate);
   const hasEnded = competition.hasEnded || remaining?.ended;
-  const progress = competition.requiredParticipants > 0
-    ? Math.min(100, Math.round((competition.participantsCount / competition.requiredParticipants) * 100))
-    : 0;
+  const hasJoined = competition.joined || competition.hasJoined;
+  const myEntries = competition.myEntries || 0;
 
   const eligible = userPoints >= competition.minPoints;
   const missingPoints = Math.max(0, competition.minPoints - userPoints);
@@ -64,8 +70,7 @@ export default function CompetitionCardItem({
   const cost = entries * competition.pointsPerEntry;
 
   const prizeImage = competition.prizeImage || competition.image;
-  const prizeImageSrc = resolveImageUrl(prizeImage, { width: 300 });
-  const cardImageSrc = resolveImageUrl(competition.image, { width: 300 });
+  const prizeImageSrc = resolveImageUrl(prizeImage, { width: 200 });
   const prizeName = competition.prizeName || competition.title;
 
   const openModal = () => {
@@ -76,14 +81,14 @@ export default function CompetitionCardItem({
   };
 
   const handleJoin = async () => {
-    const cost = entries * (competition.pointsPerEntry || 1);
+    const joinCost = entries * (competition.pointsPerEntry || 1);
     const prevCompetition = competition;
     const prevPoints = userPoints;
 
     setJoining(true);
     setJoinError('');
 
-    setUserPoints((p) => p - cost);
+    setUserPoints((p) => p - joinCost);
     setCompetition((c) => ({
       ...c,
       joined: true,
@@ -91,7 +96,7 @@ export default function CompetitionCardItem({
       participantsCount: (c.participantsCount || 0) + entries,
       myEntries: (c.myEntries || 0) + entries,
     }));
-    updateUser({ points: Math.max(0, prevPoints - cost) });
+    updateUser({ points: Math.max(0, prevPoints - joinCost) });
 
     try {
       const { data } = await api.post(`/competitions/${competition._id}/join`, { entries });
@@ -133,50 +138,33 @@ export default function CompetitionCardItem({
             ],
           }}
           transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-          className="relative overflow-hidden rounded-[28px] border-2 border-yellow-400/70 bg-gradient-to-br from-yellow-500/20 via-amber-600/25 to-purple-900/50 p-4 sm:p-5"
+          className="relative overflow-hidden rounded-[20px] border-2 border-yellow-400/70 bg-gradient-to-br from-yellow-500/20 via-amber-600/25 to-purple-900/50 p-3"
         >
-          <div className="absolute inset-0 pointer-events-none">
-            <motion.div
-              animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.05, 1] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              className="absolute -top-10 -right-10 w-40 h-40 bg-yellow-300/20 rounded-full blur-3xl"
-            />
-          </div>
-
-          <div className="relative flex flex-col items-center gap-4 text-center">
-            <div className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 border-yellow-300/80 shadow-lg shadow-yellow-500/30">
+          <div className="relative flex items-center gap-3 text-center">
+            <div className="shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 border-yellow-300/80">
               {prizeImageSrc ? (
-                <img
-                  src={prizeImageSrc}
-                  alt={prizeName}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover"
-                />
+                <img src={prizeImageSrc} alt={prizeName} loading="lazy" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-yellow-500/20 text-yellow-200">
-                  <Trophy size={36} />
+                  <Trophy size={24} />
                 </div>
               )}
             </div>
-
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 bg-yellow-400/20 text-yellow-200 px-3 py-1 rounded-full text-[10px] font-black border border-yellow-400/30">
-                <Sparkles size={12} className="animate-pulse" />
-                تم إعلان الفائز
+            <div className="flex-1 min-w-0 text-right space-y-1">
+              <div className="inline-flex items-center gap-1 bg-yellow-400/20 text-yellow-200 px-2 py-0.5 rounded-full text-[9px] font-black border border-yellow-400/30">
+                <Sparkles size={10} /> تم إعلان الفائز
               </div>
-              <h2 className="text-lg font-black text-white line-clamp-2">{prizeName}</h2>
-              {competition.drawLink ? (
+              <h2 className="text-sm font-black text-white line-clamp-2">{prizeName}</h2>
+              {competition.drawLink && (
                 <a
                   href={competition.drawLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 rounded-xl font-black text-sm"
+                  className="inline-flex items-center gap-1 text-[10px] font-black text-amber-300"
                 >
-                  <ExternalLink size={16} />
-                  مشاهدة السحب
+                  <ExternalLink size={12} /> مشاهدة السحب
                 </a>
-              ) : null}
+              )}
             </div>
           </div>
         </motion.div>
@@ -187,75 +175,65 @@ export default function CompetitionCardItem({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-br from-[#1e1638] via-[#2a1545] to-[#7f1d1d]/80 border border-white/15 rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-4 h-full flex flex-col shadow-lg shadow-purple-950/20 ${containerClass}`}
+        className={`bg-gradient-to-br from-[#1e1638] via-[#2a1545] to-[#7f1d1d]/80 border border-white/15 rounded-[16px] p-2.5 flex flex-col shadow-lg shadow-purple-950/20 ${containerClass}`}
       >
-        <div className="flex items-start gap-3 sm:gap-3.5 flex-1">
-          <div className="shrink-0 w-[4.75rem] h-[4.75rem] sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-white/25 shadow-lg shadow-black/25 ring-1 ring-white/10 bg-white/5">
-            {cardImageSrc ? (
+        <div className="flex items-stretch gap-2.5 flex-1 min-h-0">
+          <div className="w-[20%] min-w-[3.25rem] max-w-[4rem] shrink-0 rounded-lg overflow-hidden border border-white/20 bg-white/5 self-stretch">
+            {prizeImageSrc ? (
               <img
-                src={cardImageSrc}
+                src={prizeImageSrc}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover min-h-[3.5rem]"
                 alt={competition.title}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-amber-300/90 bg-white/5">
-                <Trophy size={32} />
+              <div className="w-full h-full min-h-[3.5rem] flex items-center justify-center text-amber-300/90">
+                <Trophy size={22} />
               </div>
             )}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm sm:text-lg font-black text-white leading-snug line-clamp-2">{competition.title}</h2>
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+            <h2 className="text-xs sm:text-sm font-black text-white leading-snug line-clamp-2">
+              {competition.title}
+            </h2>
 
-            <div className="mt-2.5 flex items-center gap-2">
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-gradient-to-l from-amber-400 to-primary" />
-              </div>
-              <span className="text-[10px] text-white/80 font-black tabular-nums">{progress}%</span>
-            </div>
-
-            <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] sm:text-xs text-white/85 font-bold">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] sm:text-[11px] text-white/85 font-bold">
               <span className="flex items-center gap-1">
-                <Users size={12} className="text-sky-300 shrink-0" /> {competition.participantsCount}
-                {competition.requiredParticipants ? ` / ${competition.requiredParticipants}` : ''}
+                <Coins size={11} className="text-amber-300 shrink-0" />
+                {competition.pointsPerEntry} نقطة / فرصة
               </span>
-              <span className="flex items-center gap-1">
-                <Coins size={12} className="text-amber-300 shrink-0" /> {competition.minPoints}+ نقطة
-              </span>
+              {remaining && !remaining.ended && (
+                <span className="flex items-center gap-1">
+                  <Clock size={11} className="text-sky-300 shrink-0" />
+                  {formatDaysHoursOnly(competition.endDate)}
+                </span>
+              )}
             </div>
           </div>
-
-          {remaining && !remaining.ended && (
-            <div className="text-center shrink-0 min-w-[5.5rem] sm:min-w-[6.25rem] rounded-xl border border-amber-300/30 bg-gradient-to-br from-amber-500/25 via-orange-500/15 to-amber-600/10 px-2.5 py-2 sm:px-3 sm:py-2.5 shadow-[0_4px_14px_rgba(251,191,36,0.12)]">
-              <CompetitionCountdownLabel
-                variant="dark"
-                time={formatCompetitionCountdown(competition.endDate)}
-              />
-            </div>
-          )}
         </div>
 
-        <div className="mt-3.5">
-          {competition.joined && (
-            <div className="mb-2 text-[11px] font-bold text-emerald-300 flex items-center gap-1">
-              <CheckCircle2 size={13} /> مشاركاتك: {competition.myEntries}
-            </div>
+        <div className="mt-2 pt-2 border-t border-white/10">
+          {hasJoined && myEntries > 0 && (
+            <p className="mb-1.5 text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+              <CheckCircle2 size={11} />
+              عدد الفرص الحالية: {myEntries}
+            </p>
           )}
           {eligible ? (
             <button
               type="button"
               onClick={openModal}
-              className="w-full px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-l from-primary to-red-700 text-white rounded-xl font-black text-xs sm:text-sm shadow-lg shadow-primary/25 hover:brightness-110 transition-all"
+              className="w-full px-3 py-2 bg-gradient-to-l from-primary to-red-700 text-white rounded-lg font-black text-[11px] sm:text-xs shadow-md shadow-primary/20 hover:brightness-110 transition-all active:scale-[0.99]"
             >
-              {competition.joined ? 'زيادة المشاركات' : 'أريد المشاركة'}
+              {hasJoined ? 'زيادة الفرصة' : 'الدخول للسحب'}
             </button>
           ) : (
-            <div className="flex items-center gap-2 text-amber-200 text-xs font-bold bg-amber-500/15 px-3 py-2.5 rounded-xl border border-amber-400/25">
-              <AlertTriangle size={14} className="shrink-0" />
+            <div className="flex items-center gap-1.5 text-amber-200 text-[10px] font-bold bg-amber-500/15 px-2.5 py-2 rounded-lg border border-amber-400/25">
+              <AlertTriangle size={12} className="shrink-0" />
               تحتاج {missingPoints} نقطة إضافية
             </div>
           )}
@@ -296,7 +274,7 @@ export default function CompetitionCardItem({
                 <>
                   <div className="flex justify-between items-center mb-5">
                     <h3 className="text-xl font-black">
-                      {competition.joined ? 'شراء مشاركات إضافية' : 'الانضمام للمسابقة'}
+                      {hasJoined ? 'زيادة الفرص' : 'الانضمام للمسابقة'}
                     </h3>
                     <button type="button" onClick={() => setShowModal(false)} className="text-white/50 hover:text-white">
                       <X size={22} />
@@ -309,7 +287,7 @@ export default function CompetitionCardItem({
                       <span>{userPoints} نقطة</span>
                     </div>
                     <div className="flex justify-between bg-white/5 px-4 py-3 rounded-2xl">
-                      <span className="text-white/60">كل مشاركة تكلّف</span>
+                      <span className="text-white/60">كل فرصة تكلّف</span>
                       <span>{competition.pointsPerEntry} نقطة</span>
                     </div>
                   </div>

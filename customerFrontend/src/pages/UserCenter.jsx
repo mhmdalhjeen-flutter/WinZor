@@ -9,6 +9,8 @@ import {
   Coins, Loader2, History,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useCategoryTree } from '../hooks/useCategories';
 import { flattenCategoryTree } from '../utils/categoryTree';
@@ -57,7 +59,8 @@ const MENU_ITEMS = [
 
 const UserCenter = () => {
   const navigate = useNavigate();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const queryClient = useQueryClient();
   const cameraRef = useRef(null);
@@ -100,6 +103,7 @@ const UserCenter = () => {
       });
       return data;
     },
+    enabled: isAuth,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -142,8 +146,116 @@ const UserCenter = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   };
+
+  const handleMenuClick = (id) => {
+    switch (id) {
+      case 'support':
+        if (isAuth) contactAdmin();
+        else runWithAuth(() => contactAdmin(), AUTH_GATE_MESSAGES.chat);
+        break;
+      case 'suggest':
+        if (isAuth) setShowSuggest(true);
+        else runWithAuth(() => setShowSuggest(true), AUTH_GATE_MESSAGES.generic);
+        break;
+      case 'prefs':
+        if (isAuth) setShowPrefs(true);
+        else runWithAuth(() => setShowPrefs(true), AUTH_GATE_MESSAGES.generic);
+        break;
+      case 'settings':
+        if (isAuth) setShowSettings(true);
+        else runWithAuth(() => setShowSettings(true), AUTH_GATE_MESSAGES.generic);
+        break;
+      case 'about':
+        navigate('/intro');
+        break;
+      default:
+        break;
+    }
+  };
+
+  if (!isAuth) {
+    return (
+      <div className="space-y-4 pb-28 text-right" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-[1.75rem] border border-emerald-100/80 shadow-[0_12px_40px_-12px_rgba(16,185,129,0.25)]"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-amber-50" aria-hidden />
+          <div className="relative p-5 space-y-4 text-center">
+            <h1 className="text-xl font-black text-gray-900">نقاطي</h1>
+            <p className="text-sm font-bold text-gray-500 leading-relaxed">
+              تصفّح برنامج النقاط والجوائز — سجّل الدخول لحفظ نقاطك والمشاركة في السحوبات
+            </p>
+            <div className="rounded-2xl border border-emerald-100 bg-white/80 px-4 py-4">
+              <p className="text-xs font-black text-emerald-700/80">عدد النقاط</p>
+              <p className="mt-1 font-cairo text-4xl font-black text-gray-300">—</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {showReferralEarn && (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => runWithAuth(() => setReferralOpen(true), AUTH_GATE_MESSAGES.referral)}
+            className="group relative w-full overflow-hidden rounded-[1.35rem] border border-amber-100/80 p-4 text-right shadow-[0_8px_28px_-8px_rgba(245,158,11,0.35)]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-l from-amber-400/90 via-amber-300/85 to-emerald-300/80" aria-hidden />
+            <div className="relative flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/25 text-xl ring-1 ring-white/40">
+                <Gift size={22} className="text-amber-900" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-amber-950 leading-snug">اكسب نقاط مجانية من دعوة أصدقائك</p>
+                <p className="mt-0.5 text-[11px] font-bold text-amber-900/75 flex items-center gap-1">
+                  <Users size={12} /> شارك كودك واكسب مكافآت
+                </p>
+              </div>
+              <ChevronLeft size={18} className="shrink-0 text-amber-900/60" />
+            </div>
+          </motion.button>
+        )}
+
+        <section className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'السحوبات', to: '/draws' },
+            { label: 'عجلة الحظ', to: '/wheel' },
+            { label: 'صناديق الكنز', to: '/chests' },
+            { label: 'المسابقات', to: '/competitions' },
+          ].map((link) => (
+            <button
+              key={link.to}
+              type="button"
+              onClick={() => navigate(link.to)}
+              className="rounded-2xl border border-gray-100 bg-white px-3 py-4 text-sm font-black text-gray-800 shadow-sm"
+            >
+              {link.label}
+            </button>
+          ))}
+        </section>
+
+        <section className="rounded-[1.35rem] border border-gray-100 bg-white overflow-hidden shadow-sm divide-y divide-gray-100">
+          {MENU_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleMenuClick(item.id)}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-right transition-colors hover:bg-gray-50/80 active:bg-gray-100/80"
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl user-center-menu-icon--${item.tone}`}>
+                <item.icon size={18} strokeWidth={2.2} />
+              </span>
+              <span className="flex-1 text-sm font-black text-gray-800">{item.label}</span>
+              <ChevronLeft size={16} className="shrink-0 text-gray-300" />
+            </button>
+          ))}
+        </section>
+      </div>
+    );
+  }
 
   const saveProfileFromSettings = async ({ name, address }) => {
     const payload = {};
@@ -225,17 +337,6 @@ const UserCenter = () => {
     });
   };
 
-  const handleMenuClick = (id) => {
-    switch (id) {
-      case 'support': contactAdmin(); break;
-      case 'suggest': setShowSuggest(true); break;
-      case 'prefs': setShowPrefs(true); break;
-      case 'settings': setShowSettings(true); break;
-      case 'about': setShowLegal(true); break;
-      default: break;
-    }
-  };
-
   if (isLoading && !center) {
     return (
       <div className="pb-28 text-right" dir="rtl">
@@ -310,7 +411,7 @@ const UserCenter = () => {
         <motion.button
           type="button"
           whileTap={{ scale: 0.98 }}
-          onClick={() => setReferralOpen(true)}
+          onClick={() => runWithAuth(() => setReferralOpen(true), AUTH_GATE_MESSAGES.referral)}
           className="group relative w-full overflow-hidden rounded-[1.35rem] border border-amber-100/80 p-4 text-right shadow-[0_8px_28px_-8px_rgba(245,158,11,0.35)]"
         >
           <div className="absolute inset-0 bg-gradient-to-l from-amber-400/90 via-amber-300/85 to-emerald-300/80" aria-hidden />

@@ -68,11 +68,9 @@ function AppShell() {
   const location = useLocation();
   useBrowserBackGuard(isAuth);
   const splashActive = isAuth && location.pathname === '/';
-  const isGuestIntro =
-    !isAuth && (location.pathname === '/' || location.pathname === '/intro');
   const isAuthShell = AUTH_SHELL_ROUTES.some(
     (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
-  ) || isGuestIntro;
+  );
   const showAppChrome = isAuth || !isAuthShell;
 
   const [offerViewerOpen, setOfferViewerOpen] = useState(
@@ -112,9 +110,8 @@ function AppShell() {
 
   const hideOverlayChrome = offerViewerOpen || pointsGuideOpen;
   const hideBottomNav = hideOverlayChrome || location.pathname === '/stores/search';
-  const hideCartBar = hideOverlayChrome || !isAuth;
-  const showFloatingActions = isAuth
-    && !offerViewerOpen
+  const hideCartBar = hideOverlayChrome;
+  const showFloatingActions = !offerViewerOpen
     && (location.pathname === '/' || location.pathname === '/explore');
 
   return (
@@ -147,12 +144,9 @@ function AppShell() {
           {isAuth && <VerifyBanner />}
           <Routes>
             {/* التوجيه الأساسي */}
-            <Route
-              path="/"
-              element={isAuth ? <Home /> : <LazyPage><Intro /></LazyPage>}
-            />
+            <Route path="/" element={<Home />} />
 
-            <Route path="/intro" element={!isAuth ? <LazyPage><Intro /></LazyPage> : <Navigate to="/" replace />} />
+            <Route path="/intro" element={<LazyPage><Intro /></LazyPage>} />
             <Route path="/login" element={!isAuth ? <LazyPage><Login /></LazyPage> : <Navigate to="/" />} />
             <Route path="/register" element={!isAuth ? <LazyPage><Register /></LazyPage> : <Navigate to="/" />} />
             <Route path="/verify-email" element={<LazyPage><VerifyEmail /></LazyPage>} />
@@ -170,23 +164,23 @@ function AppShell() {
             <Route path="/offer/:id" element={<LazyPage><OfferDetail /></LazyPage>} />
 
             {/* المسارات المحمية */}
-            <Route path="/draws" element={<ProtectedRoute><LazyPage><Draws /></LazyPage></ProtectedRoute>} />
-            <Route path="/wheel" element={<ProtectedRoute><LazyPage><LuckyWheel /></LazyPage></ProtectedRoute>} />
-            <Route path="/chests" element={<ProtectedRoute><LazyPage><TreasureChests /></LazyPage></ProtectedRoute>} />
-            <Route path="/honor" element={<ProtectedRoute><LazyPage><HonorBoard /></LazyPage></ProtectedRoute>} />
+            <Route path="/draws" element={<LazyPage><Draws /></LazyPage>} />
+            <Route path="/wheel" element={<LazyPage><LuckyWheel /></LazyPage>} />
+            <Route path="/chests" element={<LazyPage><TreasureChests /></LazyPage>} />
+            <Route path="/honor" element={<LazyPage><HonorBoard /></LazyPage>} />
             <Route path="/inventory" element={<ProtectedRoute><LazyPage><Inventory /></LazyPage></ProtectedRoute>} />
-            <Route path="/center" element={<ProtectedRoute><LazyPage><UserCenter /></LazyPage></ProtectedRoute>} />
+            <Route path="/center" element={<LazyPage><UserCenter /></LazyPage>} />
             <Route path="/change-password" element={<ProtectedRoute><LazyPage><ChangePassword /></LazyPage></ProtectedRoute>} />
             <Route path="/profile" element={<Navigate to="/center" replace />} />
             <Route path="/wallet" element={<Navigate to="/center" replace />} />
             <Route path="/personalization" element={<Navigate to="/center" replace />} />
             <Route path="/favorites" element={<ProtectedRoute><LazyPage><Favorites /></LazyPage></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><LazyPage><ActiveOrders /></LazyPage></ProtectedRoute>} />
-            <Route path="/cart" element={<ProtectedRoute><LazyPage><ShoppingCart /></LazyPage></ProtectedRoute>} />
+            <Route path="/cart" element={<LazyPage><ShoppingCart /></LazyPage>} />
             <Route path="/orders/history" element={<ProtectedRoute><LazyPage><OrderHistory /></LazyPage></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><LazyPage><Notifications /></LazyPage></ProtectedRoute>} />
-            <Route path="/competitions" element={<ProtectedRoute><LazyPage><Competitions /></LazyPage></ProtectedRoute>} />
-            <Route path="/competitions/:id" element={<ProtectedRoute><LazyPage><CompetitionDetail /></LazyPage></ProtectedRoute>} />
+            <Route path="/competitions" element={<LazyPage><Competitions /></LazyPage>} />
+            <Route path="/competitions/:id" element={<LazyPage><CompetitionDetail /></LazyPage>} />
             <Route path="/chat" element={<ProtectedRoute><LazyPage><Chats /></LazyPage></ProtectedRoute>} />
             <Route path="/chat/:convId" element={<ProtectedRoute><LazyPage><Chats /></LazyPage></ProtectedRoute>} />
             <Route path="/spinWheel" element={<ProtectedRoute><LazyPage><LuckyWheel /></LazyPage></ProtectedRoute>} />
@@ -201,8 +195,8 @@ function AppShell() {
         )}
         
         {/* شريط التنقل السفلي */}
-        {isAuth && !hideBottomNav && <BottomNav />}
-        {isAuth && deferChrome && (
+        {showAppChrome && !hideBottomNav && <BottomNav />}
+        {deferChrome && (
           <Suspense fallback={null}>
             <CartSummaryBar hidden={hideCartBar} />
           </Suspense>

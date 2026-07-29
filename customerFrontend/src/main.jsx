@@ -5,6 +5,7 @@ import { onlineManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext';
+import { AuthGateProvider } from './context/AuthGateContext';
 import { VerificationGateProvider } from './context/VerificationGateContext';
 import { ToastProvider } from './shared/Toast';
 import { queryClient } from './lib/queryClient';
@@ -44,11 +45,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           }}
         >
           <AuthProvider>
-            <VerificationGateProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </VerificationGateProvider>
+            <AuthGateProvider>
+              <VerificationGateProvider>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </VerificationGateProvider>
+            </AuthGateProvider>
           </AuthProvider>
         </BrowserRouter>
       </PersistQueryClientProvider>

@@ -7,15 +7,18 @@ import { formatPrice } from '../../utils/currency';
 import { queryClient, queryKeys } from '../../lib/queryClient';
 import { CART_VERIFICATION } from '../../utils/verificationGateConfig';
 import { useVerificationGate } from '../../context/VerificationGateContext';
+import { useAuth } from '../../context/AuthContext';
+import { addItemToCart, updateCartItemQty } from '../../utils/cartActions';
+import { cartItemMatches } from '../../utils/cartHelpers';
 import { getOfferPricing } from '../OfferPriceDisplay';
 import { resolveOfferImage, resolveProductImage } from '../../utils/mediaUrl';
-import { cartItemMatches, normalizeCartItemType } from '../../utils/cartHelpers';
 import { useToast } from '../../shared/Toast';
 
 export default function DirectOrderModal({ offer, itemType = 'offer', open, onClose }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
+  const { isAuth } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -47,22 +50,24 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
   const performSubmit = async () => {
     setSubmitting(true);
     try {
-      const cartData = queryClient.getQueryData(queryKeys.cart);
-      const existing = (cartData?.items || []).find(
-        (row) => cartItemMatches(row, offer._id, itemType),
-      );
-
-      if (existing) {
-        await api.patch('/cart/update', {
-          itemId: offer._id,
-          itemType: normalizeCartItemType(itemType),
-          quantity,
-        });
+      if (!isAuth) {
+        await addItemToCart({ item: offer, itemType, quantity, isAuth });
       } else {
-        await api.post('/cart/add', { itemId: offer._id, itemType, quantity });
-      }
+        const cartData = queryClient.getQueryData(queryKeys.cart)?.raw || queryClient.getQueryData(queryKeys.cart);
+        const flatItems = (cartData?.containers || []).flatMap((c) => c.items || []);
+        const existing = flatItems.find((row) => cartItemMatches(row, offer._id, itemType));
 
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+        if (existing) {
+          await updateCartItemQty({
+            itemId: offer._id,
+            itemType,
+            quantity,
+            isAuth,
+          });
+        } else {
+          await addItemToCart({ item: offer, itemType, quantity, isAuth });
+        }
+      }
 
       setSuccess(true);
       toast('تمت إضافة العنصر إلى السلة.', 'success');
@@ -82,6 +87,10 @@ export default function DirectOrderModal({ offer, itemType = 'offer', open, onCl
 
   const handleSubmit = () => {
     if (submitting || success) return;
+    if (!isAuth) {
+      performSubmit();
+      return;
+    }
     runWithVerification(performSubmit, CART_VERIFICATION);
   };
 

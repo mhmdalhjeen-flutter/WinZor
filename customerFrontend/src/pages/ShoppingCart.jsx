@@ -13,6 +13,10 @@ import {
 } from '../utils/cartHelpers';
 import useCartSummary from '../hooks/useCartSummary';
 import { useToast } from '../shared/Toast';
+import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
+import { updateCartItemQty, removeCartItem } from '../utils/cartActions';
 import OrderVerificationDialog from '../components/orders/OrderVerificationDialog';
 import '../styles/shoppingCart.css';
 
@@ -215,6 +219,8 @@ export default function ShoppingCart() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { data: cartStats, isLoading } = useCartSummary();
   const [busyItemId, setBusyItemId] = useState(null);
   const [confirmingStoreId, setConfirmingStoreId] = useState(null);
@@ -251,7 +257,7 @@ export default function ShoppingCart() {
 
     setBusyItemId(itemId);
     try {
-      await api.patch('/cart/update', { itemId, itemType, quantity: newQty });
+      await updateCartItemQty({ itemId, itemType, quantity: newQty, isAuth });
       await refreshCart();
     } catch (err) {
       toast(err.response?.data?.message || 'تعذّر تحديث الكمية', 'error');
@@ -266,7 +272,7 @@ export default function ShoppingCart() {
     const itemType = normalizeCartItemType(row.itemType);
     setBusyItemId(itemId);
     try {
-      await api.delete('/cart/remove', { data: { itemId, itemType } });
+      await removeCartItem({ itemId, itemType, isAuth });
       await refreshCart();
     } catch (err) {
       toast(err.response?.data?.message || 'تعذّر الحذف', 'error');
@@ -280,11 +286,10 @@ export default function ShoppingCart() {
     setDeletingStoreId(storeId);
     try {
       await Promise.all(
-        items.map((row) => api.delete('/cart/remove', {
-          data: {
-            itemId: getCartRowId(row),
-            itemType: normalizeCartItemType(row.itemType),
-          },
+        items.map((row) => removeCartItem({
+          itemId: getCartRowId(row),
+          itemType: normalizeCartItemType(row.itemType),
+          isAuth,
         })),
       );
       toast('تم حذف سلة المتجر', 'info');
@@ -312,7 +317,7 @@ export default function ShoppingCart() {
     setVerificationDialog({ open: true, codes, navigateAfter });
   };
 
-  const confirmStore = async (storeId, storeName) => {
+  const doConfirmStore = async (storeId, storeName) => {
     if (!window.confirm(`تأكيد طلب «${storeName}» وإرساله للمتجر؟`)) return;
     setConfirmingStoreId(storeId);
     const navigateAfter = (cartStats?.storeCount ?? 1) <= 1;
@@ -339,7 +344,11 @@ export default function ShoppingCart() {
     }
   };
 
-  const confirmAll = async () => {
+  const confirmStore = (storeId, storeName) => {
+    runWithAuth(() => doConfirmStore(storeId, storeName), AUTH_GATE_MESSAGES.orderConfirm);
+  };
+
+  const doConfirmAll = async () => {
     if (!window.confirm(`تأكيد جميع الطلبات (${storeCount} متجر)؟`)) return;
     setConfirmingAll(true);
     try {
@@ -356,6 +365,10 @@ export default function ShoppingCart() {
     } finally {
       setConfirmingAll(false);
     }
+  };
+
+  const confirmAll = () => {
+    runWithAuth(doConfirmAll, AUTH_GATE_MESSAGES.orderConfirm);
   };
 
   return (

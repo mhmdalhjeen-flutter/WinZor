@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowLeft, RotateCw, Phone, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
 import { useToast } from '../shared/Toast';
 import {
   registerCustomer,
@@ -27,6 +28,7 @@ import {
   loginPathWithRef,
 } from '../utils/referralStorage';
 import { completePendingGiftActivation } from '../utils/giftActivationFlow';
+import { completePendingPwaAction } from '../pwa/pwaShortcutActions';
 
 const RESEND_COOLDOWN_SEC = 60;
 
@@ -252,6 +254,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const { hasPendingAction } = useAuthGate();
   const { toast } = useToast();
   const refFromUrl = (searchParams.get('ref') || '').trim().toUpperCase();
   const refCode = refFromUrl || getReferralCode();
@@ -268,8 +271,10 @@ const Register = () => {
 
   const finishRegistration = useCallback(() => {
     if (completePendingGiftActivation(navigate)) return;
+    if (completePendingPwaAction(navigate)) return;
+    if (hasPendingAction()) return;
     navigate('/');
-  }, [navigate]);
+  }, [navigate, hasPendingAction]);
 
   const { socialLoading, startSocialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
     successMessage: 'تم إنشاء حسابك بنجاح',

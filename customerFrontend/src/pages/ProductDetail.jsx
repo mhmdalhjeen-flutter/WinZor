@@ -8,8 +8,10 @@ import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { logActivity } from '../utils/activity';
 import { useVerificationGate } from '../context/VerificationGateContext';
+import { useAuth } from '../context/AuthContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { addItemToCart } from '../utils/cartActions';
 import { resolveProductImage } from '../utils/mediaUrl';
 import { formatPriceWithUnit } from '../utils/currency';
 import { recordRecentlyViewed } from '../utils/recentlyViewed';
@@ -19,6 +21,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
+  const { isAuth } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,8 +55,7 @@ const ProductDetail = () => {
   const performAdd = async () => {
     setAdding(true);
     try {
-      await api.post('/cart/add', { itemId: product._id, itemType: 'product', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+      await addItemToCart({ item: product, itemType: 'product', quantity: 1, isAuth });
       setAdded(true);
       toast('تمت إضافة العنصر إلى السلة.', 'success');
       setTimeout(() => setAdded(false), 2000);
@@ -67,6 +69,10 @@ const ProductDetail = () => {
 
   const addToCart = () => {
     if (adding || added) return;
+    if (!isAuth) {
+      performAdd();
+      return;
+    }
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 

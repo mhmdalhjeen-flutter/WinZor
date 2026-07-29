@@ -16,6 +16,7 @@ import AuthWelcomeBackground from '../components/auth/AuthWelcomeBackground';
 import { completePendingPwaAction } from '../pwa/pwaShortcutActions';
 import { completePendingGiftActivation } from '../utils/giftActivationFlow';
 import { registerPathWithRef, saveReferralCode } from '../utils/referralStorage';
+import { useAuthGate } from '../context/AuthGateContext';
 
 function LoginLightField({
   icon: Icon,
@@ -66,6 +67,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const { hasPendingAction } = useAuthGate();
   const { toast } = useToast();
   const showGoogle = isGoogleAuthAvailable();
   const showFacebook = isFacebookAuthAvailable();
@@ -73,11 +75,13 @@ const Login = () => {
   useEffect(() => {
     const refFromUrl = (searchParams.get('ref') || '').trim();
     if (refFromUrl) saveReferralCode(refFromUrl);
+    if (searchParams.get('phone') === '1') setPhoneOpen(true);
   }, [searchParams]);
 
   const redirectByRole = useCallback((role) => {
     if (completePendingGiftActivation(navigate)) return;
     if (completePendingPwaAction(navigate)) return;
+    if (hasPendingAction()) return;
     const routes = {
       admin: '/admin',
       store: '/store-dashboard',
@@ -85,7 +89,7 @@ const Login = () => {
       customer: '/',
     };
     navigate(routes[role] || '/');
-  }, [navigate]);
+  }, [navigate, hasPendingAction]);
 
   const { socialLoading, startSocialLoading, handleSocialSuccess, handleSocialError } = useSocialAuth({
     onAuthenticated: (user) => redirectByRole(user.role),

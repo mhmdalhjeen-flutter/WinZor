@@ -1,4 +1,5 @@
 import { ENTER_CARD_EVENT } from '../utils/pointsGuideEvents';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 
 export const PWA_ACTION_CODE = 'code';
 export const PENDING_ACTION_KEY = 'winzor_pwa_pending_action';
@@ -41,14 +42,22 @@ export function completePendingPwaAction(navigate) {
   return true;
 }
 
-export function openCodeEntry(navigate, isAuth) {
+export function openCodeEntry(navigate, isAuth, runWithAuth) {
+  const open = () => {
+    navigate('/', { replace: true });
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(ENTER_CARD_EVENT));
+    }, 400);
+  };
+
   if (!isAuth) {
     setPendingPwaAction(PWA_ACTION_CODE);
+    if (runWithAuth) {
+      runWithAuth(open, AUTH_GATE_MESSAGES.activationCode);
+      return;
+    }
     navigate('/login');
     return;
   }
-  navigate('/', { replace: true });
-  window.setTimeout(() => {
-    window.dispatchEvent(new CustomEvent(ENTER_CARD_EVENT));
-  }, 400);
+  open();
 }

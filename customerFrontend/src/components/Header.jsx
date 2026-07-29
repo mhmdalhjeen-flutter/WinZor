@@ -147,7 +147,7 @@ const Header = () => {
   const showWheel = features.wheel !== false && wheelPlacements.header !== false;
   const showCompetitions = features.storeCompetitions !== false;
 
-  const { data: cartStats } = useCartSummary({ enabled: isAuth });
+  const { data: cartStats } = useCartSummary();
   const cartItemCount = cartStats?.itemCount ?? 0;
   const unreadCount = unreadData?.count || 0;
   const notifCountRemote = notifData?.count || 0;
@@ -329,24 +329,36 @@ const Header = () => {
               </div>
             </>
           ) : (
-            <button
-              type="button"
-              className="flex items-center gap-2 min-w-0 active:scale-[0.98] transition-transform"
-              onClick={() => navigate('/')}
-              aria-label="الرئيسية"
-            >
-              <img
-                src={BRAND_LOGO_64}
-                alt=""
-                className="w-11 h-11 rounded-xl object-contain shadow-md shrink-0"
-                width={44}
-                height={44}
-                loading="eager"
-                fetchpriority="high"
-                decoding="async"
-              />
-              <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">{BRAND_NAME}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-2 min-w-0 active:scale-[0.98] transition-transform"
+                onClick={() => navigate('/')}
+                aria-label="الرئيسية"
+              >
+                <img
+                  src={BRAND_LOGO_64}
+                  alt=""
+                  className="w-11 h-11 rounded-xl object-contain shadow-md shrink-0"
+                  width={44}
+                  height={44}
+                  loading="eager"
+                  fetchpriority="high"
+                  decoding="async"
+                />
+                <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">{BRAND_NAME}</span>
+              </button>
+              <button
+                type="button"
+                className="header-icon-btn shrink-0"
+                title="السلة"
+                aria-label="السلة"
+                onClick={() => navigate('/cart')}
+              >
+                <ShoppingBag size={22} strokeWidth={2} />
+                <HeaderBadge count={cartItemCount} />
+              </button>
+            </>
           )}
 
           {!isAuth && (

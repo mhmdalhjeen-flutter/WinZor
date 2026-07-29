@@ -14,6 +14,8 @@ import LightLoadingHint from '../shared/LightLoadingHint';
 import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 import { clearStoreNotifyOptOut, isStoreNotifyOptedOut } from '../utils/giftActivationFlow';
 import { queryKeys } from '../lib/queryClient';
@@ -25,6 +27,7 @@ const StoreDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const [tab, setTab] = useState('offers');
   const [prizes, setPrizes] = useState([]);
   const [joining, setJoining] = useState(false);
@@ -75,32 +78,34 @@ const StoreDetail = () => {
   }, [id]);
 
   const enableStoreNotifications = async () => {
-    if (!isAuth) { navigate('/login'); return; }
-    setEnablingNotify(true);
-    try {
-      clearStoreNotifyOptOut(id);
-      const { data: res } = await api.post(`/stores/${id}/follow`);
-      toast(res.message || 'تمت متابعة الإشعارات', 'success');
-      setNotifyOptOut(false);
-    } catch (err) {
-      toast(err.response?.data?.message || 'تعذّر تفعيل الإشعارات', 'error');
-    } finally {
-      setEnablingNotify(false);
-    }
+    runWithAuth(async () => {
+      setEnablingNotify(true);
+      try {
+        clearStoreNotifyOptOut(id);
+        const { data: res } = await api.post(`/stores/${id}/follow`);
+        toast(res.message || 'تمت متابعة الإشعارات', 'success');
+        setNotifyOptOut(false);
+      } catch (err) {
+        toast(err.response?.data?.message || 'تعذّر تفعيل الإشعارات', 'error');
+      } finally {
+        setEnablingNotify(false);
+      }
+    }, AUTH_GATE_MESSAGES.generic);
   };
 
   const joinStore = async () => {
-    if (!isAuth) { navigate('/login'); return; }
-    setJoining(true);
-    try {
-      const { data: res } = await api.post(`/stores/${id}/join`);
-      toast(res.message, 'success');
-      refetch();
-    } catch (err) {
-      toast(err.response?.data?.message || 'فشل الانضمام', 'error');
-    } finally {
-      setJoining(false);
-    }
+    runWithAuth(async () => {
+      setJoining(true);
+      try {
+        const { data: res } = await api.post(`/stores/${id}/join`);
+        toast(res.message, 'success');
+        refetch();
+      } catch (err) {
+        toast(err.response?.data?.message || 'فشل الانضمام', 'error');
+      } finally {
+        setJoining(false);
+      }
+    }, AUTH_GATE_MESSAGES.generic);
   };
 
   const contact = () => {

@@ -11,8 +11,12 @@ import { recordOfferView } from '../utils/offerAnalytics';
 import StarRating from '../components/StarRating';
 import OfferPriceDisplay from '../components/OfferPriceDisplay';
 import { useVerificationGate } from '../context/VerificationGateContext';
+import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
+import { addItemToCart } from '../utils/cartActions';
 import { resolveOfferImage, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
 import { formatPrice } from '../utils/currency';
 import { recordRecentlyViewed } from '../utils/recentlyViewed';
@@ -31,6 +35,8 @@ const OfferDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
+  const { isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
 
   const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +57,7 @@ const OfferDetail = () => {
       };
     },
     staleTime: 60 * 1000,
+    enabled: isAuth,
   });
 
   useEffect(() => {
@@ -97,23 +104,24 @@ const OfferDetail = () => {
 
   const handleFavorite = async () => {
     if (favBusy) return;
-    setFavBusy(true);
-    setFavorited((v) => !v);
-    try {
-      await toggleFavorite(id);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.favorites });
-    } catch {
+    runWithAuth(async () => {
+      setFavBusy(true);
       setFavorited((v) => !v);
-    } finally {
-      setFavBusy(false);
-    }
+      try {
+        await toggleFavorite(id);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.favorites });
+      } catch {
+        setFavorited((v) => !v);
+      } finally {
+        setFavBusy(false);
+      }
+    }, AUTH_GATE_MESSAGES.favorites);
   };
 
   const performAdd = async () => {
     setAdding(true);
     try {
-      await axios.post('/cart/add', { itemId: offer._id, itemType: 'offer', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+      await addItemToCart({ item: offer, itemType: 'offer', quantity: 1, isAuth });
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
@@ -126,6 +134,10 @@ const OfferDetail = () => {
 
   const addToCart = () => {
     if (adding || added) return;
+    if (!isAuth) {
+      performAdd();
+      return;
+    }
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 

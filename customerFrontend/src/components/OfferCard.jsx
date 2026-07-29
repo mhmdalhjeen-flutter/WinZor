@@ -6,8 +6,10 @@ import { resolveOfferImage, cloudinarySrcSet } from '../utils/mediaUrl';
 import api from '../api/axios';
 import { useToast } from '../shared/Toast';
 import { useVerificationGate } from '../context/VerificationGateContext';
+import { useAuth } from '../context/AuthContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { addItemToCart } from '../utils/cartActions';
 
 export { getOfferBadge };
 
@@ -15,6 +17,7 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
+  const { isAuth } = useAuth();
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
@@ -28,8 +31,7 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
   const performAdd = async () => {
     setAdding(true);
     try {
-      await api.post('/cart/add', { itemId: offer._id, itemType: 'offer', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+      await addItemToCart({ item: offer, itemType: 'offer', quantity: 1, isAuth });
       setAdded(true);
       toast('تمت إضافة العنصر إلى السلة.', 'success');
       setTimeout(() => setAdded(false), 1800);
@@ -43,6 +45,10 @@ const OfferCard = ({ offer, favorited = false, onToggleFavorite }) => {
   const addToCart = (e) => {
     e.stopPropagation();
     if (adding || added) return;
+    if (!isAuth) {
+      performAdd();
+      return;
+    }
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 

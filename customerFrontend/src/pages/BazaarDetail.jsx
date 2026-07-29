@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useToast } from '../shared/Toast';
 import ErrorState from '../shared/ErrorState';
 import { CONDITION_LABELS, TYPE_LABELS, regionLabel } from '../shared/BazaarListingCard';
@@ -22,6 +24,7 @@ const BazaarDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuth, user } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { toast } = useToast();
   const [activeImage, setActiveImage] = React.useState(0);
   const [favLoading, setFavLoading] = React.useState(false);
@@ -60,38 +63,33 @@ const BazaarDetail = () => {
   const error = queryError?.response?.data?.message || (queryError ? 'تعذّر التحميل' : '');
 
   const toggleFavorite = async () => {
-    if (!isAuth) {
-      navigate('/login');
-      return;
-    }
-    setFavLoading(true);
-    try {
-      const { data } = await api.post(`/bazaar/${id}/favorite`);
-      queryClient.setQueryData(queryKeys.bazaarDetail(id), (prev) => (
-        prev ? { ...prev, isFavorited: data.favorited } : prev
-      ));
-      toast(data.message, 'success');
-    } catch (err) {
-      toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
-    } finally {
-      setFavLoading(false);
-    }
+    runWithAuth(async () => {
+      setFavLoading(true);
+      try {
+        const { data } = await api.post(`/bazaar/${id}/favorite`);
+        queryClient.setQueryData(queryKeys.bazaarDetail(id), (prev) => (
+          prev ? { ...prev, isFavorited: data.favorited } : prev
+        ));
+        toast(data.message, 'success');
+      } catch (err) {
+        toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
+      } finally {
+        setFavLoading(false);
+      }
+    }, AUTH_GATE_MESSAGES.favorites);
   };
 
   const contact = () => {
-    if (!isAuth) {
-      navigate('/login');
-      return;
-    }
-    const sellerId = listing?.seller?._id || listing?.seller;
-    if (!sellerId) {
-      toast('لا يمكن التواصل', 'error');
-      return;
-    }
-    if (String(sellerId) === String(user?._id || user?.id)) {
-      toast('هذا إعلانك', 'error');
-      return;
-    }
+    runWithAuth(() => {
+      const sellerId = listing?.seller?._id || listing?.seller;
+      if (!sellerId) {
+        toast('لا يمكن التواصل', 'error');
+        return;
+      }
+      if (String(sellerId) === String(user?._id || user?.id)) {
+        toast('هذا إعلانك', 'error');
+        return;
+      }
     const img = listing.images?.[listing.mainImageIndex || 0] || listing.images?.[0];
     localStorage.setItem('chatContext', JSON.stringify({
       recipientId: sellerId,
@@ -104,6 +102,7 @@ const BazaarDetail = () => {
       },
     }));
     navigate('/chat');
+    }, AUTH_GATE_MESSAGES.contact);
   };
 
   if (isLoading) return null;

@@ -5,22 +5,24 @@ import { formatPriceWithUnit } from '../utils/currency';
 import api from '../api/axios';
 import { useToast } from './Toast';
 import { useVerificationGate } from '../context/VerificationGateContext';
+import { useAuth } from '../context/AuthContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { resolveProductImage, cloudinarySrcSet } from '../utils/mediaUrl';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
+import { addItemToCart } from '../utils/cartActions';
 
 const ProductCard = ({ product, storeId }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
+  const { isAuth } = useAuth();
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
   const performAdd = async () => {
     setAdding(true);
     try {
-      await api.post('/cart/add', { itemId: product._id, itemType: 'product', quantity: 1 });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+      await addItemToCart({ item: product, itemType: 'product', quantity: 1, isAuth });
       setAdded(true);
       toast('تمت إضافة العنصر إلى السلة.', 'success');
       setTimeout(() => setAdded(false), 1800);
@@ -35,6 +37,10 @@ const ProductCard = ({ product, storeId }) => {
   const addToCart = (e) => {
     e.stopPropagation();
     if (adding || added) return;
+    if (!isAuth) {
+      performAdd();
+      return;
+    }
     runWithVerification(performAdd, CART_VERIFICATION);
   };
 

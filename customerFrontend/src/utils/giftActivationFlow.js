@@ -147,12 +147,21 @@ export function dispatchGiftActivationOpen(code, { giftFlow = true } = {}) {
   }));
 }
 
-export function openGiftActivation(navigate, isAuth, code) {
+export function openGiftActivation(navigate, isAuth, code, runWithAuth) {
   const normalized = normalizeGiftCode(code);
   if (!normalized) return;
 
   if (!isAuth) {
     setPendingGiftCode(normalized);
+    if (runWithAuth) {
+      runWithAuth(() => {
+        navigate('/', { replace: true });
+        window.setTimeout(() => {
+          dispatchGiftActivationOpen(normalized, { giftFlow: true });
+        }, 450);
+      }, 'لحفظ نقاطك والاستفادة من السحوبات والمكافآت، يرجى تسجيل الدخول');
+      return;
+    }
     navigate('/login', { replace: true });
     return;
   }

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Loader2, Lock, Sparkles, Trophy, CircleDot } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import WheelVisual from '../components/WheelVisual';
@@ -18,6 +20,7 @@ const DECEL_MS = 5500;
 const LuckyWheel = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +153,10 @@ const LuckyWheel = () => {
     }
   };
 
-  const spin = () => runWithVerification(doSpin);
+  const spin = () => runWithAuth(
+    () => runWithVerification(doSpin),
+    AUTH_GATE_MESSAGES.pointsDraw,
+  );
 
   const playTick = () => {
     try {

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
 import BazaarListingCard, { regionLabel } from '../shared/BazaarListingCard';
@@ -91,6 +93,7 @@ const formatPublishAge = (dateStr) => {
 const Marketplace = () => {
   const navigate = useNavigate();
   const { isAuth, user, updateUser } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
 
@@ -203,36 +206,35 @@ const Marketplace = () => {
   }, [favOverrides]);
 
   const handleToggleFavorite = async (listing) => {
-    if (!isAuth) {
-      navigate('/login');
-      return;
-    }
-    const id = String(listing._id);
-    const nextFav = !isFavorited(listing);
-    setFavOverrides((prev) => ({ ...prev, [id]: nextFav }));
-    setFavPulseId(id);
-    setTimeout(() => setFavPulseId(null), 300);
-    try {
-      const { data } = await api.post(`/bazaar/${listing._id}/favorite`);
-      setFavOverrides((prev) => ({ ...prev, [id]: data.favorited }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.bazaarFavorites });
-      queryClient.invalidateQueries({ queryKey: ['bazaar', 'browse'] });
-    } catch (err) {
-      setFavOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
-    }
+    runWithAuth(async () => {
+      const id = String(listing._id);
+      const nextFav = !isFavorited(listing);
+      setFavOverrides((prev) => ({ ...prev, [id]: nextFav }));
+      setFavPulseId(id);
+      setTimeout(() => setFavPulseId(null), 300);
+      try {
+        const { data } = await api.post(`/bazaar/${listing._id}/favorite`);
+        setFavOverrides((prev) => ({ ...prev, [id]: data.favorited }));
+        queryClient.invalidateQueries({ queryKey: queryKeys.bazaarFavorites });
+        queryClient.invalidateQueries({ queryKey: ['bazaar', 'browse'] });
+      } catch (err) {
+        setFavOverrides((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
+      }
+    }, AUTH_GATE_MESSAGES.favorites);
   };
 
   const handleTabChange = (tab) => {
     if (tab === 'mine' || tab === 'favorites') {
-      if (!isAuth) {
-        navigate('/login');
-        return;
-      }
+      runWithAuth(() => {
+        setShowPublish(false);
+        setActiveTab(tab);
+      }, AUTH_GATE_MESSAGES.marketplace);
+      return;
     }
     setShowPublish(false);
     setActiveTab(tab);
@@ -246,11 +248,7 @@ const Marketplace = () => {
   };
 
   const openPublishSheet = () => {
-    if (!isAuth) {
-      navigate('/login');
-      return;
-    }
-    runWithVerification(() => setPublishSheetOpen(true));
+    runWithAuth(() => runWithVerification(() => setPublishSheetOpen(true)), AUTH_GATE_MESSAGES.marketplace);
   };
 
   const handlePublishTypeSelect = (transactionType) => {
@@ -316,10 +314,7 @@ const Marketplace = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isAuth) {
-      navigate('/login');
-      return;
-    }
+    runWithAuth(async () => {
     const requestListing = isRequestListing(form.transactionType);
     if (!form.title.trim()) {
       toast(form.transactionType === 'rent' ? 'أدخل عنوان العقار أو الأصل' : 'أدخل اسم العنصر', 'error');
@@ -408,6 +403,7 @@ const Marketplace = () => {
     } else {
       runWithVerification(submitListing);
     }
+    }, AUTH_GATE_MESSAGES.marketplace);
   };
 
   const handleDelete = async (id) => {

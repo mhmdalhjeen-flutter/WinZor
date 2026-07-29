@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAuthGate } from '../../context/AuthGateContext';
 import {
   GIFT_QUERY_PARAM,
   openGiftActivation,
@@ -12,6 +13,7 @@ export default function GiftActivationHandler() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const handled = useRef(false);
 
   useEffect(() => {
@@ -28,8 +30,8 @@ export default function GiftActivationHandler() {
     next.delete(GIFT_QUERY_PARAM);
     setSearchParams(next, { replace: true });
 
-    openGiftActivation(navigate, isAuth, code);
-  }, [searchParams, setSearchParams, navigate, isAuth]);
+    openGiftActivation(navigate, isAuth, code, runWithAuth);
+  }, [searchParams, setSearchParams, navigate, isAuth, runWithAuth]);
 
   return null;
 }

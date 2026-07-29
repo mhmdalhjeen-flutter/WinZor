@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
 import { queryKeys } from '../lib/queryClient';
@@ -25,6 +27,7 @@ const Draws = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { updateUser } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { toast } = useToast();
   const [joiningId, setJoiningId] = useState(null);
@@ -56,7 +59,10 @@ const Draws = () => {
     }
   };
 
-  const onJoinClick = (drawId) => runWithVerification(() => joinDraw(drawId));
+  const onJoinClick = (drawId) => runWithAuth(
+    () => runWithVerification(() => joinDraw(drawId)),
+    AUTH_GATE_MESSAGES.pointsDraw,
+  );
 
   return (
     <div className="space-y-8 pb-10 text-right" dir="rtl">

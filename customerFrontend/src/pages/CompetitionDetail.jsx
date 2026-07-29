@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
@@ -30,6 +32,7 @@ const CompetitionDetail = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { updateUser, user } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const [entries, setEntries] = useState(1);
   const [joining, setJoining] = useState(false);
@@ -96,7 +99,10 @@ const CompetitionDetail = () => {
     }
   };
 
-  const onJoinClick = () => runWithVerification(handleJoin);
+  const onJoinClick = () => runWithAuth(
+    () => runWithVerification(handleJoin),
+    AUTH_GATE_MESSAGES.pointsDraw,
+  );
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={32} /></div>;

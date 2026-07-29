@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
 import { unwrapList } from '../utils/unwrapList';
@@ -19,6 +21,7 @@ const BOX_STYLES = [
 const TreasureChests = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { toast } = useToast();
   const [openingId, setOpeningId] = useState(null);
@@ -46,7 +49,10 @@ const TreasureChests = () => {
     }
   };
 
-  const onOpenClick = (boxId) => runWithVerification(() => openBox(boxId));
+  const onOpenClick = (boxId) => runWithAuth(
+    () => runWithVerification(() => openBox(boxId)),
+    AUTH_GATE_MESSAGES.pointsDraw,
+  );
 
   return (
     <div className="space-y-8 pb-10 text-right" dir="rtl">

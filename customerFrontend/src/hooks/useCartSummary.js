@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 
+import { readGuestCart } from '../utils/guestCartService';
+
 export function computeCartStats(cart) {
   const containers = cart?.containers || [];
   let itemCount = 0;
@@ -32,10 +34,11 @@ export default function useCartSummary(options = {}) {
   return useQuery({
     queryKey: queryKeys.cart,
     queryFn: async () => {
+      if (!isAuth) return readGuestCart();
       const { data } = await api.get('/cart');
       return data;
     },
-    enabled: isAuth && enabledOption,
+    enabled: enabledOption,
     staleTime: 10 * 1000,
     select: (data) => ({
       raw: data,

@@ -4,6 +4,8 @@ import { X, Zap, Loader2, CheckCircle2, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { useVerificationGate } from '../context/VerificationGateContext';
 import { useToast } from '../shared/Toast';
 import { queryClient, queryKeys } from '../lib/queryClient';
@@ -120,7 +122,8 @@ const FloatingCodeButton = () => {
   const [followChoice, setFollowChoice] = useState(null);
   const codeBtnRef = useRef(null);
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { updateUser, isAuth } = useAuth();
+  const { runWithAuth } = useAuthGate();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { toast } = useToast();
   const scannerRef = useRef(null);
@@ -249,12 +252,14 @@ const FloatingCodeButton = () => {
   };
 
   const openCodeModal = useCallback((prefillCode = '', fromGiftFlow = false) => {
-    runWithVerification(() => {
-      if (prefillCode) setCode(prefillCode);
-      setGiftFlow(fromGiftFlow || isGiftActivationFlowActive());
-      setIsOpen(true);
-    });
-  }, [runWithVerification]);
+    runWithAuth(() => {
+      runWithVerification(() => {
+        if (prefillCode) setCode(prefillCode);
+        setGiftFlow(fromGiftFlow || isGiftActivationFlowActive());
+        setIsOpen(true);
+      });
+    }, AUTH_GATE_MESSAGES.activationCode);
+  }, [runWithAuth, runWithVerification]);
 
   useEffect(() => {
     const openCodeFromGuide = () => openCodeModal('', false);

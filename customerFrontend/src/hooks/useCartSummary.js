@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 
-import { readGuestCart } from '../utils/guestCartService';
+import { readGuestCart } from "../utils/guestCartService";
 
 export function computeCartStats(cart) {
   const containers = cart?.containers || [];

@@ -389,6 +389,7 @@ class OfferDetailPage extends ConsumerWidget {
                       'ILS',
                   imageUrl: offer.image,
                   storeName: offer.storeObject?.name,
+                  storeId: offer.storeId,
                 );
               },
               style: ElevatedButton.styleFrom(

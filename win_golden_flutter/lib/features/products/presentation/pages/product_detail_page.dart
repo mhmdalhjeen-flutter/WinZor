@@ -47,6 +47,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       currency: product.currency,
       imageUrl: product.imageUrl,
       storeName: product.storeName,
+      storeId: product.storeId ?? '',
       maxQuantity: product.maxOrderQuantity,
     );
   }

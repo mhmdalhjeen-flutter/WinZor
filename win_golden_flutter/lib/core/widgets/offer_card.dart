@@ -43,6 +43,9 @@ class OfferCard extends ConsumerWidget {
         'ILS';
     final store = offer['store'];
     final storeName = store is Map ? store['name']?.toString() : null;
+    final storeId = store is Map
+        ? (store['_id'] ?? store['id'] ?? '').toString()
+        : store?.toString() ?? '';
     final image = resolveOfferImage(offer);
 
     await showDirectOrderSheet(
@@ -55,6 +58,7 @@ class OfferCard extends ConsumerWidget {
       currency: currency.toString(),
       imageUrl: image,
       storeName: storeName,
+      storeId: storeId,
     );
   }
 

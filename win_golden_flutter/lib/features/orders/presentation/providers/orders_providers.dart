@@ -5,6 +5,7 @@ import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/models/cart_models.dart';
 import '../../data/models/order_models.dart';
 import '../../data/repositories/orders_repository.dart';
+import '../../data/services/guest_cart_service.dart';
 import '../widgets/order_verification_dialog.dart';
 
 final ordersRepositoryProvider = Provider((ref) {
@@ -45,15 +46,26 @@ class CartController extends AsyncNotifier<CartModel> {
   Future<CartModel> build() async {
     ref.listen(authProvider, (previous, next) {
       if (!next.isAuth) {
-        state = const AsyncData(CartModel());
+        state = AsyncData(GuestCartService.load());
       } else if (previous?.isAuth != true) {
-        ref.invalidateSelf();
+        _onLoggedIn();
       }
     });
 
     final auth = ref.watch(authProvider);
-    if (!auth.isAuth) return const CartModel();
+    if (!auth.isAuth) return GuestCartService.load();
     return ref.read(ordersRepositoryProvider).getCart();
+  }
+
+  Future<void> _onLoggedIn() async {
+    try {
+      await GuestCartService.mergeToServer(ref.read(ordersRepositoryProvider));
+      state = await AsyncValue.guard(
+        () => ref.read(ordersRepositoryProvider).getCart(),
+      );
+    } catch (_) {
+      ref.invalidateSelf();
+    }
   }
 
   void applyCart(CartModel cart) {
@@ -63,7 +75,7 @@ class CartController extends AsyncNotifier<CartModel> {
   Future<void> refreshCart() async {
     final auth = ref.read(authProvider);
     if (!auth.isAuth) {
-      state = const AsyncData(CartModel());
+      state = AsyncData(GuestCartService.load());
       return;
     }
     state = await AsyncValue.guard(
@@ -85,7 +97,32 @@ class OrdersActions {
     required String itemId,
     required String itemType,
     required int quantity,
+    String name = '—',
+    double unitPrice = 0,
+    String currency = 'ILS',
+    String? imageUrl,
+    String storeId = '',
+    String storeName = '',
+    String? storeImageUrl,
   }) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      final cart = await GuestCartService.addItem(
+        itemId: itemId,
+        itemType: itemType,
+        quantity: quantity,
+        name: name,
+        unitPrice: unitPrice,
+        currency: currency,
+        imageUrl: imageUrl,
+        storeId: storeId,
+        storeName: storeName,
+        storeImageUrl: storeImageUrl,
+      );
+      _cart.applyCart(cart);
+      return (ok: true, message: 'تمت إضافة العنصر إلى السلة.', code: null);
+    }
+
     ref.read(placeOrderBusyProvider.notifier).state = true;
     try {
       final result = await _repo.addItemToCart(
@@ -193,6 +230,21 @@ class OrdersActions {
     required String itemType,
     required int quantity,
   }) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      try {
+        final cart = await GuestCartService.updateQuantity(
+          itemId: itemId,
+          itemType: itemType,
+          quantity: quantity,
+        );
+        _cart.applyCart(cart);
+        return null;
+      } catch (_) {
+        return quantity <= 0 ? 'تعذّر الحذف' : 'تعذّر تحديث الكمية';
+      }
+    }
+
     try {
       final CartModel cart;
       if (quantity <= 0) {
@@ -219,6 +271,20 @@ class OrdersActions {
     required String itemId,
     required String itemType,
   }) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      try {
+        final cart = await GuestCartService.removeItem(
+          itemId: itemId,
+          itemType: itemType,
+        );
+        _cart.applyCart(cart);
+        return null;
+      } catch (_) {
+        return 'تعذّر الحذف';
+      }
+    }
+
     try {
       final cart = await _repo.removeFromCart(itemId: itemId, itemType: itemType);
       _cart.applyCart(cart);
@@ -233,6 +299,17 @@ class OrdersActions {
   }
 
   Future<String?> deleteStoreContainer(CartStoreContainer container) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuth) {
+      try {
+        final cart = await GuestCartService.deleteContainer(container);
+        _cart.applyCart(cart);
+        return null;
+      } catch (_) {
+        return 'تعذّر حذف السلة';
+      }
+    }
+
     try {
       CartModel cart = ref.read(cartControllerProvider).maybeWhen(
             data: (c) => c,

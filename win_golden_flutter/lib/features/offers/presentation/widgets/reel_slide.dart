@@ -77,6 +77,7 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
         currency: currency,
         imageUrl: _imageUrl,
         storeName: item.store?['name']?.toString(),
+        storeId: (item.store?['_id'] ?? item.store?['id'] ?? '').toString(),
       );
       return;
     }
@@ -98,6 +99,7 @@ class _ReelSlideState extends ConsumerState<ReelSlide> {
       currency: currency,
       imageUrl: offer.image,
       storeName: offer.storeObject?.name,
+      storeId: offer.storeId,
     );
   }
 

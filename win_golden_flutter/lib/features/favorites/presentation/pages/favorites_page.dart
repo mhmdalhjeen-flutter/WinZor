@@ -252,6 +252,9 @@ class _FavoriteOfferCard extends ConsumerWidget {
     final store = offer['store'];
     final storeName =
         store is Map ? store['name']?.toString() : null;
+    final storeId = store is Map
+        ? (store['_id'] ?? store['id'] ?? '').toString()
+        : store?.toString() ?? '';
 
     await showDirectOrderSheet(
       context: context,
@@ -263,6 +266,7 @@ class _FavoriteOfferCard extends ConsumerWidget {
       currency: currency,
       imageUrl: resolveOfferImage(offer),
       storeName: storeName,
+      storeId: storeId,
     );
   }
 

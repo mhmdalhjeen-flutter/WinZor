@@ -22,4 +22,5 @@ abstract final class CacheKeys {
   static const recentOffers = 'recent_offers';
   static const recentProducts = 'recent_products';
   static const visitedStores = 'visited_stores';
+  static const guestCart = 'guest_cart';
 }

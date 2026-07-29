@@ -186,10 +186,7 @@ class _CartPageState extends ConsumerState<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    final cartAsync = auth.isAuth
-        ? ref.watch(cartControllerProvider)
-        : const AsyncValue.data(CartModel());
+    final cartAsync = ref.watch(cartControllerProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),

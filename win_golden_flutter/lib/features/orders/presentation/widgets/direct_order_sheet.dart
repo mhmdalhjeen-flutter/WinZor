@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_utils.dart';
-import '../../../auth/presentation/providers/auth_gate_provider.dart';
-import '../../../auth/utils/auth_gate_messages.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../verification/presentation/providers/verification_gate_provider.dart';
 import '../../../verification/utils/verification_gate_config.dart';
@@ -22,6 +20,8 @@ Future<void> showDirectOrderSheet({
   required String currency,
   String? imageUrl,
   String? storeName,
+  String storeId = '',
+  String? storeImageUrl,
   int? maxQuantity,
 }) async {
   showModalBottomSheet<void>(
@@ -37,6 +37,8 @@ Future<void> showDirectOrderSheet({
         currency: currency,
         imageUrl: imageUrl,
         storeName: storeName,
+        storeId: storeId,
+        storeImageUrl: storeImageUrl,
         maxQuantity: maxQuantity,
       );
     },
@@ -51,6 +53,8 @@ class _DirectOrderSheet extends ConsumerStatefulWidget {
   final String currency;
   final String? imageUrl;
   final String? storeName;
+  final String storeId;
+  final String? storeImageUrl;
   final int? maxQuantity;
 
   const _DirectOrderSheet({
@@ -61,6 +65,8 @@ class _DirectOrderSheet extends ConsumerStatefulWidget {
     required this.currency,
     this.imageUrl,
     this.storeName,
+    this.storeId = '',
+    this.storeImageUrl,
     this.maxQuantity,
   });
 
@@ -84,13 +90,15 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
   Future<void> _submit() async {
     if (_submitting || _success) return;
 
-    ref.read(authGateProvider.notifier).runWithAuth(
-          () => ref.read(verificationGateProvider.notifier).runWithVerification(
-                _performSubmit,
-                cartVerification,
-              ),
-          message: AuthGateMessages.addToCart,
-        );
+    final isAuth = ref.read(authProvider).isAuth;
+    if (isAuth) {
+      ref.read(verificationGateProvider.notifier).runWithVerification(
+            _performSubmit,
+            cartVerification,
+          );
+    } else {
+      await _performSubmit();
+    }
   }
 
   Future<void> _performSubmit() async {
@@ -101,6 +109,13 @@ class _DirectOrderSheetState extends ConsumerState<_DirectOrderSheet> {
           itemId: widget.itemId,
           itemType: widget.itemType,
           quantity: _quantity,
+          name: widget.title,
+          unitPrice: widget.unitPrice,
+          currency: widget.currency,
+          imageUrl: widget.imageUrl,
+          storeId: widget.storeId,
+          storeName: widget.storeName ?? '',
+          storeImageUrl: widget.storeImageUrl,
         );
     
     if (!mounted) return;

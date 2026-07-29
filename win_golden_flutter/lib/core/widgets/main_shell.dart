@@ -58,7 +58,7 @@ class MainShell extends ConsumerWidget {
               bottomNavigationBar: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isAuth) const CartSummaryBar(),
+                  const CartSummaryBar(),
                   BottomNavBar(navigationShell: navigationShell),
                 ],
               ),

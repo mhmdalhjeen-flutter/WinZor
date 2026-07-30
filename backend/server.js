@@ -63,12 +63,8 @@ const DEFAULT_DEV_ORIGINS = [5173, 5174, 5175].flatMap((port) => [
     `http://127.0.0.1:${port}`,
 ]);
 const DEFAULT_PROD_ORIGINS = [
-    "https://win-gold-shopping.mhmdalhjeen.workers.dev",
-    "https://win-gold-moll.mhmdalhjeen.workers.dev",
-    "https://wingold-store.mhmdalhjeen.workers.dev",
     "https://winzor.netlify.app",
-    "https://supplierwz.netlify.app",
-    "https://winzor-customer.mhmdalhjeen.workers.dev",
+    "https://win-gold-moll.pages.dev",
 ];
 
 const envOrigins = (process.env.CORS_ORIGINS || "")

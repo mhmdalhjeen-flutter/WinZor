@@ -162,7 +162,7 @@ export function openGiftActivation(navigate, isAuth, code, runWithAuth) {
       }, 'لحفظ نقاطك والاستفادة من السحوبات والمكافآت، يرجى تسجيل الدخول');
       return;
     }
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
     return;
   }
 

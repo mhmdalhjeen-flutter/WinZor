@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
+import { registerAuthSessionInvalidator } from '../utils/authSession';
 import { consumePointsFloatOrigin, dispatchPointsFloat } from '../utils/pointsAnimation';
 import { setDeviceId } from '../utils/deviceId';
 import { logout as apiLogout } from '../services/authService';
@@ -28,6 +29,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(stored.user);
   const [token, setToken] = useState(stored.token);
 
+  useEffect(() => registerAuthSessionInvalidator(() => {
+    setUser(null);
+    setToken(null);
+  }), []);
+
   useEffect(() => {
     let mounted = true;
     if (!stored.user || !stored.token) return undefined;
@@ -49,7 +55,7 @@ export const AuthProvider = ({ children }) => {
         });
       })
       .catch(() => {
-        /* keep cached user */
+        /* invalid/expired sessions are cleared by the axios interceptor */
       });
 
     return () => {

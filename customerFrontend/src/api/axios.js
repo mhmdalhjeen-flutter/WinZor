@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { redirectToMaintenanceIfNeeded } from '../hooks/useMaintenanceMode';
 import { API_URL } from '../lib/apiUrl';
+import { clearStoredAuthSession, hasStoredAuthToken } from '../utils/authSession';
 import { getDeviceId } from '../utils/deviceId';
 
 const instance = axios.create({
@@ -50,11 +51,8 @@ instance.interceptors.response.use(
             }
         }
 
-        if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+        if (error.response?.status === 401 && hasStoredAuthToken()) {
+            clearStoredAuthSession();
         }
         return Promise.reject(error);
     }

@@ -56,7 +56,7 @@ export function openCodeEntry(navigate, isAuth, runWithAuth) {
       runWithAuth(open, AUTH_GATE_MESSAGES.activationCode);
       return;
     }
-    navigate('/login');
+    navigate('/');
     return;
   }
   open();

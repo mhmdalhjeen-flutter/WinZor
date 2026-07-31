@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShoppingCart, Loader2, Minus, Plus, Trash2, CheckCircle2, Package, ClipboardList,
+  ShoppingCart as ShoppingCartIcon, Loader2, Minus, Plus, Trash2, CheckCircle2, Package, ClipboardList,
 } from 'lucide-react';
 import { queryKeys } from '../lib/queryClient';
 import { formatPrice } from '../utils/currency';
@@ -310,7 +310,7 @@ export default function ShoppingCart() {
       <header className="shopping-cart-page__head">
         <div>
           <h1 className="shopping-cart-page__title">
-            <ShoppingCart size={26} strokeWidth={2.2} />
+            <ShoppingCartIcon size={26} strokeWidth={2.2} />
             سلة المشتريات
           </h1>
           <p className="shopping-cart-page__lead">
@@ -339,7 +339,7 @@ export default function ShoppingCart() {
           animate={{ opacity: 1, y: 0 }}
           className="shopping-cart-page__empty"
         >
-          <ShoppingCart size={52} strokeWidth={1.2} />
+          <ShoppingCartIcon size={52} strokeWidth={1.2} />
           <p>سلتك فارغة</p>
           <span>اضغط «اطلب الآن» على أي منتج أو عرض لإضافته هنا</span>
           <button type="button" onClick={() => navigate('/explore')} className="shopping-cart-page__cta">

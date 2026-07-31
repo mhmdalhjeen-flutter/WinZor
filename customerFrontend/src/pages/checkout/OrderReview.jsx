@@ -2,17 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CreditCard } from 'lucide-react';
-import useCartSummary from '../hooks/useCartSummary';
-import { useCheckout } from '../context/CheckoutContext';
-import { useAuthGate } from '../context/AuthGateContext';
-import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
-import { getStoreIdFromContainer } from '../utils/cartHelpers';
-import { DELIVERY_METHODS } from '../utils/checkoutConstants';
-import CheckoutPageShell from '../components/checkout/CheckoutPageShell';
-import CheckoutFixedBar from '../components/checkout/CheckoutFixedBar';
-import CheckoutInvoiceCard from '../components/checkout/CheckoutInvoiceCard';
-import DeliveryMethodSection from '../components/checkout/DeliveryMethodSection';
-import '../styles/checkout.css';
+import useCartSummary from '../../hooks/useCartSummary';
+import { useCheckout } from '../../context/CheckoutContext';
+import { useAuthGate } from '../../context/AuthGateContext';
+import { AUTH_GATE_MESSAGES } from '../../utils/authGateMessages';
+import { getStoreIdFromContainer } from '../../utils/cartHelpers';
+import { DELIVERY_METHODS } from '../../utils/checkoutConstants';
+import CheckoutPageShell from '../../components/checkout/CheckoutPageShell';
+import CheckoutFixedBar from '../../components/checkout/CheckoutFixedBar';
+import CheckoutInvoiceCard from '../../components/checkout/CheckoutInvoiceCard';
+import DeliveryMethodSection from '../../components/checkout/DeliveryMethodSection';
+import '../../styles/checkout.css';
 
 export default function OrderReview() {
   const { storeId } = useParams();

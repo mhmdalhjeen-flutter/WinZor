@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  Banknote, Handshake, Landmark, Smartphone, Wallet,
+  Banknote, Users, Landmark, Smartphone, Wallet,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PAYMENT_METHOD_OPTIONS, PAYMENT_METHODS } from '../../utils/checkoutConstants';
 
 const ICONS = {
   [PAYMENT_METHODS.CASH_ON_DELIVERY]: Banknote,
-  [PAYMENT_METHODS.SELLER_AGREEMENT]: Handshake,
+  [PAYMENT_METHODS.SELLER_AGREEMENT]: Users,
   [PAYMENT_METHODS.BANK_PALESTINE]: Landmark,
   [PAYMENT_METHODS.PALPAY]: Wallet,
   [PAYMENT_METHODS.JAWWAL_PAY]: Smartphone,

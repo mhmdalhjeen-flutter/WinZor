@@ -26,6 +26,15 @@ const {
   applyDefaultBranding,
   dismissBrandingWelcome,
 } = require("../controllers/store.controller");
+const {
+  listMyPaymentMethods,
+  createMyPaymentMethod,
+  updateMyPaymentMethod,
+  activateMyPaymentMethod,
+  deleteMyPaymentMethod,
+  getPaymentMethodTypes,
+  getActiveStorePaymentMethods,
+} = require("../controllers/storePaymentMethod.controller");
 const { requireStoreOwnerPage } = require("../middleware/storeOwnerPage.middleware");
 const { requireStoreSubscription } = require("../middleware/storeSubscription.middleware");
 
@@ -52,6 +61,13 @@ router.post(
 router.get("/my/code-stats", authMiddleware, roleMiddleware.business, requireStoreSubscription, getMyStoreCodeStats);
 router.get("/my", authMiddleware, roleMiddleware.business, getMyStore);
 router.patch("/my", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateMyStore);
+router.get("/my/payment-methods", authMiddleware, roleMiddleware.business, requireStoreSubscription, listMyPaymentMethods);
+router.post("/my/payment-methods", authMiddleware, roleMiddleware.business, requireStoreSubscription, createMyPaymentMethod);
+router.patch("/my/payment-methods/:id", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateMyPaymentMethod);
+router.patch("/my/payment-methods/:id/activate", authMiddleware, roleMiddleware.business, requireStoreSubscription, activateMyPaymentMethod);
+router.delete("/my/payment-methods/:id", authMiddleware, roleMiddleware.business, requireStoreSubscription, deleteMyPaymentMethod);
+router.get("/payment-method-types", getPaymentMethodTypes);
+router.get("/:storeId/payment-methods/active", optionalAuth, getActiveStorePaymentMethods);
 router.post("/my/apply-default-branding", authMiddleware, roleMiddleware.business, requireStoreSubscription, applyDefaultBranding);
 router.post("/my/dismiss-branding-welcome", authMiddleware, roleMiddleware.business, requireStoreSubscription, dismissBrandingWelcome);
 router.get("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreSubscription, requireStoreOwnerPage("memberPrizes"), listMyMemberPrizes);

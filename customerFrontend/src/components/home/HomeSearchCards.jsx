@@ -10,8 +10,7 @@ import api from '../../api/axios';
 const SEARCH_MODES = [
   {
     id: 'region',
-    label: 'فلترة العروض (حسب المنطقة)',
-    labelMobile: 'فلترة العروض (حسب المنطقة)',
+    label: 'فلترة حسب المنطقة',
     icon: MapPin,
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
@@ -19,8 +18,7 @@ const SEARCH_MODES = [
   },
   {
     id: 'offer',
-    label: 'تصنيف العروض (حسب النوع)',
-    labelMobile: 'تصنيف العروض (حسب النوع)',
+    label: 'فلترة حسب الموقع',
     icon: Tag,
     iconBg: 'bg-violet-100',
     iconColor: 'text-violet-600',
@@ -164,7 +162,7 @@ export default function HomeSearchCards({
   return (
     <section className="max-w-6xl mx-auto px-1.5 sm:px-2" dir="rtl">
       <div className="flex items-stretch gap-2">
-        <div className="grid grid-cols-2 gap-2 flex-1 min-w-0" data-onboarding="filters">
+        <div className="flex items-stretch gap-2 flex-1 min-w-0" data-onboarding="filters">
           {SEARCH_MODES.map((mode) => {
             const isActive = activeMode === mode.id;
             return (
@@ -172,17 +170,15 @@ export default function HomeSearchCards({
                 key={mode.id}
                 type="button"
                 onClick={() => toggleMode(mode.id)}
-                className={`home-search-card flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 sm:py-2 min-h-[3.5rem] sm:min-h-[3.75rem] rounded-lg sm:rounded-xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition-all text-center ${
+                className={`home-search-card flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[2.75rem] rounded-lg sm:rounded-xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition-all whitespace-nowrap ${
                   isActive ? `ring-2 ${mode.activeRing} border-transparent` : ''
                 }`}
               >
-                <span className={`flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg shrink-0 ${mode.iconBg}`}>
-                  <mode.icon size={12} className={`${mode.iconColor} sm:hidden`} strokeWidth={2.2} />
-                  <mode.icon size={13} className={`${mode.iconColor} hidden sm:block`} strokeWidth={2.2} />
+                <span className={`flex items-center justify-center w-5 h-5 rounded-md shrink-0 ${mode.iconBg}`}>
+                  <mode.icon size={12} className={mode.iconColor} strokeWidth={2.2} />
                 </span>
-                <span className="text-[11px] sm:text-[13px] font-black text-gray-800 leading-tight line-clamp-2">
-                  <span className="sm:hidden">{mode.labelMobile}</span>
-                  <span className="hidden sm:inline">{mode.label}</span>
+                <span className="text-[11px] sm:text-xs font-black text-gray-800 leading-none">
+                  {mode.label}
                 </span>
               </button>
             );

@@ -8,27 +8,24 @@ import {
   saveNotificationPreferences,
 } from '../../utils/notificationPreferences';
 import { overlayFade, sheetSpring } from '../../utils/motionPresets';
+import '../../styles/ToggleSwitch.css';
 
 function ToggleSwitch({ checked, onChange, label }) {
+  const switchId = React.useId();
   return (
-    <label className="flex items-center justify-between gap-3 py-3 cursor-pointer">
-      <span className="text-sm font-bold text-gray-800">{label}</span>
+    <div className="toggle-switch-row">
+      <span className="toggle-switch-row__label" id={`${switchId}-label`}>{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-labelledby={`${switchId}-label`}
         onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${
-          checked ? 'bg-emerald-500' : 'bg-gray-200'
-        }`}
+        className={`toggle-switch${checked ? ' toggle-switch--on' : ''}`}
       >
-        <span
-          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            checked ? 'translate-x-[-22px]' : 'translate-x-[-2px]'
-          }`}
-        />
+        <span className="toggle-switch__thumb" aria-hidden />
       </button>
-    </label>
+    </div>
   );
 }
 

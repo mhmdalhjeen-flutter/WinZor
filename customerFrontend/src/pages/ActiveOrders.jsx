@@ -1,124 +1,122 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Package, Loader2, ChevronLeft, ShoppingBag } from 'lucide-react';
+import { Package, Loader2, ShoppingBag, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
-import { formatPrice } from '../utils/currency';
-import { orderStatusLabel, orderStatusColors } from '../utils/orderStatus';
-import OrderDetailSheet from '../components/orders/OrderDetailSheet';
-import OrderVerificationBadge from '../components/orders/OrderVerificationBadge';
+import { fetchMyActiveOrders, cancelOrder } from '../services/orderService';
+import { getOrderId, navigateToOrder } from '../utils/orderHelpers';
+import { useOrderStatusPolling } from '../hooks/useOrderStatusPolling';
+import OrderHistoryCard from '../components/orders/OrderHistoryCard';
+import '../styles/orders.css';
 
 export default function ActiveOrders() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [detailOrder, setDetailOrder] = useState(null);
+  useOrderStatusPolling(true);
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: orders = [], isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.myOrders,
-    queryFn: async () => {
-      const { data } = await api.get('/orders/my');
-      return data.orders || [];
-    },
-    staleTime: 30 * 1000,
+    queryFn: fetchMyActiveOrders,
+    staleTime: 20 * 1000,
   });
 
-  const cancelOrder = async (orderId) => {
+  const handleCancel = async (orderId) => {
     if (!window.confirm('إلغاء هذا الطلب؟')) return;
     try {
-      await api.patch(`/orders/${orderId}/cancel`);
+      await cancelOrder(orderId);
       await qc.invalidateQueries({ queryKey: queryKeys.myOrders });
+      await qc.invalidateQueries({ queryKey: queryKeys.myOrderHistory });
     } catch (err) {
       alert(err.response?.data?.message || 'تعذّر الإلغاء');
     }
   };
 
   return (
-    <div className="pb-24 space-y-4 text-right" dir="rtl">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-            <Package className="text-primary" /> طلباتي النشطة
-          </h1>
-          <p className="mt-1 text-xs font-bold text-gray-500">
-            تظهر هنا حتى يتم التسليم — السجل السابق في «الطلبات السابقة»
-          </p>
+    <div className="orders-page text-right" dir="rtl">
+      <header className="orders-page__header">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="orders-page__title">
+              <Package className="text-primary" size={26} />
+              طلباتي النشطة
+            </h1>
+            <p className="orders-page__subtitle">
+              تظهر هنا حتى يتم التأكيد أو الرفض — السجل الكامل في «كل الطلبات السابقة»
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/cart')}
-          className="shrink-0 flex items-center gap-1 rounded-xl bg-primary/10 px-3 py-2 text-xs font-black text-primary"
-        >
-          <ShoppingBag size={16} />
-          السلة
-        </button>
-      </div>
+        <div className="orders-page__actions">
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--ghost"
+            onClick={() => navigate('/orders/history')}
+          >
+            <History size={16} />
+            كل الطلبات السابقة
+          </button>
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--primary"
+            onClick={() => navigate('/cart')}
+          >
+            <ShoppingBag size={16} />
+            السلة
+          </button>
+        </div>
+      </header>
 
       {isLoading && (
-        <div className="flex justify-center py-16">
+        <div className="orders-loading">
           <Loader2 className="animate-spin text-primary" size={28} />
         </div>
       )}
 
-      {!isLoading && orders.length === 0 && (
-        <div className="text-center py-16 text-gray-400 font-bold">
-          <Package size={48} className="mx-auto mb-3 opacity-30" />
+      {isError && (
+        <div className="orders-error">
+          <p>تعذّر تحميل الطلبات</p>
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--primary mt-3"
+            onClick={() => refetch()}
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !isError && orders.length === 0 && (
+        <div className="orders-empty">
+          <Package size={48} className="orders-empty__icon" />
           <p>لا توجد طلبات نشطة</p>
-          <p className="mt-2 text-xs text-gray-400 font-medium">
+          <p className="mt-2 text-xs font-medium text-gray-400">
             أضف منتجات للسلة ثم أكّد الطلب من صفحة السلة
           </p>
           <button
             type="button"
+            className="orders-empty__cta"
             onClick={() => navigate('/cart')}
-            className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white"
           >
             فتح السلة
           </button>
         </div>
       )}
 
-      {!isLoading && orders.length > 0 && (
-        <div className="space-y-3">
+      {!isLoading && !isError && orders.length > 0 && (
+        <div className="orders-list">
           {orders.map((order) => {
-            const colors = orderStatusColors(order.status);
+            const id = getOrderId(order);
+            const isPending = order.status === 'pending' || order.status === 'pending_review';
             return (
-              <div
-                key={order._id}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => setDetailOrder(order)}
-                  className="w-full text-right active:scale-[0.99] transition-transform"
-                >
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <div>
-                      <p className="font-black text-sm">{order.store?.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(order.createdAt).toLocaleDateString('ar-EG')}
-                        {order.orderNumber ? ` · #${order.orderNumber}` : ''}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] font-black px-2 py-1 rounded-lg shrink-0 ${colors.bg} ${colors.text}`}>
-                      {orderStatusLabel(order.status)}
-                    </span>
-                  </div>
-                  {order.items?.length > 0 && (
-                    <p className="text-xs text-gray-500 mb-1">
-                      {(order.items || []).map((i) => `${i.name ?? '—'} ×${i.quantity ?? 0}`).join(' · ')}
-                    </p>
-                  )}
-                  <OrderVerificationBadge code={order.verificationCode} />
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-primary font-black">{formatPrice(order.total, order.currency)}</p>
-                    <ChevronLeft size={16} className="text-gray-300" />
-                  </div>
-                </button>
-                {order.status === 'pending' && (
+              <div key={id}>
+                <OrderHistoryCard
+                  order={order}
+                  onClick={() => navigateToOrder(navigate, id)}
+                />
+                {isPending && (
                   <button
                     type="button"
-                    onClick={() => cancelOrder(order._id)}
-                    className="mt-2 text-xs text-red-500 font-bold"
+                    onClick={() => handleCancel(id)}
+                    className="mt-1 mb-1 w-full py-2 text-sm font-black text-red-600"
                   >
                     إلغاء الطلب
                   </button>
@@ -128,12 +126,6 @@ export default function ActiveOrders() {
           })}
         </div>
       )}
-
-      <OrderDetailSheet
-        order={detailOrder}
-        open={Boolean(detailOrder)}
-        onClose={() => setDetailOrder(null)}
-      />
     </div>
   );
 }

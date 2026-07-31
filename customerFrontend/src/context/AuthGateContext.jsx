@@ -78,22 +78,20 @@ export const AuthGateProvider = ({ children }) => {
         return true;
       }
       pendingRef.current = action || null;
+      try {
+        sessionStorage.setItem(
+          AUTH_RETURN_PATH_KEY,
+          window.location.pathname + window.location.search,
+        );
+      } catch {
+        /* ignore */
+      }
       setMessage(msg);
       setPromptOpen(true);
       return false;
     },
     [isAuth],
   );
-
-  const handlePhoneLogin = useCallback(() => {
-    try {
-      sessionStorage.setItem(AUTH_RETURN_PATH_KEY, window.location.pathname + window.location.search);
-    } catch {
-      /* ignore */
-    }
-    closePrompt();
-    navigate('/login?phone=1');
-  }, [closePrompt, navigate]);
 
   useEffect(() => {
     if (!wasAuthedRef.current && isAuth) {
@@ -124,7 +122,6 @@ export const AuthGateProvider = ({ children }) => {
           <GuestAuthPromptModal
             open={promptOpen}
             message={message}
-            onPhoneLogin={handlePhoneLogin}
             onLater={cancel}
           />
         </Suspense>

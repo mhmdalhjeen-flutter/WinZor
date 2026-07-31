@@ -5,10 +5,13 @@ import { useToast } from '../shared/Toast';
 import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import { IMPORTANT_NOTIFICATION_TYPES } from '../lib/cacheConfig';
+import { navigateToOrder } from '../utils/orderHelpers';
 
 const STORAGE_KEY = 'seenImportantNotifIds';
 
 const POINT_NOTIF_TYPES = new Set(['order_point_gift', 'referral_batch', 'reward', 'prize']);
+
+const ORDER_NOTIF_TYPES = new Set(['order_confirmed', 'order_rejected', 'order_status', 'order']);
 
 function loadSeenIds() {
   try {
@@ -53,6 +56,7 @@ export default function NotificationListener() {
         const list = (data.notifications || []).filter(isImportantNotification);
         let hasNewPoint = false;
         let hasImportant = false;
+        let hasOrderUpdate = false;
 
         for (const n of list) {
           if (seenRef.current.has(n._id)) continue;
@@ -62,6 +66,15 @@ export default function NotificationListener() {
           if (POINT_NOTIF_TYPES.has(n.type)) {
             toast(n.body || n.title, 'success');
             hasNewPoint = true;
+          } else if (ORDER_NOTIF_TYPES.has(n.type)) {
+            hasOrderUpdate = true;
+            const tone = n.type === 'order_rejected' ? 'error' : 'success';
+            toast(n.title || n.body, tone);
+            if (n.type === 'order_rejected' && n.data?.rejectionReason) {
+              window.setTimeout(() => {
+                toast(n.data.rejectionReason, 'info');
+              }, 400);
+            }
           } else {
             toast(n.title || n.body, 'info');
           }
@@ -73,18 +86,34 @@ export default function NotificationListener() {
           queryClient.invalidateQueries({ queryKey: queryKeys.unreadNotifications });
         }
 
+        if (hasOrderUpdate) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.myOrders });
+          queryClient.invalidateQueries({ queryKey: queryKeys.myOrderHistory });
+          queryClient.invalidateQueries({ queryKey: ['orders', 'detail'] });
+        }
+
         if (hasNewPoint) {
           queryClient.invalidateQueries({ queryKey: queryKeys.me });
           queryClient.invalidateQueries({ queryKey: queryKeys.userCenter });
         }
       } catch {
-        /* تجاهل أخطاء الشبكة — البيانات المخزّنة تبقى ظاهرة */
+        /* تجاهل أخطاء الشبكة */
       }
     };
 
     poll();
-    return undefined;
+    const intervalId = window.setInterval(poll, 45000);
+    return () => window.clearInterval(intervalId);
   }, [isAuth, toast, queryClient]);
 
   return null;
+}
+
+export function handleOrderNotificationClick(navigate, notification) {
+  const orderId = notification?.data?.orderId;
+  if (orderId) {
+    navigateToOrder(navigate, orderId);
+    return true;
+  }
+  return false;
 }

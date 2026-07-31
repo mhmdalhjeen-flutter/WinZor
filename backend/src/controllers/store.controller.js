@@ -28,6 +28,7 @@ const {
 } = require("../utils/phone.util");
 const { getDefaultBrandingForCategory } = require("../utils/defaultStoreBranding.util");
 const offerService = require("../services/offer.service");
+const paymentMethodService = require("../services/storePaymentMethod.service");
 const { resolveMonthlyVisits, incrementStoreVisits } = require("../utils/storeVisits.util");
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
@@ -52,6 +53,12 @@ function stripBase64Image(product) {
 
 function stripBase64Logo(store) {
   return resolveStoreMediaFields(store);
+}
+
+async function attachStorePaymentSettings(storeObj) {
+  if (!storeObj?._id) return storeObj;
+  const paymentSettings = await paymentMethodService.buildPaymentSettingsForStore(storeObj._id);
+  return { ...storeObj, paymentSettings };
 }
 
 // ================= إنشاء متجر جديد =================
@@ -236,7 +243,7 @@ exports.getStoreById = async (req, res) => {
         const competitionsEnabled = storeCompetitions?.value?.enabled !== false;
 
         res.json({
-            store: resolveStoreMediaFields(store.toObject()),
+            store: await attachStorePaymentSettings(resolveStoreMediaFields(store.toObject())),
             offers: rankedOffers.map(stripBase64Images),
             products: sortedProducts.map(stripBase64Image),
             isFollowing: isFollowingNetwork || membership?.status === "member" || membership?.status === "pending",
@@ -448,7 +455,9 @@ exports.getMyStore = async (req, res) => {
         const suggestedDefaults = getDefaultBrandingForCategory(store.category);
         const needsWelcome = !store.brandingWelcomeSeen && (!store.logo || !store.coverImage);
 
-        const storePayload = resolveStoreMediaFields(store.toObject());
+        const storePayload = await attachStorePaymentSettings(
+            resolveStoreMediaFields(store.toObject()),
+        );
         storePayload.monthlyVisits = resolveMonthlyVisits(store);
 
         res.json({ store: storePayload, suggestedDefaults, needsWelcome });
@@ -463,7 +472,7 @@ exports.updateMyStore = async (req, res) => {
         const store = await Store.findOne({ owner: req.user.id });
         if (!store) return res.status(404).json({ message: "لا يوجد متجر مرتبط بحسابك" });
 
-        const { logo, coverImage, name, description, phone, whatsapp, address, brandingWelcomeSeen } = req.body;
+        const { logo, coverImage, name, description, phone, whatsapp, address, brandingWelcomeSeen, currencyPreferences } = req.body;
 
         const nameText = cleanString(name, { field: "name", max: 120 });
         if (nameText) store.name = nameText;
@@ -510,8 +519,22 @@ exports.updateMyStore = async (req, res) => {
             store.brandingWelcomeSeen = true;
         }
 
+        if (currencyPreferences !== undefined && typeof currencyPreferences === "object") {
+            assertNoMongoOperators(currencyPreferences, "currencyPreferences");
+            if (currencyPreferences.acceptsWornCurrency !== undefined) {
+                store.currencyPreferences.acceptsWornCurrency = !!currencyPreferences.acceptsWornCurrency;
+            }
+            if (currencyPreferences.acceptsOldCurrency !== undefined) {
+                store.currencyPreferences.acceptsOldCurrency = !!currencyPreferences.acceptsOldCurrency;
+            }
+            if (currencyPreferences.acceptsAllCurrencyTypes !== undefined) {
+                store.currencyPreferences.acceptsAllCurrencyTypes = !!currencyPreferences.acceptsAllCurrencyTypes;
+            }
+        }
+
         await store.save();
-        res.json({ message: "تم تحديث بيانات المتجر", store });
+        const storeOut = await attachStorePaymentSettings(resolveStoreMediaFields(store.toObject()));
+        res.json({ message: "تم تحديث بيانات المتجر", store: storeOut });
     } catch (error) {
         res.status(error.status || 500).json({ message: error.message });
     }

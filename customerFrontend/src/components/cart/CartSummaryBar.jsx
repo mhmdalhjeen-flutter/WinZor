@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import useCartSummary from '../../hooks/useCartSummary';
 import { formatPrice } from '../../utils/currency';
 import '../../styles/cartSummaryBar.css';
@@ -12,8 +12,10 @@ export default function CartSummaryBar({ hidden = false }) {
   const { data: cartStats } = useCartSummary();
 
   const onCartPage = location.pathname === '/cart';
+  const onCheckoutPage = location.pathname.startsWith('/checkout');
   const show = !hidden
     && !onCartPage
+    && !onCheckoutPage
     && cartStats
     && !cartStats.isEmpty
     && cartStats.itemCount > 0;
@@ -33,7 +35,7 @@ export default function CartSummaryBar({ hidden = false }) {
           whileTap={{ scale: 0.98 }}
         >
           <span className="cart-summary-bar__icon-wrap">
-            <ShoppingBag size={22} strokeWidth={2.2} />
+            <ShoppingCart size={22} strokeWidth={2.2} />
           </span>
           <span className="cart-summary-bar__text">
             <strong>🛒 عرض السلة</strong>

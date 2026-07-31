@@ -15,7 +15,7 @@ const {
 } = require("../utils/orderStatus.util");
 
 const ORDER_LIST_SELECT =
-  "orderNumber verificationCode containerId containerName customer store items total status customerNotes storeNotes paymentStatus paymentProof pointsAwarded cardDeducted confirmedAt completedAt deleteAfter statusTimeline createdAt updatedAt";
+  "orderNumber verificationCode containerId containerName customer store customerName customerPhone storeName items subtotal total totalAmount currency status customerNotes storeNotes deliveryMethod deliveryAddress deliveryNotes paymentMethod paymentProof paymentProofImage transferInformation transferName transferPhone transferNumber paymentNotes rejectionReason paymentStatus pointsAwarded cardDeducted deliveryGroup confirmedAt completedAt deleteAfter statusTimeline createdAt updatedAt";
 
 const HISTORY_RETENTION_DAYS = 7;
 
@@ -415,6 +415,17 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
     }
 
     await notifyOrderPointGift(order, store);
+    try {
+      await notificationService.create({
+        user: order.customer,
+        type: "order_confirmed",
+        title: "تم تأكيد طلبك من المتجر",
+        body: `قام ${store.name || "المتجر"} بتأكيد طلبك رقم ${order.orderNumber || ""}`.trim(),
+        data: { orderId: order._id.toString(), storeId: store._id.toString() },
+      });
+    } catch (_) {
+      /* non-critical */
+    }
     const refreshedStore = await Store.findById(store._id).select("cards bypassCards");
 
     return {
@@ -497,12 +508,14 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
   }
 
   if (status === "rejected" && previousStatus === "pending") {
+    const reason = cleanString(options.rejectionReason, { field: "rejectionReason", max: 500 }) || "";
     const order = await Order.findOneAndUpdate(
       { _id: orderId, store: store._id, status: "pending" },
       {
         $set: {
           status: "rejected",
-          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "rejected", options.rejectionReason || ""),
+          rejectionReason: reason,
+          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "rejected", reason),
         },
       },
       updateOpts
@@ -515,15 +528,16 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
 
     await restoreOrderItemsToCart(order.customer, order.items, order.store, session);
 
-    const reason = cleanString(options.rejectionReason, { field: "rejectionReason", max: 500 });
-    if (reason) {
+    try {
       await notificationService.create({
         user: order.customer,
         type: "order_rejected",
-        title: `تم رفض طلبك من ${store.name || "المتجر"}`,
-        body: reason,
-        data: { orderId: order._id.toString() },
+        title: "تم رفض طلبك من المتجر",
+        body: reason || `قام ${store.name || "المتجر"} برفض طلبك`,
+        data: { orderId: order._id.toString(), rejectionReason: reason },
       });
+    } catch (_) {
+      /* non-critical */
     }
 
     return {

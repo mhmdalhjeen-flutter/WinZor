@@ -3,10 +3,22 @@ const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({
   item: { type: mongoose.Schema.Types.ObjectId, required: true },
+  productId: { type: mongoose.Schema.Types.ObjectId },
   itemType: { type: String, enum: ['Product', 'Offer'], required: true },
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true },
+  subtotal: { type: Number },
   name: { type: String, required: true },
+  productName: { type: String, default: '' },
+  image: { type: String, default: '' },
+  productImage: { type: String, default: '' },
+}, { _id: false });
+
+const transferInfoSchema = new mongoose.Schema({
+  senderName: { type: String, default: '' },
+  contactNumber: { type: String, default: '' },
+  referenceNumber: { type: String, default: '' },
+  note: { type: String, default: '' },
 }, { _id: false });
 
 const statusTimelineSchema = new mongoose.Schema({
@@ -22,8 +34,13 @@ const orderSchema = new mongoose.Schema({
   containerName: { type: String, default: '' },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true },
+  customerName: { type: String, default: '' },
+  customerPhone: { type: String, default: '' },
+  storeName: { type: String, default: '' },
   items: [orderItemSchema],
+  subtotal: { type: Number },
   total: { type: Number, required: true },
+  totalAmount: { type: Number },
   currency: { type: String, default: 'ILS' },
   status: {
     type: String,
@@ -43,12 +60,28 @@ const orderSchema = new mongoose.Schema({
   },
   customerNotes: { type: String, default: '' },
   storeNotes: { type: String, default: '' },
+  deliveryMethod: { type: String, default: '' },
+  deliveryAddress: { type: String, default: '' },
+  deliveryNotes: { type: String, default: '' },
+  paymentMethod: { type: String, default: '' },
+  transferInformation: { type: transferInfoSchema, default: () => ({}) },
+  transferName: { type: String, default: '' },
+  transferPhone: { type: String, default: '' },
+  transferNumber: { type: String, default: '' },
+  paymentNotes: { type: String, default: '' },
+  rejectionReason: { type: String, default: '' },
   paymentStatus: {
     type: String,
     enum: ['unpaid', 'pending', 'paid'],
     default: 'unpaid',
   },
   paymentProof: { type: String, default: '' },
+  paymentProofImage: { type: String, default: '' },
+  deliveryGroup: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryGroup',
+    default: null,
+  },
   pointsAwarded: { type: Boolean, default: false },
   cardDeducted: { type: Boolean, default: false },
   confirmedAt: { type: Date },

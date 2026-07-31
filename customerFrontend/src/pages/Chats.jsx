@@ -8,8 +8,7 @@ import {
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { mergeChatMessages, messagesShallowEqual } from '../utils/chatMessages';
-import ReferencedItemsBar from '../components/ReferencedItemsBar';
-import { getChatItemPath, getReferencedItems } from '../utils/chatItemRoutes';
+import { getChatItemPath, getReferencedItems, itemTypeIcon } from '../utils/chatItemRoutes';
 import { getStoredUser } from '../utils/safeStorage';
 import { getUnreadCountForUser } from '../utils/unreadCount';
 import { queryKeys } from '../lib/queryClient';
@@ -20,17 +19,84 @@ import '../styles/Chats.css';
 const POLL_MS = 3000;
 const WARN_KEY = 'chatExpiryWarned';
 
-const getMyId = (authUser) => {
-  if (authUser?._id) return String(authUser._id);
-  if (authUser?.id) return String(authUser.id);
-  const saved = getStoredUser({});
-  return String(saved._id || saved.id || '');
+const ITEM_TYPE_LABEL = {
+  Product: 'منتج',
+  Offer: 'عرض',
+  BazaarListing: 'إعلان في السوق',
+  Support: 'دعم',
 };
 
 const normalizeId = (id) => {
   if (!id) return '';
   if (typeof id === 'object') return String(id._id || id.id || '');
   return String(id);
+};
+
+function getItemTypeLabel(type) {
+  return ITEM_TYPE_LABEL[type] || 'عنصر';
+}
+
+function isMessageSenderMine(sender, myId) {
+  const senderId = sender?._id || sender;
+  return normalizeId(senderId) === normalizeId(myId) && !!myId;
+}
+
+function isOtherUserTyping(conv, myId) {
+  if (!conv?.typingBy) return false;
+  return normalizeId(conv.typingBy) !== normalizeId(myId);
+}
+
+function SharedItemCard({ item, onClick }) {
+  const imgSrc = resolveImageUrl(item.itemImage, { width: 160 });
+  const typeLabel = getItemTypeLabel(item.itemType);
+
+  return (
+    <div className="msg msg--shared-item msg--animate received">
+      <button type="button" className="shared-item-card" onClick={() => onClick(item)}>
+        {imgSrc ? (
+          <img src={imgSrc} alt="" className="shared-item-card__media" loading="lazy" decoding="async" />
+        ) : (
+          <span className="shared-item-card__media shared-item-card__media--fallback" aria-hidden>
+            {itemTypeIcon(item.itemType)}
+          </span>
+        )}
+        <div className="shared-item-card__body">
+          <h5 className="shared-item-card__title">{item.itemName || typeLabel}</h5>
+          <p className="shared-item-card__desc">{typeLabel} · اضغط لعرض التفاصيل</p>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function ChatListPreview({ conv, myId, unread }) {
+  if (isOtherUserTyping(conv, myId)) {
+    return <p className="chat-preview-typing">يكتب الآن...</p>;
+  }
+
+  const lastMsg = conv.lastMessage;
+  const previewText = (lastMsg?.image || lastMsg?.hasImage)
+    ? '📷 صورة'
+    : lastMsg?.text || 'ابدأ المحادثة';
+  const isMine = lastMsg && isMessageSenderMine(lastMsg.sender, myId);
+
+  return (
+    <div className="chat-preview-row">
+      {isMine && (
+        <span className={`chat-preview-status${lastMsg.read ? ' is-read' : ''}`} aria-hidden>
+          {lastMsg.read ? <CheckCheck size={15} strokeWidth={2.5} /> : <Check size={15} strokeWidth={2.5} />}
+        </span>
+      )}
+      <p className={unread > 0 ? 'chat-preview-unread' : ''}>{previewText}</p>
+    </div>
+  );
+}
+
+const getMyId = (authUser) => {
+  if (authUser?._id) return String(authUser._id);
+  if (authUser?.id) return String(authUser.id);
+  const saved = getStoredUser({});
+  return String(saved._id || saved.id || '');
 };
 
 /** فتح العنصر المرجعي داخل موقع الزبون */
@@ -419,9 +485,6 @@ export default function Chats() {
                 const other = getOther(conv);
                 const unread = getUnreadCountForUser(conv.unreadCount, myId);
                 const isActive = activeConv?._id === conv._id;
-                const lastMsgTxt = conv.lastMessage?.image
-                  ? '📷 صورة'
-                  : conv.lastMessage?.text || 'ابدأ المحادثة';
 
                 return (
                   <div
@@ -434,13 +497,15 @@ export default function Chats() {
                     </div>
                     <div className="chat-info">
                       <h4>{other?.name || 'مستخدم'}</h4>
-                      <p className={unread > 0 ? 'chat-preview-unread' : ''}>{lastMsgTxt}</p>
+                      <ChatListPreview conv={conv} myId={myId} unread={unread} />
                     </div>
                     <div className="chat-meta">
-                      <span className={`chat-time${unread > 0 ? ' chat-time--unread' : ''}`}>{formatListTime(conv.updatedAt)}</span>
+                      <span className={`chat-time${unread > 0 ? ' chat-time--unread' : ''}`}>
+                        {formatListTime(conv.lastMessage?.createdAt || conv.updatedAt)}
+                      </span>
                       {unread > 0 && (
-                        <span className="chat-unread-badge">
-                          {unread > 9 ? '9+' : unread}
+                        <span className="chat-unread-badge" aria-label={`${unread} غير مقروء`}>
+                          {unread > 99 ? '99+' : unread}
                         </span>
                       )}
                     </div>
@@ -459,47 +524,33 @@ export default function Chats() {
           </div>
         ) : (
           <div className={`chat-window ${showList ? 'mobile-hidden' : ''}`}>
-            <div className="window-header">
-              <button type="button" className="back-mobile" onClick={backToList} aria-label="رجوع">
-                <ChevronRight size={22} />
-              </button>
-              <div className="user-details">
-                <div className="chat-avatar" style={{ cursor: 'default' }}>
-                  {getInitial(getOther(activeConv)?.name)}
-                </div>
-                <div>
-                  <h4>{getOther(activeConv)?.name || 'مستخدم'}</h4>
-                  <span>⏳ الرسائل تُحذف بعد 4 أيام</span>
-                </div>
-              </div>
-              <div className="header-links">
-                <button
-                  type="button"
-                  className="mini-wa"
-                  onClick={() => {
-                    const other = getOther(activeConv);
-                    const phone = other?.phone || other?.whatsapp;
-                    if (!phone) return alert('رقم الواتساب غير متاح');
-                    window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
-                  }}
-                >
-                  📱 واتساب
-                </button>
-              </div>
-            </div>
-
-            <ReferencedItemsBar items={referencedItems} onItemClick={goContext} />
+            <button
+              type="button"
+              className="chat-back-fab"
+              onClick={backToList}
+              aria-label="رجوع للمحادثات"
+            >
+              <ChevronRight size={22} strokeWidth={2.2} />
+            </button>
 
             <div className="chat-messages">
-              {messages.length === 0 && (
+              {messages.length === 0 && referencedItems.length === 0 && (
                 <div className="chat-messages-empty">
                   <span>👋</span>
                   <p>ابدأ المحادثة الآن</p>
                 </div>
               )}
+
+              {referencedItems.map((item) => (
+                <SharedItemCard
+                  key={`${item.itemType}:${item.itemId}`}
+                  item={item}
+                  onClick={goContext}
+                />
+              ))}
+
               {messages.map((msg, i) => {
-                const senderId = msg.sender?._id || msg.sender;
-                const isMine = normalizeId(senderId) === normalizeId(myId) && !!myId;
+                const isMine = isMessageSenderMine(msg.sender, myId);
                 return (
                   <div
                     key={msg.clientKey || msg._id || i}
@@ -532,26 +583,32 @@ export default function Chats() {
                     <span className="msg-meta">
                       {formatTime(msg.createdAt)}
                       {isMine && (
-                        <span className="read-status" aria-label={msg.read ? 'مقروء' : 'مُرسَل'}>
-                          {msg.read ? <CheckCheck size={14} /> : <Check size={14} />}
+                        <span className={`read-status${msg.read ? ' is-read' : ''}`} aria-label={msg.read ? 'مقروء' : 'مُرسَل'}>
+                          {msg.read ? <CheckCheck size={14} strokeWidth={2.5} /> : <Check size={14} strokeWidth={2.5} />}
                         </span>
                       )}
                     </span>
                   </div>
                 );
               })}
+
               {sending && (
                 <div className="typing-indicator" aria-label="جاري الإرسال">
                   <span /><span /><span />
                 </div>
               )}
+
+              {isOtherUserTyping(activeConv, myId) && (
+                <div className="typing-indicator--text">يكتب الآن...</div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
 
             {replyTo && (
               <div className="reply-preview-bar">
                 <div>
-                  <span style={{ color: '#667eea', fontWeight: 'bold' }}>
+                  <span className="reply-preview-bar__label">
                     رداً على: {replyTo.sender?.name || 'مستخدم'}
                   </span>
                   <p>
@@ -578,44 +635,51 @@ export default function Chats() {
               </div>
             )}
 
-            <div className="chat-input-area">
+            <div className="chat-composer">
+              <div className="chat-composer__tools">
+                <button
+                  type="button"
+                  className="chat-media-btn"
+                  title="إرفاق صورة"
+                  aria-label="إرفاق صورة"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip size={21} strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  className="chat-media-btn"
+                  title="التقاط صورة"
+                  aria-label="التقاط صورة"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <Camera size={21} strokeWidth={2} />
+                </button>
+              </div>
+              <div className="chat-composer__input-wrap">
+                <input
+                  type="text"
+                  className="chat-composer__input"
+                  placeholder="اكتب رسالة..."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  disabled={sending}
+                />
+              </div>
               <button
                 type="button"
-                className="chat-media-btn"
-                title="التقاط صورة"
-                onClick={() => cameraInputRef.current?.click()}
-              >
-                <Camera size={20} strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                className="chat-media-btn"
-                title="إرفاق صورة"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip size={20} strokeWidth={2} />
-              </button>
-              <input
-                type="text"
-                placeholder="اكتب رسالتك..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                disabled={sending}
-              />
-              <button
-                type="button"
-                className="send-msg-btn"
+                className="chat-composer__send"
                 onClick={sendMessage}
                 disabled={sending || (!text.trim() && !imageFile)}
                 aria-label="إرسال"
               >
-                <Send size={20} strokeWidth={2.2} />
+                <Send size={20} strokeWidth={2.4} />
               </button>
             </div>
           </div>

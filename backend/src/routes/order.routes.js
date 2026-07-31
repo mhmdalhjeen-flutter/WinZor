@@ -3,10 +3,14 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth.middleware");
 const roleMiddleware = require("../middleware/role.middleware");
 const orderService = require("../services/order.service");
+const marketplaceOrderController = require("../controllers/marketplaceOrder.controller");
 const auditService = require("../services/audit.service");
 const { requireObjectId, assertNoMongoOperators } = require("../utils/inputSecurity.util");
 
 router.use(authMiddleware);
+
+/** Marketplace order APIs (canonical responses, one order per store). */
+router.post("/", roleMiddleware.customer, marketplaceOrderController.createOrder);
 
 function handleServiceError(res, err) {
   const status = err.status || 500;
@@ -38,14 +42,7 @@ router.get("/store/pending-count", roleMiddleware.business, async (req, res) => 
   }
 });
 
-router.get("/store", roleMiddleware.business, async (req, res) => {
-  try {
-    const data = await orderService.getStoreOrders(req.user.id);
-    res.json(data);
-  } catch (err) {
-    handleServiceError(res, err);
-  }
-});
+router.get("/store", roleMiddleware.business, marketplaceOrderController.getStoreOrders);
 
 router.get("/store/history", roleMiddleware.business, async (req, res) => {
   try {
@@ -65,23 +62,9 @@ router.get("/store/invoices", roleMiddleware.business, async (req, res) => {
   }
 });
 
-router.get("/my", roleMiddleware.customer, async (req, res) => {
-  try {
-    const orders = await orderService.getCustomerOrders(req.user.id);
-    res.json({ orders });
-  } catch (err) {
-    handleServiceError(res, err);
-  }
-});
+router.get("/my", roleMiddleware.customer, marketplaceOrderController.getCustomerOrders);
 
-router.get("/my/history", roleMiddleware.customer, async (req, res) => {
-  try {
-    const orders = await orderService.getCustomerOrderHistory(req.user.id);
-    res.json({ orders });
-  } catch (err) {
-    handleServiceError(res, err);
-  }
-});
+router.get("/my/history", roleMiddleware.customer, marketplaceOrderController.getCustomerOrderHistory);
 
 router.get("/admin/history", roleMiddleware.admin, async (req, res) => {
   try {
@@ -92,15 +75,11 @@ router.get("/admin/history", roleMiddleware.admin, async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
-  try {
-    const orderId = requireObjectId(req.params.id, "id");
-    const order = await orderService.getOrderDetail(req.user, orderId);
-    res.json({ order });
-  } catch (err) {
-    handleServiceError(res, err);
-  }
-});
+router.get("/:id", marketplaceOrderController.getOrderDetail);
+
+router.patch("/:id/confirm", roleMiddleware.business, marketplaceOrderController.confirmOrder);
+
+router.patch("/:id/reject", roleMiddleware.business, marketplaceOrderController.rejectOrder);
 
 router.patch("/:id/status", roleMiddleware.business, async (req, res) => {
   try {
@@ -161,19 +140,6 @@ router.patch("/admin/bypass/:storeId", roleMiddleware.admin, async (req, res) =>
   }
 });
 
-router.patch("/:id/cancel", roleMiddleware.customer, async (req, res) => {
-  try {
-    const orderId = requireObjectId(req.params.id, "id");
-    const order = await orderService.cancelOrderByCustomer(req.user.id, orderId);
-    await auditService.logSensitiveOperation(req, {
-      action: "إلغاء طلب من الزبون",
-      details: `طلب ${orderId}`,
-      metadata: { orderId: String(orderId) },
-    });
-    res.json({ message: "تم إلغاء الطلب", order });
-  } catch (err) {
-    handleServiceError(res, err);
-  }
-});
+router.patch("/:id/cancel", roleMiddleware.customer, marketplaceOrderController.cancelOrder);
 
 module.exports = router;

@@ -50,6 +50,8 @@ export const IMPORTANT_NOTIFICATION_TYPES = new Set([
   'chat_message',
   'message',
   'order',
+  'order_confirmed',
+  'order_rejected',
   'order_point_gift',
   'order_status',
   'competition_draw',

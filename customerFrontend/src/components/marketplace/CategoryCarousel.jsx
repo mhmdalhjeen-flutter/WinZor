@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Sparkles, ChevronLeft } from 'lucide-react';
 import { formatPriceWithUnit } from '../../utils/currency';
 import { isMiscReel } from '../../utils/categoryDisplay';
+import { getCategoryColors } from '../../utils/categoryColors';
 import MarketplaceOfferCard from './MarketplaceOfferCard';
 import OfferRailTrack from './OfferRailTrack';
 import { getSlideScrollTarget } from '../../hooks/useCenterSnapCarousel';
@@ -72,15 +73,24 @@ function CategoryCarousel({
     : `${offers.length} عرض`;
 
   const resetKey = String(reel.categoryId || reel.categoryName || 'category');
+  const categoryColors = getCategoryColors(reel.categoryName, reel.categoryId);
 
   return (
     <section className="category-reel">
       {!hideHeader && (
-        <header className="category-reel__header">
-          <span className="category-reel__icon" aria-hidden>
-            {reel.categoryIcon || <Sparkles size={18} />}
+        <header
+          className="category-reel__header"
+          style={{
+            '--cat-bg': categoryColors.bg,
+            '--cat-text': categoryColors.text,
+            '--cat-border': categoryColors.border,
+            '--cat-accent': categoryColors.accent,
+          }}
+        >
+          <span className="category-reel__icon category-reel__icon--badge" aria-hidden>
+            {reel.categoryIcon || <Sparkles size={16} />}
           </span>
-          <h3 className="category-reel__title">{reel.categoryName}</h3>
+          <h3 className="category-reel__title category-reel__title--badge">{reel.categoryName}</h3>
           <span className="category-reel__count">{countLabel}</span>
           {totalSlides > 3 && (
             <button

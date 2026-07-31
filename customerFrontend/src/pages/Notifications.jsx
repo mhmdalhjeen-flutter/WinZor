@@ -1,8 +1,10 @@
-import { Bell, Clock, AlertCircle, RefreshCw, Tag, Gift, UserPlus, Trophy, MessageCircle } from 'lucide-react';
+import { Bell, Clock, AlertCircle, RefreshCw, Tag, Gift, UserPlus, Trophy, MessageCircle, CheckCircle2, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markRead, markAllRead } from '../services/notificationService';
 import { queryKeys } from '../lib/queryClient';
 import { cleanupNotifications } from '../utils/notificationCleanup';
+import { handleOrderNotificationClick } from '../components/NotificationListener';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import '../styles/Notifications.css';
 
@@ -14,8 +16,13 @@ function typeMeta(type) {
       return { Icon: AlertCircle, tone: 'danger' };
     case 'offer_renewed':
       return { Icon: RefreshCw, tone: 'info' };
+    case 'order_confirmed':
+      return { Icon: CheckCircle2, tone: 'info' };
     case 'order_rejected':
       return { Icon: AlertCircle, tone: 'danger' };
+    case 'order_status':
+    case 'order':
+      return { Icon: Package, tone: 'info' };
     case 'order_point_gift':
       return { Icon: Gift, tone: 'info' };
     case 'referral_batch':
@@ -31,6 +38,7 @@ function typeMeta(type) {
 
 export default function Notifications() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: items = [], isLoading, error: queryError } = useQuery({
     queryKey: queryKeys.notifications,
@@ -61,6 +69,18 @@ export default function Notifications() {
     const link = n.data?.drawLink || n.data?.url;
     if (n.type === 'competition_draw' && link) {
       window.open(link, '_blank', 'noopener,noreferrer');
+    }
+    if (handleOrderNotificationClick(navigate, n)) {
+      if (!n.read) {
+        try {
+          await markRead(n._id);
+          patchItems((prev) => prev.map((x) => (x._id === n._id ? { ...x, read: true } : x)));
+          qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications });
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
     }
     if (n.read) return;
     try {
@@ -122,6 +142,9 @@ export default function Notifications() {
                   {!n.read && <span className="notif-card__dot" />}
                 </div>
                 {n.body && <p>{n.body}</p>}
+                {n.type === 'order_rejected' && n.data?.rejectionReason && (
+                  <p className="notif-rejection-reason">السبب: {n.data.rejectionReason}</p>
+                )}
                 <time>{new Date(n.createdAt).toLocaleString('ar-EG')}</time>
               </div>
             </article>

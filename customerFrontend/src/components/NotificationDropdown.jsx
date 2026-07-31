@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Clock, Tag, AlertCircle, RefreshCw, Gift, UserPlus, Trophy, MessageCircle } from 'lucide-react';
+import { Bell, Clock, Tag, AlertCircle, RefreshCw, Gift, UserPlus, Trophy, MessageCircle, CheckCircle2, Package } from 'lucide-react';
 import { getNotifications, markRead, markAllRead } from '../services/notificationService';
 import { queryKeys } from '../lib/queryClient';
 import { cleanupNotifications } from '../utils/notificationCleanup';
+import { handleOrderNotificationClick } from './NotificationListener';
 import '../styles/NotificationDropdown.css';
 
 const PREVIEW_LIMIT = 6;
@@ -18,8 +19,13 @@ function typeMeta(type) {
       return { Icon: AlertCircle, tone: 'danger' };
     case 'offer_renewed':
       return { Icon: RefreshCw, tone: 'info' };
+    case 'order_confirmed':
+      return { Icon: CheckCircle2, tone: 'info' };
     case 'order_rejected':
       return { Icon: AlertCircle, tone: 'danger' };
+    case 'order_status':
+    case 'order':
+      return { Icon: Package, tone: 'info' };
     case 'order_point_gift':
       return { Icon: Gift, tone: 'info' };
     case 'referral_batch':
@@ -85,6 +91,19 @@ export default function NotificationDropdown({ count, onCountChange, viewAllPath
     const link = n.data?.drawLink || n.data?.url;
     if (n.type === 'competition_draw' && link) {
       window.open(link, '_blank', 'noopener,noreferrer');
+    }
+    if (handleOrderNotificationClick(navigate, n)) {
+      if (!n.read) {
+        try {
+          await markRead(n._id);
+          patchItems((prev) => prev.map((x) => (x._id === n._id ? { ...x, read: true } : x)));
+          syncUnread(Math.max(0, count - 1));
+        } catch {
+          /* ignore */
+        }
+      }
+      setOpen(false);
+      return;
     }
     if (!n.read) {
       try {

@@ -28,6 +28,7 @@ const PointsFloatLayer = lazy(() => import('./components/PointsFloatLayer'));
 const FloatingCodeButton = lazy(() => import('./components/FloatingCodeButton'));
 const OnboardingTourHost = lazy(() => import('./components/onboarding/OnboardingTourHost'));
 const Intro = lazy(() => import('./pages/Intro'));
+const AboutApp = lazy(() => import('./pages/AboutApp'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
@@ -51,11 +52,19 @@ const Chats = lazy(() => import('./pages/Chats'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const ActiveOrders = lazy(() => import('./pages/ActiveOrders'));
 const ShoppingCart = lazy(() => import('./pages/ShoppingCart'));
+const OrderReview = lazy(() => import('./pages/checkout/OrderReview'));
+const CheckoutPayment = lazy(() => import('./pages/checkout/CheckoutPayment'));
+const CheckoutPaymentDetails = lazy(() => import('./pages/checkout/CheckoutPaymentDetails'));
+const CheckoutPending = lazy(() => import('./pages/checkout/CheckoutPending'));
 const OrderHistory = lazy(() => import('./pages/OrderHistory'));
+const OrderDetails = lazy(() => import('./pages/OrderDetails'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const CartSummaryBar = lazy(() => import('./components/cart/CartSummaryBar'));
 const CompetitionDetail = lazy(() => import('./pages/CompetitionDetail'));
 const Competitions = lazy(() => import('./pages/Competitions'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const DataDeletion = lazy(() => import('./pages/DataDeletion'));
 
 const LazyPage = ({ children }) => (
   <Suspense fallback={<LightLoadingHint />}>{children}</Suspense>
@@ -147,10 +156,16 @@ function AppShell() {
             <Route path="/" element={<Home />} />
 
             <Route path="/intro" element={<LazyPage><Intro /></LazyPage>} />
+            <Route path="/about" element={<LazyPage><AboutApp /></LazyPage>} />
             <Route path="/login" element={!isAuth ? <LazyPage><Login /></LazyPage> : <Navigate to="/" />} />
             <Route path="/register" element={!isAuth ? <LazyPage><Register /></LazyPage> : <Navigate to="/" />} />
             <Route path="/verify-email" element={<LazyPage><VerifyEmail /></LazyPage>} />
             <Route path="/forgot-password" element={!isAuth ? <LazyPage><ForgotPassword /></LazyPage> : <Navigate to="/" />} />
+
+            {/* صفحات قانونية عامة — مطلوبة لـ Meta / Facebook Login */}
+            <Route path="/privacy" element={<LazyPage><PrivacyPolicy /></LazyPage>} />
+            <Route path="/terms" element={<LazyPage><TermsOfService /></LazyPage>} />
+            <Route path="/data-deletion" element={<LazyPage><DataDeletion /></LazyPage>} />
             
             <Route path="/explore" element={<LazyPage><Explore /></LazyPage>} />
             <Route path="/stores/points" element={<LazyPage><PointsProgramStores /></LazyPage>} />
@@ -176,8 +191,13 @@ function AppShell() {
             <Route path="/personalization" element={<Navigate to="/center" replace />} />
             <Route path="/favorites" element={<ProtectedRoute><LazyPage><Favorites /></LazyPage></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><LazyPage><ActiveOrders /></LazyPage></ProtectedRoute>} />
-            <Route path="/cart" element={<LazyPage><ShoppingCart /></LazyPage>} />
             <Route path="/orders/history" element={<ProtectedRoute><LazyPage><OrderHistory /></LazyPage></ProtectedRoute>} />
+            <Route path="/orders/:orderId" element={<ProtectedRoute><LazyPage><OrderDetails /></LazyPage></ProtectedRoute>} />
+            <Route path="/cart" element={<LazyPage><ShoppingCart /></LazyPage>} />
+            <Route path="/checkout/review/:storeId" element={<LazyPage><OrderReview /></LazyPage>} />
+            <Route path="/checkout/payment/:storeId" element={<ProtectedRoute><LazyPage><CheckoutPayment /></LazyPage></ProtectedRoute>} />
+            <Route path="/checkout/payment/:storeId/details" element={<ProtectedRoute><LazyPage><CheckoutPaymentDetails /></LazyPage></ProtectedRoute>} />
+            <Route path="/checkout/pending" element={<ProtectedRoute><LazyPage><CheckoutPending /></LazyPage></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><LazyPage><Notifications /></LazyPage></ProtectedRoute>} />
             <Route path="/competitions" element={<LazyPage><Competitions /></LazyPage>} />
             <Route path="/competitions/:id" element={<LazyPage><CompetitionDetail /></LazyPage>} />

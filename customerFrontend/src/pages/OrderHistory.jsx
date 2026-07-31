@@ -1,112 +1,121 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { History, Loader2, ChevronLeft, Store } from 'lucide-react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, History, Loader2, Package, ShoppingBag } from 'lucide-react';
 import { queryKeys } from '../lib/queryClient';
-import { formatPrice } from '../utils/currency';
-import { orderStatusLabel, orderStatusColors } from '../utils/orderStatus';
-import OrderDetailSheet from '../components/orders/OrderDetailSheet';
-import OrderVerificationBadge from '../components/orders/OrderVerificationBadge';
+import { fetchMyActiveOrders, fetchMyOrderHistory } from '../services/orderService';
+import { mergeOrders, getOrderId, navigateToOrder } from '../utils/orderHelpers';
+import { useOrderStatusPolling } from '../hooks/useOrderStatusPolling';
+import OrderHistoryCard from '../components/orders/OrderHistoryCard';
+import '../styles/orders.css';
 
 export default function OrderHistory() {
   const navigate = useNavigate();
-  const [detailOrder, setDetailOrder] = useState(null);
+  useOrderStatusPolling(true);
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: queryKeys.myOrderHistory,
+  const {
+    data: orders = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: [...queryKeys.myOrderHistory, 'all'],
     queryFn: async () => {
-      const { data } = await api.get('/orders/my/history');
-      return data.orders || [];
+      const [active, history] = await Promise.all([
+        fetchMyActiveOrders(),
+        fetchMyOrderHistory(),
+      ]);
+      return mergeOrders(active, history);
     },
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
 
+  const openOrder = (order) => {
+    const id = getOrderId(order);
+    if (id) navigateToOrder(navigate, id);
+  };
+
   return (
-    <div className="pb-24 space-y-4 text-right" dir="rtl">
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-2 text-xs font-bold text-gray-500"
-        >
-          ← رجوع
+    <div className="orders-page text-right" dir="rtl">
+      <header className="orders-page__header">
+        <button type="button" className="orders-page__back" onClick={() => navigate(-1)}>
+          <ArrowRight size={14} />
+          رجوع
         </button>
-        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-          <History className="text-primary" /> الطلبات السابقة
+        <h1 className="orders-page__title">
+          <History className="text-primary" size={26} />
+          كل الطلبات السابقة
         </h1>
-        <p className="mt-1 text-xs font-bold text-gray-500">
-          تُحفظ الطلبات المكتملة لمدة 7 أيام ثم تُحذف تلقائياً
+        <p className="orders-page__subtitle">
+          جميع طلباتك في مكان واحد — الطلبات النشطة والمكتملة خلال آخر 7 أيام
         </p>
-      </div>
+        <div className="orders-page__actions">
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--primary"
+            onClick={() => navigate('/orders')}
+          >
+            <Package size={16} />
+            الطلبات النشطة
+          </button>
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--ghost"
+            onClick={() => navigate('/cart')}
+          >
+            <ShoppingBag size={16} />
+            السلة
+          </button>
+        </div>
+      </header>
 
       {isLoading && (
-        <div className="flex justify-center py-16">
+        <div className="orders-loading">
           <Loader2 className="animate-spin text-primary" size={28} />
         </div>
       )}
 
-      {!isLoading && orders.length === 0 && (
-        <div className="text-center py-16 text-gray-400 font-bold">
-          <History size={48} className="mx-auto mb-3 opacity-30" />
-          <p>لا توجد طلبات سابقة</p>
+      {isError && (
+        <div className="orders-error">
+          <p>تعذّر تحميل الطلبات</p>
+          <button
+            type="button"
+            className="orders-page__action-btn orders-page__action-btn--primary mt-3"
+            onClick={() => refetch()}
+          >
+            إعادة المحاولة
+          </button>
         </div>
       )}
 
-      {!isLoading && orders.length > 0 && (
-        <div className="space-y-3">
-          {orders.map((order) => {
-            const colors = orderStatusColors(order.status);
-            return (
-              <button
-                key={order._id}
-                type="button"
-                onClick={() => setDetailOrder(order)}
-                className="w-full text-right bg-white rounded-2xl p-4 border border-gray-100 shadow-sm active:scale-[0.99] transition-transform"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-primary">
-                    <Store size={20} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <p className="font-black text-sm text-gray-900">{order.store?.name || 'متجر'}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(order.createdAt).toLocaleDateString('ar-EG', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </p>
-                      </div>
-                      <span className={`text-[10px] font-black px-2 py-1 rounded-lg shrink-0 ${colors.bg} ${colors.text}`}>
-                        {orderStatusLabel(order.status)}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div>
-                        <p className="text-primary font-black">{formatPrice(order.total, order.currency)}</p>
-                        {order.orderNumber && (
-                          <p className="text-[10px] text-gray-400 font-bold mt-0.5">#{order.orderNumber}</p>
-                        )}
-                        <OrderVerificationBadge code={order.verificationCode} className="mt-1.5" />
-                      </div>
-                      <ChevronLeft size={16} className="text-gray-300" />
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+      {!isLoading && !isError && orders.length === 0 && (
+        <div className="orders-empty">
+          <History size={48} className="orders-empty__icon" />
+          <p>لا توجد طلبات بعد</p>
+          <p className="mt-2 text-xs font-medium text-gray-400">
+            أضف منتجات للسلة ثم أكّد طلبك
+          </p>
+          <button
+            type="button"
+            className="orders-empty__cta"
+            onClick={() => navigate('/cart')}
+          >
+            فتح السلة
+          </button>
         </div>
       )}
 
-      <OrderDetailSheet
-        order={detailOrder}
-        open={Boolean(detailOrder)}
-        onClose={() => setDetailOrder(null)}
-      />
+      {!isLoading && !isError && orders.length > 0 && (
+        <div className="orders-list">
+          {orders.map((order) => (
+            <OrderHistoryCard
+              key={getOrderId(order)}
+              order={order}
+              onClick={() => openOrder(order)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,39 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ChevronRight, MapPin, Phone, MessageCircle, Gift, Trophy, Bell,
+  ChevronRight, MapPin, Phone, MessageCircle, Bell,
+  Search, X, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../api/axios';
 import { logActivity } from '../utils/activity';
 import StarRating from '../components/StarRating';
 import VerifiedBadge from '../components/marketplace/VerifiedBadge';
-import OfferCard from '../components/OfferCard';
-import ProductCard from '../shared/ProductCard';
+import StoreCatalogCard from '../components/store/StoreCatalogCard';
 import LightLoadingHint from '../shared/LightLoadingHint';
 import ErrorState from '../shared/ErrorState';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
 import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
-import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder } from '../utils/mediaUrl';
+import { resolveStoreCover, resolveStoreLogo, storeLogoPlaceholder, resolveOfferImage, resolveProductImage, cloudinarySrcSet } from '../utils/mediaUrl';
 import { clearStoreNotifyOptOut, isStoreNotifyOptedOut } from '../utils/giftActivationFlow';
 import { queryKeys } from '../lib/queryClient';
 import { recordVisitedStore } from '../utils/visitedStores';
 import { warmStoreDetailImages } from '../utils/cacheImages';
+import { formatPriceWithUnit } from '../utils/currency';
+import { getOfferPricing } from '../components/OfferPriceDisplay';
+import '../styles/storeDetail.css';
+
+/** Frontend-only categories — filter by product.category when available */
+const STORE_CATEGORIES = [
+  { id: 'all', label: 'الكل' },
+  { id: 'cleaners', label: 'منظفات', match: ['منظف', 'تنظيف'] },
+  { id: 'sweets', label: 'حلويات', match: ['حلو', 'سكري'] },
+  { id: 'nuts', label: 'مكسرات', match: ['مكسر', 'فستق', 'لوز'] },
+  { id: 'drinks', label: 'مشروبات', match: ['مشروب', 'عصير', 'ماء'] },
+  { id: 'dairy', label: 'ألبان', match: ['لبن', 'ألبان', 'جبن', 'زبادي'] },
+  { id: 'frozen', label: 'مجمدات', match: ['مجمد', 'frozen'] },
+  { id: 'groceries', label: 'مواد غذائية', match: ['غذائ', 'بقالة', 'مواد'] },
+];
+
+function matchesProductCategory(product, categoryId) {
+  if (categoryId === 'all') return true;
+  const cat = STORE_CATEGORIES.find((c) => c.id === categoryId);
+  if (!cat?.match) return true;
+  const haystack = `${product.category || ''} ${product.name || ''} ${product.description || ''}`.toLowerCase();
+  return cat.match.some((token) => haystack.includes(token.toLowerCase()));
+}
+
+function matchesSearch(text, query) {
+  if (!query.trim()) return true;
+  return (text || '').toLowerCase().includes(query.trim().toLowerCase());
+}
 
 const StoreDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAuth } = useAuth();
+  const { isAuth, user } = useAuth();
   const { runWithAuth } = useAuthGate();
-  const [tab, setTab] = useState('offers');
-  const [prizes, setPrizes] = useState([]);
+
   const [joining, setJoining] = useState(false);
   const [enablingNotify, setEnablingNotify] = useState(false);
   const [notifyOptOut, setNotifyOptOut] = useState(() => isStoreNotifyOptedOut(id));
   const [loggedVisit, setLoggedVisit] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showOffersJump, setShowOffersJump] = useState(false);
+
+  const offersSectionRef = useRef(null);
+  const productsSectionRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const {
     data,
@@ -65,17 +100,34 @@ const StoreDetail = () => {
   }, [data, id, loggedVisit]);
 
   useEffect(() => {
-    let mounted = true;
-    api.get(`/stores/${id}/member-prizes`)
-      .then(({ data: p }) => mounted && setPrizes(p.prizes || []))
-      .catch(() => {});
-    return () => { mounted = false; };
+    setNotifyOptOut(isStoreNotifyOptedOut(id));
+    setLoggedVisit(false);
+    setActiveCategory('all');
+    setSearchQuery('');
+    setSearchOpen(false);
   }, [id]);
 
   useEffect(() => {
-    setNotifyOptOut(isStoreNotifyOptedOut(id));
-    setLoggedVisit(false);
-  }, [id]);
+    if (!searchOpen) return undefined;
+    const t = window.setTimeout(() => searchInputRef.current?.focus(), 180);
+    return () => window.clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    const el = productsSectionRef.current;
+    if (!el) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowOffersJump(entry.isIntersecting),
+      { root: null, rootMargin: '-80px 0px -40% 0px', threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [data?.store]);
+
+  const scrollToSection = useCallback((ref) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const enableStoreNotifications = async () => {
     runWithAuth(async () => {
@@ -119,147 +171,293 @@ const StoreDetail = () => {
     navigate('/chat');
   };
 
+  const openWhatsApp = () => {
+    const phone = data?.store?.whatsapp || data?.store?.phone;
+    if (!phone) {
+      toast('رقم الواتساب غير متاح', 'error');
+      return;
+    }
+    window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+  };
+
+  const filteredOffers = useMemo(() => {
+    const list = data?.offers || [];
+    return list.filter((o) => matchesSearch(o.title, searchQuery));
+  }, [data?.offers, searchQuery]);
+
+  const filteredProducts = useMemo(() => {
+    const list = data?.products || [];
+    return list.filter(
+      (p) => matchesProductCategory(p, activeCategory) && matchesSearch(p.name, searchQuery),
+    );
+  }, [data?.products, activeCategory, searchQuery]);
+
   if (isLoading && !data) return <LightLoadingHint label="جاري تحميل المتجر..." />;
+
   const error = queryError?.response?.data?.message || (queryError && !data ? 'تعذّر التحميل' : '');
   if (error && !data?.store) return <ErrorState message={error || 'المتجر غير موجود'} onRetry={() => refetch()} />;
   if (!data?.store) return <ErrorState message="المتجر غير موجود" />;
 
-  const { store, offers = [], products = [], membershipStatus, storeCompetitionsEnabled } = data;
+  const { store, membershipStatus } = data;
   const coverSrc = resolveStoreCover(store, { width: 800 });
   const logoSrc = resolveStoreLogo(store, { width: 160 }) || storeLogoPlaceholder(store);
   const isMember = membershipStatus === 'member';
   const isPending = membershipStatus === 'pending';
+  const isOwner = isAuth && user && String(store.owner?._id || store.owner) === String(user._id || user.id);
+  const locationLabel = [store.region, store.subRegion].filter(Boolean).join(' · ');
 
   return (
-    <div className="pb-28 -mt-4 text-right" dir="rtl">
-      <div className="relative isolate">
-        <div className="relative h-40 w-full overflow-hidden rounded-b-[32px]">
-          {coverSrc ? (
-            <img
-              src={coverSrc}
-              alt=""
-              className="absolute inset-0 z-0 w-full h-full object-cover"
+    <div className="store-detail-page" dir="rtl">
+      <div className="store-detail-page__inner">
+        {isFetching && data && (
+          <p className="store-detail-fetching">جاري التحديث...</p>
+        )}
+
+        {/* Unified store profile card */}
+        <article className="store-profile-card">
+          <div className="store-profile-card__cover">
+            {coverSrc && <img src={coverSrc} alt="" />}
+            <div className="store-profile-card__cover-overlay" aria-hidden />
+            <button
+              type="button"
+              className="store-profile-card__back"
+              onClick={() => navigate(-1)}
+              aria-label="رجوع"
+            >
+              <ChevronRight size={22} strokeWidth={2.2} />
+            </button>
+          </div>
+
+          <div className="store-profile-card__body">
+            <div className="store-profile-card__logo-wrap">
+              <img src={logoSrc} alt="" className="store-profile-card__logo" />
+              {isMember && (
+                <span className="store-profile-card__member-badge">عضو ✓</span>
+              )}
+            </div>
+
+            <h1 className="store-profile-card__name">{store.name}</h1>
+            {store.isVerifiedStore && <VerifiedBadge className="mb-1" />}
+            {locationLabel && (
+              <p className="store-profile-card__location">
+                <MapPin size={14} strokeWidth={2.2} />
+                {locationLabel}
+              </p>
+            )}
+            <StarRating
+              targetType="store"
+              targetId={store._id}
+              ratingAvg={store.ratingAvg}
+              ratingCount={store.ratingCount}
+              compact
+              className="store-profile-card__rating"
             />
+            {store.description && (
+              <p className="store-profile-card__desc">{store.description}</p>
+            )}
+
+            <div className="store-profile-card__actions">
+              {!isMember && (
+                <button
+                  type="button"
+                  onClick={joinStore}
+                  disabled={joining}
+                  className={`store-profile-card__join${isPending ? ' store-profile-card__join--pending' : ''}`}
+                >
+                  {joining ? '...' : isPending ? 'قيد الانتظار — أدخل كوداً' : 'انضم للمتجر'}
+                </button>
+              )}
+
+              {isMember && notifyOptOut && (
+                <button
+                  type="button"
+                  onClick={enableStoreNotifications}
+                  disabled={enablingNotify}
+                  className="store-profile-card__notify"
+                >
+                  {enablingNotify ? '...' : (
+                    <>
+                      <Bell size={16} />
+                      متابعة الإشعارات
+                    </>
+                  )}
+                </button>
+              )}
+
+              <div className="store-profile-card__contacts">
+                <button type="button" className="store-profile-card__contact-btn" onClick={contact} title="محادثة" aria-label="محادثة">
+                  <MessageCircle size={20} strokeWidth={2} />
+                </button>
+                {store.phone && (
+                  <a href={`tel:${store.phone}`} className="store-profile-card__contact-btn" title="اتصال" aria-label="اتصال">
+                    <Phone size={20} strokeWidth={2} />
+                  </a>
+                )}
+                {(store.whatsapp || store.phone) && (
+                  <button
+                    type="button"
+                    className="store-profile-card__contact-btn store-profile-card__contact-btn--wa"
+                    onClick={openWhatsApp}
+                    title="واتساب"
+                    aria-label="واتساب"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                    </svg>
+                  </button>
+                )}
+                {isOwner && (
+                  <button
+                    type="button"
+                    className="store-profile-card__contact-btn"
+                    onClick={() => navigate('/center')}
+                    title="إعدادات المتجر"
+                    aria-label="إعدادات المتجر"
+                  >
+                    ✎
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </article>
+
+        {/* Expandable search */}
+        <div className="store-detail-search">
+          {searchOpen ? (
+            <div className="store-detail-search__bar">
+              <Search size={18} className="text-slate-400 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                className="store-detail-search__input"
+                placeholder="ابحث في العروض والمنتجات..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                className="store-detail-search__close"
+                onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+                aria-label="إغلاق البحث"
+              >
+                <X size={18} />
+              </button>
+            </div>
           ) : (
-            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary to-purple-700" />
+            <button
+              type="button"
+              className="store-detail-search__toggle"
+              onClick={() => setSearchOpen(true)}
+              aria-label="بحث"
+            >
+              <Search size={20} strokeWidth={2.2} />
+            </button>
           )}
-          <div className="absolute inset-0 z-[1] bg-black/20" aria-hidden />
+        </div>
+
+        {/* Category chips */}
+        <div className="store-category-chips" aria-label="تصنيفات المنتجات">
+          <div className="store-category-chips__track">
+            {STORE_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`store-category-chip${activeCategory === cat.id ? ' is-active' : ''}`}
+                onClick={() => setActiveCategory(cat.id)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Offers section */}
+        <section className="store-detail-section" ref={offersSectionRef} id="store-offers">
+          <div className="store-detail-section__head">
+            <h2 className="store-detail-section__title">عروض المتجر</h2>
+          </div>
+          <div className="store-detail-grid store-detail-grid--offers">
+            {filteredOffers.length === 0 ? (
+              <p className="store-detail-empty">لا عروض حالياً</p>
+            ) : (
+              filteredOffers.map((offer) => {
+                const pricing = getOfferPricing(offer);
+                const priceLabel = pricing?.displayNew
+                  || (pricing?.finalPrice != null
+                    ? formatPriceWithUnit(pricing.finalPrice, pricing.currency || offer.currency, pricing.priceUnit)
+                    : pricing?.badge || null);
+                const imageSrc = resolveOfferImage(offer, { width: 400 });
+                return (
+                  <StoreCatalogCard
+                    key={offer._id}
+                    item={offer}
+                    itemType="offer"
+                    title={offer.title}
+                    priceLabel={priceLabel}
+                    imageSrc={imageSrc}
+                    imageSrcSet={cloudinarySrcSet(offer?.image, [400, 800])}
+                    detailPath={`/offer/${offer._id}`}
+                  />
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Jump to products */}
+        <div className="store-detail-section__head">
+          <span />
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="absolute top-4 right-4 z-[2] bg-white/20 backdrop-blur p-2 rounded-xl text-white"
+            className="store-detail-jump"
+            onClick={() => scrollToSection(productsSectionRef)}
           >
-            <ChevronRight size={22} />
+            المنتجات
+            <ArrowDown size={16} strokeWidth={2.5} />
           </button>
         </div>
 
-        <div className="relative z-20 -mt-10 flex justify-center">
-          <img
-            src={logoSrc}
-            alt=""
-            className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg bg-white"
-          />
-        </div>
+        {/* Products section */}
+        <section className="store-detail-section" ref={productsSectionRef} id="store-products">
+          <div className="store-detail-section__head">
+            <h2 className="store-detail-section__title">منتجات المتجر</h2>
+          </div>
+          <div className="store-detail-grid">
+            {filteredProducts.length === 0 ? (
+              <p className="store-detail-empty">لا منتجات في هذا التصنيف</p>
+            ) : (
+              filteredProducts.map((product) => {
+                const imageSrc = resolveProductImage(product, { width: 400 });
+                return (
+                  <StoreCatalogCard
+                    key={product._id}
+                    item={product}
+                    itemType="product"
+                    title={product.name}
+                    priceLabel={formatPriceWithUnit(product.price, product.currency, product.priceUnit)}
+                    imageSrc={imageSrc}
+                    imageSrcSet={cloudinarySrcSet(product?.image, [400, 800])}
+                    detailPath={`/product/${product._id}`}
+                  />
+                );
+              })
+            )}
+          </div>
+        </section>
       </div>
 
-      <div className="px-4 pt-6 space-y-4">
-        {isFetching && data && (
-          <p className="text-[11px] text-center text-primary/70 font-bold animate-pulse">جاري التحديث...</p>
-        )}
-        <div className="bg-white rounded-[28px] p-4 shadow-lg border border-gray-50 text-center">
-          <h1 className="text-lg font-black text-gray-900 truncate">{store.name}</h1>
-          {store.isVerifiedStore && <VerifiedBadge className="mt-1 justify-center" />}
-          <p className="text-[10px] text-gray-400 font-bold flex items-center justify-center gap-1 mt-1">
-            <MapPin size={11} /> {store.region}{store.subRegion ? ` · ${store.subRegion}` : ''}
-          </p>
-          <StarRating targetType="store" targetId={store._id} ratingAvg={store.ratingAvg} ratingCount={store.ratingCount} compact className="mt-1 justify-center" />
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {!isMember && (
-            <button type="button" onClick={joinStore} disabled={joining} className="flex-1 min-w-[140px] bg-primary text-white py-3 rounded-2xl font-black text-sm disabled:opacity-50">
-              {joining ? '...' : isPending ? 'قيد الانتظار — أدخل كوداً' : 'انضم للمتجر'}
-            </button>
-          )}
-          {isMember && notifyOptOut && (
-            <button
-              type="button"
-              onClick={enableStoreNotifications}
-              disabled={enablingNotify}
-              className="flex-1 min-w-[140px] bg-amber-500 text-white py-3 rounded-2xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {enablingNotify ? '...' : (
-                <>
-                  <Bell size={16} />
-                  متابعة الإشعارات
-                </>
-              )}
-            </button>
-          )}
-          {isMember && !notifyOptOut && (
-            <span className="flex-1 text-center py-3 rounded-2xl bg-green-50 text-green-700 font-black text-sm border border-green-100">عضو فعلي ✓</span>
-          )}
-          <button type="button" onClick={contact} className="px-4 py-3 rounded-2xl border border-gray-200 text-gray-700">
-            <MessageCircle size={20} />
-          </button>
-          {store.phone && (
-            <a href={`tel:${store.phone}`} className="px-4 py-3 rounded-2xl border border-gray-200 text-gray-700">
-              <Phone size={20} />
-            </a>
-          )}
-        </div>
-
-        {store.description && (
-          <p className="text-sm text-gray-600 bg-white p-4 rounded-2xl border border-gray-100">{store.description}</p>
-        )}
-
-        {isMember && prizes.length > 0 && (
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-2">
-            <h3 className="font-black text-amber-800 flex items-center gap-2"><Gift size={18} /> جوائز الأعضاء</h3>
-            {prizes.map((p) => (
-              <div key={p._id} className="bg-white rounded-xl p-3 text-sm">
-                <span className="text-lg">{p.icon}</span> <strong>{p.title}</strong>
-                {p.description && <p className="text-xs text-gray-500 mt-1">{p.description}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {storeCompetitionsEnabled && isMember && (
-          <button type="button" className="w-full py-3 rounded-2xl bg-purple-50 text-purple-700 font-black text-sm flex items-center justify-center gap-2 border border-purple-100">
-            <Trophy size={18} /> مسابقات المتجر (قريباً)
-          </button>
-        )}
-
-        <div className="flex gap-2 bg-gray-100 p-1 rounded-2xl">
-          {['offers', 'products'].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2 rounded-xl text-xs font-black ${tab === t ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
-            >
-              {t === 'offers' ? 'العروض' : 'المنتجات'}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'offers' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {offers.length === 0 ? <p className="text-sm text-gray-400 col-span-full text-center py-8">لا عروض حالياً</p> : offers.map((o) => (
-              <OfferCard key={o._id} offer={{ ...o, store }} />
-            ))}
-          </div>
-        )}
-
-        {tab === 'products' && (
-          <div className="grid grid-cols-2 gap-3">
-            {products.length === 0 ? <p className="text-sm text-gray-400 col-span-full text-center py-8">لا منتجات</p> : products.map((p) => (
-              <ProductCard key={p._id} product={p} />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Floating jump back to offers */}
+      {showOffersJump && (
+        <button
+          type="button"
+          className="store-detail-jump store-detail-jump--floating"
+          onClick={() => scrollToSection(offersSectionRef)}
+        >
+          العروض
+          <ArrowUp size={16} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 };

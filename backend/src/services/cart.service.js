@@ -4,11 +4,65 @@ const Product = require("../models/product");
 const Offer = require("../models/offer");
 const Store = require("../models/store");
 const Order = require("../models/order");
+const User = require("../models/user");
 const pricingService = require("./pricing.service");
 const cache = require("../utils/responseCache.util");
 const { generateOrderNumber } = require("../utils/orderNumber.util");
 const { generateUniqueVerificationCode } = require("../utils/verificationCode.util");
 const { assertNoMongoOperators, requireObjectId, cleanString } = require("../utils/inputSecurity.util");
+
+const Store = require("../models/store");
+const {
+  normalizeDeliveryMethod,
+  normalizePaymentMethod,
+} = require("../constants/marketplaceOrder.constants");
+
+function parseOrderCheckoutBody(body = {}) {
+  const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 1000 }) || "";
+  const deliveryNotes = cleanString(body.deliveryNotes, { field: "deliveryNotes", max: 1000 }) || "";
+  const deliveryMethod = normalizeDeliveryMethod(
+    cleanString(body.deliveryMethod, { field: "deliveryMethod", max: 64 }) || ""
+  );
+  const deliveryAddress = cleanString(body.deliveryAddress || body.locationDetails, {
+    field: "deliveryAddress",
+    max: 500,
+  }) || "";
+  const paymentMethod = normalizePaymentMethod(
+    cleanString(body.paymentMethod, { field: "paymentMethod", max: 64 }) || ""
+  );
+  const paymentProof = cleanString(body.paymentProof || body.paymentProofImage, {
+    field: "paymentProof",
+    max: 2000,
+  }) || "";
+
+  const transferRaw = body.transferInformation || body.transferDetails || {};
+  const transferInformation = {
+    senderName: cleanString(body.transferName || transferRaw.senderName, { field: "senderName", max: 120 }) || "",
+    contactNumber: cleanString(body.transferPhone || transferRaw.contactNumber, { field: "contactNumber", max: 32 }) || "",
+    referenceNumber: cleanString(body.transferNumber || transferRaw.referenceNumber, { field: "referenceNumber", max: 64 }) || "",
+    note: cleanString(body.paymentNotes || transferRaw.note, { field: "note", max: 500 }) || "",
+  };
+
+  return {
+    customerNotes,
+    deliveryNotes: deliveryNotes || customerNotes,
+    deliveryMethod,
+    deliveryAddress,
+    paymentMethod,
+    paymentProof,
+    paymentProofImage: paymentProof,
+    transferInformation,
+    transferName: transferInformation.senderName,
+    transferPhone: transferInformation.contactNumber,
+    transferNumber: transferInformation.referenceNumber,
+    paymentNotes: transferInformation.note,
+  };
+}
+
+function resolveItemImage(item) {
+  if (!item) return "";
+  return item.image || (Array.isArray(item.images) && item.images[0]) || "";
+}
 
 function invalidateCartCache(userId) {
   if (userId) cache.invalidate(`cart:${userId}`);
@@ -494,6 +548,7 @@ async function buildOrdersFromCartItems(
       quantity: ci.quantity,
       price: effectiveUnit,
       name: ci.item.name || ci.item.title || "",
+      image: resolveItemImage(ci.item),
       _lineTotal: lineTotal,
     });
   }
@@ -505,6 +560,11 @@ async function buildOrdersFromCartItems(
     productQty.set(id, (productQty.get(id) || 0) + ci.quantity);
   }
   await assertProductsStockAvailable(productQty);
+
+  const customerDoc = await User.findById(userId).select("name phone").lean();
+  const storeIds = Object.keys(storeMap);
+  const storeDocs = await Store.find({ _id: { $in: storeIds } }).select("name").lean();
+  const storeNameById = Object.fromEntries(storeDocs.map((s) => [s._id.toString(), s.name || ""]));
 
   const orderPayloads = Object.values(storeMap).map(({ storeId, items }) => {
     const storeTotal = items.reduce((s, i) => s + i._lineTotal, 0);
@@ -530,13 +590,25 @@ async function buildOrdersFromCartItems(
     const orders = [];
     for (const { storeId, items } of Object.values(storeMap)) {
       const storeTotal = items.reduce((s, i) => s + i._lineTotal, 0);
-      const orderItems = items.map(({ _lineTotal, ...rest }) => rest);
+      const roundedTotal = Math.round(storeTotal * 100) / 100;
+      const orderItems = items.map(({ _lineTotal, ...rest }) => ({
+        ...rest,
+        productId: rest.item,
+        productName: rest.name,
+        productImage: rest.image,
+        subtotal: Math.round(_lineTotal * 100) / 100,
+      }));
       const verificationCode = await generateUniqueVerificationCode(session);
       const payload = {
         customer: userId,
         store: storeId,
+        customerName: customerDoc?.name || "",
+        customerPhone: customerDoc?.phone || "",
+        storeName: extraOrderFields.containerName || storeNameById[storeId] || "",
         items: orderItems,
-        total: Math.round(storeTotal * 100) / 100,
+        subtotal: roundedTotal,
+        total: roundedTotal,
+        totalAmount: roundedTotal,
         status: "pending",
         orderNumber:
           orders.length === 0 && extraOrderFields.orderNumber
@@ -544,8 +616,20 @@ async function buildOrdersFromCartItems(
             : generateOrderNumber(),
         verificationCode,
         containerId: extraOrderFields.containerId || "",
-        containerName: extraOrderFields.containerName || "",
+        containerName: extraOrderFields.containerName || storeNameById[storeId] || "",
         customerNotes: extraOrderFields.customerNotes || "",
+        deliveryNotes: extraOrderFields.deliveryNotes || extraOrderFields.customerNotes || "",
+        deliveryMethod: extraOrderFields.deliveryMethod || "",
+        deliveryAddress: extraOrderFields.deliveryAddress || "",
+        paymentMethod: extraOrderFields.paymentMethod || "",
+        paymentProof: extraOrderFields.paymentProof || "",
+        paymentProofImage: extraOrderFields.paymentProofImage || extraOrderFields.paymentProof || "",
+        transferInformation: extraOrderFields.transferInformation || {},
+        transferName: extraOrderFields.transferName || extraOrderFields.transferInformation?.senderName || "",
+        transferPhone: extraOrderFields.transferPhone || extraOrderFields.transferInformation?.contactNumber || "",
+        transferNumber: extraOrderFields.transferNumber || extraOrderFields.transferInformation?.referenceNumber || "",
+        paymentNotes: extraOrderFields.paymentNotes || extraOrderFields.transferInformation?.note || "",
+        paymentStatus: extraOrderFields.paymentProof ? "pending" : "unpaid",
         statusTimeline: extraOrderFields.statusTimeline || [{ status: "pending", at: now }],
       };
 
@@ -770,7 +854,7 @@ async function clearCart(userId) {
 
 async function confirmStoreContainer(userId, storeIdRaw, body = {}, userRole = "customer") {
   const storeId = requireObjectId(storeIdRaw, "storeId");
-  const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 500 }) || "";
+  const checkoutFields = parseOrderCheckoutBody(body);
 
   const session = await mongoose.startSession();
   try {
@@ -813,7 +897,18 @@ async function confirmStoreContainer(userId, storeIdRaw, body = {}, userRole = "
     const orders = await buildOrdersFromCartItems(userId, snapshot, session, userRole, {
       containerId: container._id.toString(),
       containerName,
-      customerNotes: customerNotes || container.customerNotes || "",
+      customerNotes: checkoutFields.customerNotes || container.customerNotes || "",
+      deliveryNotes: checkoutFields.deliveryNotes,
+      deliveryMethod: checkoutFields.deliveryMethod,
+      deliveryAddress: checkoutFields.deliveryAddress,
+      paymentMethod: checkoutFields.paymentMethod,
+      paymentProof: checkoutFields.paymentProof,
+      paymentProofImage: checkoutFields.paymentProofImage,
+      transferInformation: checkoutFields.transferInformation,
+      transferName: checkoutFields.transferName,
+      transferPhone: checkoutFields.transferPhone,
+      transferNumber: checkoutFields.transferNumber,
+      paymentNotes: checkoutFields.paymentNotes,
       orderNumber: generateOrderNumber(),
       statusTimeline: [{ status: "pending", at: new Date() }],
     });
@@ -856,7 +951,7 @@ async function confirmStoreContainer(userId, storeIdRaw, body = {}, userRole = "
 
 async function confirmStoreContainerFallback(userId, storeIdRaw, body, userRole) {
   const storeId = requireObjectId(storeIdRaw, "storeId");
-  const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 500 }) || "";
+  const checkoutFields = parseOrderCheckoutBody(body);
 
   let cart = await Cart.findOne({ user: userId });
   if (!cart) {
@@ -887,7 +982,18 @@ async function confirmStoreContainerFallback(userId, storeIdRaw, body, userRole)
   const orders = await buildOrdersFromCartItems(userId, snapshot, null, userRole, {
     containerId: container._id.toString(),
     containerName: container.storeName || storeDoc?.name || "",
-    customerNotes: customerNotes || container.customerNotes || "",
+    customerNotes: checkoutFields.customerNotes || container.customerNotes || "",
+    deliveryNotes: checkoutFields.deliveryNotes,
+    deliveryMethod: checkoutFields.deliveryMethod,
+    deliveryAddress: checkoutFields.deliveryAddress,
+    paymentMethod: checkoutFields.paymentMethod,
+    paymentProof: checkoutFields.paymentProof,
+    paymentProofImage: checkoutFields.paymentProofImage,
+    transferInformation: checkoutFields.transferInformation,
+    transferName: checkoutFields.transferName,
+    transferPhone: checkoutFields.transferPhone,
+    transferNumber: checkoutFields.transferNumber,
+    paymentNotes: checkoutFields.paymentNotes,
     orderNumber: generateOrderNumber(),
     statusTimeline: [{ status: "pending", at: new Date() }],
   });
@@ -939,6 +1045,7 @@ async function checkout(userId, userRole = "customer") {
 }
 
 module.exports = {
+  parseOrderCheckoutBody,
   populateCartItems,
   calculateCartTotal,
   getCartForUser,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
-  MessageCircle, CircleDot, Medal, ShoppingBag,
+  MessageCircle, CircleDot, Medal, ShoppingCart,
   BarChart3, Settings, LogOut, X, Heart, Store, Download, Gift,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -312,7 +312,7 @@ const Header = () => {
                   aria-label="السلة"
                   onClick={() => navigate('/cart')}
                 >
-                  <ShoppingBag size={22} strokeWidth={2} />
+                  <ShoppingCart size={22} strokeWidth={2} />
                   <HeaderBadge count={cartItemCount} />
                 </button>
                 <button
@@ -339,14 +339,21 @@ const Header = () => {
                 <img
                   src={BRAND_LOGO_64}
                   alt=""
-                  className="w-11 h-11 rounded-xl object-contain shadow-md shrink-0"
+                  className="w-11 h-11 rounded-xl object-contain shadow-md shrink-0 ring-1 ring-emerald-100/80"
                   width={44}
                   height={44}
                   loading="eager"
                   fetchpriority="high"
                   decoding="async"
                 />
-                <span className="text-[15px] font-black text-gray-900 tracking-tight truncate">{BRAND_NAME}</span>
+                <div className="min-w-0 text-right">
+                  <span className="block text-[15px] font-black text-gray-900 tracking-tight truncate leading-tight">
+                    {BRAND_NAME}
+                  </span>
+                  <span className="block text-[10px] font-bold text-emerald-700/90 truncate">
+                    تصفّح كزائر — سجّل عند الحاجة
+                  </span>
+                </div>
               </button>
               <button
                 type="button"
@@ -355,29 +362,10 @@ const Header = () => {
                 aria-label="السلة"
                 onClick={() => navigate('/cart')}
               >
-                <ShoppingBag size={22} strokeWidth={2} />
+                <ShoppingCart size={22} strokeWidth={2} />
                 <HeaderBadge count={cartItemCount} />
               </button>
             </>
-          )}
-
-          {!isAuth && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-black text-gray-700 transition hover:bg-gray-100"
-              >
-                إنشاء حساب
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="bg-primary text-white px-4 py-1.5 rounded-xl text-xs font-black"
-              >
-                دخول
-              </button>
-            </div>
           )}
         </div>
       </header>

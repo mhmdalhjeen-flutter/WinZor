@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Clock, Coins,
+  Trophy, Coins,
   X, Minus, Plus, PartyPopper, AlertTriangle, Loader2, CheckCircle2,
   Sparkles, ExternalLink,
 } from 'lucide-react';
@@ -12,6 +12,7 @@ import { queryKeys } from '../lib/queryClient';
 import { commitPointsUpdate } from '../utils/pointsAnimation';
 import { resolveImageUrl } from '../utils/mediaUrl';
 import { useSecondTick } from '../hooks/useSecondTick';
+import { formatCompetitionCountdown } from './CompetitionCountdownLabel';
 
 const getRemaining = (endDate) => {
   if (!endDate) return null;
@@ -22,12 +23,21 @@ const getRemaining = (endDate) => {
   return { days, hours, ended: false };
 };
 
-function formatDaysHoursOnly(endDate) {
-  const remaining = getRemaining(endDate);
-  if (!remaining) return '—';
-  if (remaining.ended) return 'انتهت';
-  if (remaining.days > 0) return `${remaining.days} يوم · ${remaining.hours} س`;
-  return `${remaining.hours} س`;
+function CompetitionCountdownBadge({ endDate }) {
+  const time = formatCompetitionCountdown(endDate);
+  const parts = time.split(' و ');
+  const daysPart = parts.length > 1 ? parts[0] : null;
+  const clockPart = parts.length > 1 ? parts[1] : parts[0];
+
+  return (
+    <div className="competition-countdown-badge" aria-label={`متبقي ${time}`}>
+      <span className="competition-countdown-badge__label">متبقي</span>
+      {daysPart && (
+        <span className="competition-countdown-badge__days">{daysPart}</span>
+      )}
+      <span className="competition-countdown-badge__clock">{clockPart}</span>
+    </div>
+  );
 }
 
 export default function CompetitionCardItem({
@@ -177,8 +187,14 @@ export default function CompetitionCardItem({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-gradient-to-br from-[#1e1638] via-[#2a1545] to-[#7f1d1d]/80 border border-white/15 rounded-[16px] p-2.5 flex flex-col shadow-lg shadow-purple-950/20 ${containerClass}`}
+        className={`relative bg-gradient-to-br from-[#1e1638] via-[#2a1545] to-[#7f1d1d]/80 border border-white/15 rounded-[16px] p-2.5 flex flex-col shadow-lg shadow-purple-950/20 ${containerClass}`}
       >
+        {showCountdown && (
+          <div className="absolute top-2 left-2 z-10">
+            <CompetitionCountdownBadge endDate={competition.endDate} />
+          </div>
+        )}
+
         <div className="flex items-stretch gap-2.5 flex-1 min-h-0">
           <div className="w-[20%] min-w-[3.25rem] max-w-[4rem] shrink-0 rounded-lg overflow-hidden border border-white/20 bg-white/5 self-stretch">
             {prizeImageSrc ? (
@@ -206,12 +222,6 @@ export default function CompetitionCardItem({
                 <Coins size={11} className="text-amber-300 shrink-0" />
                 {competition.pointsPerEntry} نقطة / فرصة
               </span>
-              {remaining && !remaining.ended && (
-                <span className="flex items-center gap-1">
-                  <Clock size={11} className="text-sky-300 shrink-0" />
-                  {formatDaysHoursOnly(competition.endDate)}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -227,7 +237,7 @@ export default function CompetitionCardItem({
             <button
               type="button"
               onClick={openModal}
-              className="w-full px-3 py-2 bg-gradient-to-l from-primary to-red-700 text-white rounded-lg font-black text-[11px] sm:text-xs shadow-md shadow-primary/20 hover:brightness-110 transition-all active:scale-[0.99]"
+              className="competition-enter-btn w-full px-3 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all active:scale-[0.98]"
             >
               {hasJoined ? 'زيادة الفرصة' : 'الدخول للسحب'}
             </button>

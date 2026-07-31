@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, X, Coins, Ticket, Trophy, Sparkles } from 'lucide-react';
+import { X, Coins, Ticket, Trophy, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const HELP_ITEMS = [
@@ -104,17 +104,17 @@ export default function HomeHero() {
           <div className="home-hero__glow home-hero__glow--amber" aria-hidden />
 
           <div className="relative z-10 home-hero__content py-3.5 sm:py-4 px-3 sm:px-4">
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               <p className="home-hero__message text-sm sm:text-base font-black text-gray-900 leading-snug text-center">
                 اطلب نقاطك في كل عملية شراء
               </p>
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-amber-50 text-emerald-700 ring-1 ring-emerald-200/70 shadow-sm active:scale-95 transition-transform"
-                aria-label="شرح النقاط"
+                className="shrink-0 px-2.5 py-1 rounded-full bg-gradient-to-l from-emerald-50 to-amber-50 text-emerald-700 text-[11px] sm:text-xs font-black ring-1 ring-emerald-200/80 shadow-sm hover:from-emerald-100 hover:to-amber-100 active:scale-95 transition-all whitespace-nowrap"
+                aria-label="حول النقاط؟"
               >
-                <HelpCircle size={14} strokeWidth={2.5} />
+                حول النقاط؟
               </button>
             </div>
           </div>

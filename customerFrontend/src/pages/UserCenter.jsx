@@ -54,7 +54,8 @@ const MENU_ITEMS = [
   { id: 'suggest', label: 'قدم اقتراحاً', icon: Lightbulb, tone: 'amber' },
   { id: 'prefs', label: 'تخصيص أفضل العروض', icon: Tags, tone: 'violet' },
   { id: 'settings', label: 'الإعدادات', icon: Settings, tone: 'emerald' },
-  { id: 'about', label: 'عن التطبيق', icon: Info, tone: 'slate' },
+  { id: 'terms', label: 'الشروط والأحكام', icon: ScrollText, tone: 'slate' },
+  { id: 'about', label: 'عن التطبيق', icon: Info, tone: 'sky' },
 ];
 
 const UserCenter = () => {
@@ -167,8 +168,11 @@ const UserCenter = () => {
         if (isAuth) setShowSettings(true);
         else runWithAuth(() => setShowSettings(true), AUTH_GATE_MESSAGES.generic);
         break;
+      case 'terms':
+        navigate('/terms');
+        break;
       case 'about':
-        navigate('/intro');
+        navigate('/about');
         break;
       default:
         break;
@@ -663,7 +667,7 @@ const UserCenter = () => {
               className="relative bg-white max-h-[85vh] overflow-y-auto rounded-t-[1.75rem] p-5"
             >
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-black">عن التطبيق</h3>
+                <h3 className="font-black">الشروط والأحكام</h3>
                 <button type="button" onClick={() => setShowLegal(false)}><X size={20} /></button>
               </div>
               <div className="flex gap-2 mb-4 flex-wrap">

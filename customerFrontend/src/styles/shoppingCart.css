@@ -7,6 +7,36 @@
 
 .shopping-cart-page__head {
   margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shopping-cart-page__pending-orders {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.shopping-cart-page__pending-orders svg {
+  flex-shrink: 0;
+}
+
+.shopping-cart-page__pending-orders:active {
+  transform: scale(0.98);
 }
 
 .shopping-cart-page__title {

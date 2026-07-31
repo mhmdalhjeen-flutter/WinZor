@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShoppingBag, Loader2, Minus, Plus, Trash2, CheckCircle2, Package,
+  ShoppingCart, Loader2, Minus, Plus, Trash2, CheckCircle2, Package, ClipboardList,
 } from 'lucide-react';
-import api from '../api/axios';
 import { queryKeys } from '../lib/queryClient';
 import { formatPrice } from '../utils/currency';
 import {
@@ -15,32 +14,10 @@ import useCartSummary from '../hooks/useCartSummary';
 import { useToast } from '../shared/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
+import { useCheckout } from '../context/CheckoutContext';
 import { AUTH_GATE_MESSAGES } from '../utils/authGateMessages';
 import { updateCartItemQty, removeCartItem } from '../utils/cartActions';
-import OrderVerificationDialog from '../components/orders/OrderVerificationDialog';
 import '../styles/shoppingCart.css';
-
-function buildVerificationEntriesFromConfirm(data, storeName) {
-  const code = data?.verificationCode || data?.order?.verificationCode;
-  if (!code) return [];
-  return [{ code, label: storeName || data?.order?.containerName || null }];
-}
-
-function buildVerificationEntriesFromCheckout(data, containers) {
-  const storeNameById = Object.fromEntries(
-    containers.map((c) => [
-      getStoreIdFromContainer(c),
-      c.storeName || c.store?.name || null,
-    ]),
-  );
-
-  return (data?.orders || [])
-    .filter((o) => o.verificationCode)
-    .map((o) => ({
-      code: o.verificationCode,
-      label: storeNameById[String(o.store)] || null,
-    }));
-}
 
 function getStoreLogo(container) {
   return container?.store?.logo
@@ -120,13 +97,13 @@ function CartItemRow({ row, busy, onUpdateQty, onRemove }) {
 function StoreContainerCard({
   container,
   index,
-  confirming,
+  proceeding,
   deleting,
   notes,
   onNotesChange,
   onUpdateQty,
   onRemove,
-  onConfirm,
+  onProceed,
   onDeleteContainer,
   busyItemId,
 }) {
@@ -160,7 +137,7 @@ function StoreContainerCard({
         <button
           type="button"
           className="store-container-card__delete"
-          disabled={deleting || confirming}
+          disabled={deleting || proceeding}
           onClick={() => onDeleteContainer(storeId, storeName, container.items || [])}
         >
           <Trash2 size={14} />
@@ -204,10 +181,10 @@ function StoreContainerCard({
         <button
           type="button"
           className="store-container-card__confirm"
-          disabled={confirming || deleting}
-          onClick={() => onConfirm(storeId, storeName)}
+          disabled={proceeding || deleting}
+          onClick={() => onProceed(storeId, storeName)}
         >
-          {confirming ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+          {proceeding ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
           تأكيد الطلب
         </button>
       </footer>
@@ -221,17 +198,13 @@ export default function ShoppingCart() {
   const { toast } = useToast();
   const { isAuth } = useAuth();
   const { runWithAuth } = useAuthGate();
+  const { startCheckout } = useCheckout();
   const { data: cartStats, isLoading } = useCartSummary();
   const [busyItemId, setBusyItemId] = useState(null);
-  const [confirmingStoreId, setConfirmingStoreId] = useState(null);
+  const [proceedingStoreId, setProceedingStoreId] = useState(null);
   const [deletingStoreId, setDeletingStoreId] = useState(null);
-  const [confirmingAll, setConfirmingAll] = useState(false);
+  const [proceedingAll, setProceedingAll] = useState(false);
   const [notesByStore, setNotesByStore] = useState({});
-  const [verificationDialog, setVerificationDialog] = useState({
-    open: false,
-    codes: [],
-    navigateAfter: false,
-  });
 
   const containers = cartStats?.containers || [];
   const grandTotal = cartStats?.grandTotal ?? 0;
@@ -302,73 +275,34 @@ export default function ShoppingCart() {
     }
   };
 
-  const closeVerificationDialog = () => {
-    setVerificationDialog((prev) => {
-      if (prev.navigateAfter) navigate('/orders');
-      return { open: false, codes: [], navigateAfter: false };
+  const proceedToCheckout = (storeId, storeName) => {
+    setProceedingStoreId(storeId);
+    startCheckout({
+      mode: 'single',
+      storeIds: [String(storeId)],
+      notesByStore: { [storeId]: notesByStore[storeId] || '' },
     });
+    navigate(`/checkout/review/${storeId}`);
+    setProceedingStoreId(null);
   };
 
-  const showVerificationCodes = (codes, navigateAfter = false) => {
-    if (!codes.length) {
-      if (navigateAfter) navigate('/orders');
-      return;
-    }
-    setVerificationDialog({ open: true, codes, navigateAfter });
+  const proceedStore = (storeId, storeName) => {
+    runWithAuth(
+      () => proceedToCheckout(storeId, storeName),
+      AUTH_GATE_MESSAGES.orderConfirm,
+    );
   };
 
-  const doConfirmStore = async (storeId, storeName) => {
-    if (!window.confirm(`تأكيد طلب «${storeName}» وإرساله للمتجر؟`)) return;
-    setConfirmingStoreId(storeId);
-    const navigateAfter = (cartStats?.storeCount ?? 1) <= 1;
-    try {
-      const { data } = await api.post(`/cart/containers/${storeId}/confirm`, {
-        customerNotes: notesByStore[storeId] || '',
-      });
-      toast(data.message || 'تم إرسال الطلب — بانتظار تأكيد المحل', 'success');
-      setNotesByStore((prev) => {
-        const next = { ...prev };
-        delete next[storeId];
-        return next;
-      });
-      await refreshCart();
-      await qc.invalidateQueries({ queryKey: queryKeys.myOrders });
-      showVerificationCodes(
-        buildVerificationEntriesFromConfirm(data, storeName),
-        navigateAfter,
-      );
-    } catch (err) {
-      toast(err.response?.data?.message || 'تعذّر تأكيد الطلب', 'error');
-    } finally {
-      setConfirmingStoreId(null);
-    }
+  const proceedAllToCheckout = () => {
+    setProceedingAll(true);
+    const storeIds = containers.map((c) => String(getStoreIdFromContainer(c)));
+    startCheckout({ mode: 'all', storeIds, notesByStore });
+    navigate('/checkout/review/all');
+    setProceedingAll(false);
   };
 
-  const confirmStore = (storeId, storeName) => {
-    runWithAuth(() => doConfirmStore(storeId, storeName), AUTH_GATE_MESSAGES.orderConfirm);
-  };
-
-  const doConfirmAll = async () => {
-    if (!window.confirm(`تأكيد جميع الطلبات (${storeCount} متجر)؟`)) return;
-    setConfirmingAll(true);
-    try {
-      const { data } = await api.post('/cart/checkout');
-      toast(data.message || 'تم إرسال جميع الطلبات', 'success');
-      await refreshCart();
-      await qc.invalidateQueries({ queryKey: queryKeys.myOrders });
-      showVerificationCodes(
-        buildVerificationEntriesFromCheckout(data, containers),
-        true,
-      );
-    } catch (err) {
-      toast(err.response?.data?.message || 'تعذّر تأكيد الطلبات', 'error');
-    } finally {
-      setConfirmingAll(false);
-    }
-  };
-
-  const confirmAll = () => {
-    runWithAuth(doConfirmAll, AUTH_GATE_MESSAGES.orderConfirm);
+  const proceedAll = () => {
+    runWithAuth(proceedAllToCheckout, AUTH_GATE_MESSAGES.orderConfirm);
   };
 
   return (
@@ -376,13 +310,21 @@ export default function ShoppingCart() {
       <header className="shopping-cart-page__head">
         <div>
           <h1 className="shopping-cart-page__title">
-            <ShoppingBag size={26} strokeWidth={2.2} />
+            <ShoppingCart size={26} strokeWidth={2.2} />
             سلة المشتريات
           </h1>
           <p className="shopping-cart-page__lead">
             كل متجر له سلة مستقلة — Talabat-style
           </p>
         </div>
+        <button
+          type="button"
+          className="shopping-cart-page__pending-orders"
+          onClick={() => runWithAuth(() => navigate('/orders'), AUTH_GATE_MESSAGES.orderConfirm)}
+        >
+          <ClipboardList size={22} strokeWidth={2.2} />
+          الطلبات قيد الانتظار
+        </button>
       </header>
 
       {isLoading && (
@@ -397,7 +339,7 @@ export default function ShoppingCart() {
           animate={{ opacity: 1, y: 0 }}
           className="shopping-cart-page__empty"
         >
-          <ShoppingBag size={52} strokeWidth={1.2} />
+          <ShoppingCart size={52} strokeWidth={1.2} />
           <p>سلتك فارغة</p>
           <span>اضغط «اطلب الآن» على أي منتج أو عرض لإضافته هنا</span>
           <button type="button" onClick={() => navigate('/explore')} className="shopping-cart-page__cta">
@@ -417,13 +359,13 @@ export default function ShoppingCart() {
                     key={storeId || container.id}
                     container={container}
                     index={index}
-                    confirming={confirmingStoreId === storeId}
+                    proceeding={proceedingStoreId === storeId}
                     deleting={deletingStoreId === storeId}
                     notes={notesByStore[storeId] ?? container.customerNotes ?? ''}
                     onNotesChange={updateNotes}
                     onUpdateQty={updateQty}
                     onRemove={removeItem}
-                    onConfirm={confirmStore}
+                    onProceed={proceedStore}
                     onDeleteContainer={deleteContainer}
                     busyItemId={busyItemId}
                   />
@@ -455,21 +397,16 @@ export default function ShoppingCart() {
             <button
               type="button"
               className="cart-grand-summary__confirm-all"
-              disabled={confirmingAll || Boolean(confirmingStoreId) || Boolean(deletingStoreId)}
-              onClick={confirmAll}
+              disabled={proceedingAll || Boolean(proceedingStoreId) || Boolean(deletingStoreId)}
+              onClick={proceedAll}
             >
-              {confirmingAll ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
+              {proceedingAll ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
               تأكيد جميع الطلبات
             </button>
           </motion.footer>
         </>
       )}
 
-      <OrderVerificationDialog
-        open={verificationDialog.open}
-        codes={verificationDialog.codes}
-        onClose={closeVerificationDialog}
-      />
     </div>
   );
 }

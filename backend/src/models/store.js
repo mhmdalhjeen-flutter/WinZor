@@ -163,6 +163,13 @@ const storeSchema = new mongoose.Schema({
         ref: "User",
         required: true,
     },
+
+    /** Currency acceptance preferences for checkout display */
+    currencyPreferences: {
+        acceptsWornCurrency: { type: Boolean, default: true },
+        acceptsOldCurrency: { type: Boolean, default: false },
+        acceptsAllCurrencyTypes: { type: Boolean, default: false },
+    },
 }, {
     timestamps: true,
 });

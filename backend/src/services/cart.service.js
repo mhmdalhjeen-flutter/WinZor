@@ -10,8 +10,6 @@ const cache = require("../utils/responseCache.util");
 const { generateOrderNumber } = require("../utils/orderNumber.util");
 const { generateUniqueVerificationCode } = require("../utils/verificationCode.util");
 const { assertNoMongoOperators, requireObjectId, cleanString } = require("../utils/inputSecurity.util");
-
-const Store = require("../models/store");
 const {
   normalizeDeliveryMethod,
   normalizePaymentMethod,

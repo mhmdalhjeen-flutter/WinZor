@@ -12,8 +12,10 @@ const {
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 const { normalizeCurrency } = require("../utils/currency.util");
 
+const { normalizePurchaseMode } = require("../constants/purchaseMode.constants");
+
 const PRODUCT_LIST_SELECT =
-    "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive store createdAt";
+    "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive storeItemCategory purchaseMode store createdAt";
 
 function stripBase64Image(product) {
     if (!product || typeof product !== "object") return product;
@@ -41,6 +43,8 @@ exports.createProduct = async (req, res) => {
             image,
             isWholesale,
             freeDelivery,
+            storeItemCategoryId,
+            purchaseMode,
         } = req.body;
         if (!name || price == null) {
             return res.status(400).json({
@@ -61,6 +65,10 @@ exports.createProduct = async (req, res) => {
             isWholesale: !!isWholesale,
             freeDelivery: !!freeDelivery,
             store: store._id,
+            storeItemCategory: storeItemCategoryId
+              ? requireObjectId(storeItemCategoryId, "storeItemCategoryId")
+              : null,
+            purchaseMode: normalizePurchaseMode(purchaseMode),
         });
 
         res.json({ message: "تم إنشاء المنتج بنجاح", product });
@@ -201,6 +209,7 @@ exports.getMyProducts = async (req, res) => {
 
         const products = await Product.find(filter)
             .select(PRODUCT_LIST_SELECT)
+            .populate("storeItemCategory", "name isActive")
             .sort({ createdAt: -1 })
             .lean();
 
@@ -217,10 +226,14 @@ exports.updateProduct = async (req, res) => {
         const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ message: "المنتج غير موجود" });
 
-        const allowed = ["name", "description", "price", "currency", "priceUnit", "image", "isWholesale"];
+        const allowed = ["name", "description", "price", "currency", "priceUnit", "image", "isWholesale", "storeItemCategoryId", "freeDelivery", "isActive", "purchaseMode"];
         for (const field of allowed) {
             if (req.body[field] === undefined) continue;
-            if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
+            if (field === "storeItemCategoryId") {
+                product.storeItemCategory = req.body.storeItemCategoryId
+                  ? requireObjectId(req.body.storeItemCategoryId, "storeItemCategoryId")
+                  : null;
+            } else if (field === "image" && typeof req.body.image === "string" && req.body.image.trim()) {
                 product.image = await processDataUrlImage(req.body.image.trim(), {
                     enforceCloudinaryHttps: true,
                     previousValue: product.image,
@@ -235,6 +248,12 @@ exports.updateProduct = async (req, res) => {
                 product.description = cleanString(req.body.description, { field: "description", max: 1000 });
             } else if (field === "isWholesale") {
                 product.isWholesale = !!req.body.isWholesale;
+            } else if (field === "freeDelivery") {
+                product.freeDelivery = !!req.body.freeDelivery;
+            } else if (field === "isActive") {
+                product.isActive = !!req.body.isActive;
+            } else if (field === "purchaseMode") {
+                product.purchaseMode = normalizePurchaseMode(req.body.purchaseMode);
             } else if (field === "priceUnit") {
                 product.priceUnit = cleanString(req.body.priceUnit, { field: "priceUnit", max: 40 });
             } else {

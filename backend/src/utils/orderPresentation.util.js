@@ -1,9 +1,15 @@
 const { toCanonicalStatus } = require('../constants/marketplaceOrder.constants');
 
 function mapOrderItem(item) {
+  const purchaseMethod = item.purchaseMethod || 'quantity';
   const price = item.price ?? 0;
   const quantity = item.quantity ?? 0;
-  const subtotal = item.subtotal ?? Math.round(price * quantity * 100) / 100;
+  const requestedAmount = item.requestedAmount;
+  const subtotal = item.subtotal ?? (
+    purchaseMethod === 'price'
+      ? Math.round((requestedAmount ?? price) * 100) / 100
+      : Math.round(price * quantity * 100) / 100
+  );
 
   return {
     productId: item.productId || item.item,
@@ -12,6 +18,8 @@ function mapOrderItem(item) {
     productImage: item.productImage || item.image || '',
     price,
     quantity,
+    purchaseMethod,
+    requestedAmount: purchaseMethod === 'price' ? (requestedAmount ?? price) : undefined,
     subtotal,
     // Legacy fields preserved for existing clients
     item: item.item,

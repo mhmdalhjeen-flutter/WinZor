@@ -6,11 +6,23 @@ export function normalizeCartItemType(type) {
   return type || 'Product';
 }
 
-export function cartItemMatches(row, itemId, itemType) {
+export function cartItemMatches(row, itemId, itemType, purchaseMethod) {
   const id = row?.item?._id ?? row?.item?.id;
   if (!id || String(id) !== String(itemId)) return false;
   const rowType = normalizeCartItemType(row?.itemType);
-  return rowType === normalizeCartItemType(itemType);
+  if (rowType !== normalizeCartItemType(itemType)) return false;
+  if (purchaseMethod == null) return true;
+  const rowMethod = row?.purchaseMethod || 'quantity';
+  return rowMethod === (purchaseMethod === 'price' ? 'price' : 'quantity');
+}
+
+export function findCartRow(cartStats, itemId, itemType, purchaseMethod) {
+  for (const container of cartStats?.containers || []) {
+    for (const row of container.items || []) {
+      if (cartItemMatches(row, itemId, itemType, purchaseMethod)) return row;
+    }
+  }
+  return null;
 }
 
 export function getCartRowId(row) {

@@ -54,18 +54,24 @@ function resolveStoreFromItem(item) {
   };
 }
 
-function buildRow(item, itemType, quantity) {
+function buildRow(item, itemType, quantity, purchaseMethod = 'quantity', requestedAmount) {
   const unitPrice = item?.price ?? item?.finalPrice ?? item?.priceAfterDiscount ?? 0;
+  const method = purchaseMethod || 'quantity';
+  const lineTotal = method === 'price'
+    ? (requestedAmount ?? 0)
+    : unitPrice * quantity;
   return {
     item,
     itemType: normalizeCartItemType(itemType),
-    quantity,
-    unitPrice,
-    lineTotal: unitPrice * quantity,
+    quantity: method === 'price' ? 1 : quantity,
+    purchaseMethod: method,
+    ...(method === 'price' ? { requestedAmount } : {}),
+    unitPrice: method === 'price' ? requestedAmount : unitPrice,
+    lineTotal,
   };
 }
 
-export function addToGuestCart({ item, itemType, quantity = 1 }) {
+export function addToGuestCart({ item, itemType, quantity = 1, purchaseMethod = 'quantity', requestedAmount }) {
   if (!item?._id) return readGuestCart();
 
   const cart = readGuestCart();
@@ -82,15 +88,23 @@ export function addToGuestCart({ item, itemType, quantity = 1 }) {
     containers.push(container);
   }
 
+  const method = purchaseMethod || 'quantity';
   const items = [...(container.items || [])];
-  const existingIdx = items.findIndex((row) => cartItemMatches(row, item._id, itemType));
+  const existingIdx = items.findIndex((row) => cartItemMatches(row, item._id, itemType, method));
 
   if (existingIdx >= 0) {
     const existing = items[existingIdx];
-    const nextQty = Math.min(99, (existing.quantity || 0) + quantity);
-    items[existingIdx] = buildRow(existing.item || item, itemType, nextQty);
+    if (method === 'price') {
+      const nextAmount = Math.round(((existing.requestedAmount || 0) + (requestedAmount || 0)) * 100) / 100;
+      items[existingIdx] = buildRow(existing.item || item, itemType, 1, 'price', nextAmount);
+    } else {
+      const nextQty = Math.min(99, (existing.quantity || 0) + quantity);
+      items[existingIdx] = buildRow(existing.item || item, itemType, nextQty, 'quantity');
+    }
+  } else if (method === 'price') {
+    items.push(buildRow(item, itemType, 1, 'price', requestedAmount));
   } else {
-    items.push(buildRow(item, itemType, quantity));
+    items.push(buildRow(item, itemType, quantity, 'quantity'));
   }
 
   container = { ...container, items };
@@ -102,15 +116,20 @@ export function addToGuestCart({ item, itemType, quantity = 1 }) {
   return nextCart;
 }
 
-export function updateGuestCartQty({ itemId, itemType, quantity }) {
+export function updateGuestCartQty({ itemId, itemType, quantity, purchaseMethod = 'quantity', requestedAmount }) {
   const cart = readGuestCart();
+  const method = purchaseMethod || 'quantity';
   const containers = (cart.containers || [])
     .map((container) => {
       const items = (container.items || [])
         .map((row) => {
-          if (!cartItemMatches(row, itemId, itemType)) return row;
+          if (!cartItemMatches(row, itemId, itemType, method)) return row;
+          if (method === 'price') {
+            if (!requestedAmount || requestedAmount <= 0) return null;
+            return buildRow(row.item, itemType, 1, 'price', requestedAmount);
+          }
           if (quantity <= 0) return null;
-          return buildRow(row.item, itemType, quantity);
+          return buildRow(row.item, itemType, quantity, 'quantity');
         })
         .filter(Boolean);
       return items.length ? { ...container, items } : null;
@@ -122,8 +141,8 @@ export function updateGuestCartQty({ itemId, itemType, quantity }) {
   return nextCart;
 }
 
-export function removeFromGuestCart({ itemId, itemType }) {
-  return updateGuestCartQty({ itemId, itemType, quantity: 0 });
+export function removeFromGuestCart({ itemId, itemType, purchaseMethod = 'quantity' }) {
+  return updateGuestCartQty({ itemId, itemType, quantity: 0, purchaseMethod });
 }
 
 export function hasGuestCartItems() {

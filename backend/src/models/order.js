@@ -6,6 +6,8 @@ const orderItemSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId },
   itemType: { type: String, enum: ['Product', 'Offer'], required: true },
   quantity: { type: Number, required: true, min: 1 },
+  purchaseMethod: { type: String, enum: ['quantity', 'price'], default: 'quantity' },
+  requestedAmount: { type: Number, min: 0 },
   price: { type: Number, required: true },
   subtotal: { type: Number },
   name: { type: String, required: true },

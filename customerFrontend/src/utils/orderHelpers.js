@@ -33,6 +33,9 @@ export function getOrderItemImage(item) {
 
 export function getOrderItemSubtotal(item) {
   if (typeof item?.subtotal === 'number') return item.subtotal;
+  if ((item?.purchaseMethod || 'quantity') === 'price') {
+    return item?.requestedAmount ?? item?.price ?? 0;
+  }
   return (item?.price ?? 0) * (item?.quantity ?? 0);
 }
 

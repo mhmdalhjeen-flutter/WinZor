@@ -171,6 +171,7 @@ const OfferDetail = () => {
 
   const offerImageSrc = resolveOfferImage(offer, { width: 600 });
   const storeLogoSrc = resolveStoreLogo(offer?.store, { width: 80 }) || storeLogoPlaceholder(offer?.store);
+  const unavailable = offer.isActive === false;
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">
@@ -283,14 +284,17 @@ const OfferDetail = () => {
         </div>
 
         {/* أزرار الإجراءات */}
+        {unavailable && (
+          <p className="text-sm font-bold text-slate-500 bg-slate-100 p-3 rounded-2xl text-center">غير متوفر حالياً</p>
+        )}
         <div className="flex gap-3 pt-4">
           <button
             onClick={addToCart}
-            disabled={adding}
-            className="flex-[2] bg-primary text-white py-4 rounded-2xl font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-60"
+            disabled={adding || unavailable}
+            className="flex-[2] bg-primary text-white py-4 rounded-2xl font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {adding ? <Loader2 size={20} className="animate-spin" /> : added ? <Check size={20} /> : <ShoppingCart size={20} />}
-            {added ? 'تمت الإضافة للسلة' : 'إضافة للسلة'}
+            {unavailable ? null : adding ? <Loader2 size={20} className="animate-spin" /> : added ? <Check size={20} /> : <ShoppingCart size={20} />}
+            {unavailable ? 'غير متوفر حالياً' : added ? 'تمت الإضافة للسلة' : 'إضافة للسلة'}
           </button>
           <button
             onClick={contactStore}

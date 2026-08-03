@@ -1,13 +1,15 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 import { formatPrice } from '../../utils/currency';
+import { formatOrderLineMeta } from '../../utils/purchaseMode';
 import { getCartRowName, getCartRowImage } from '../../utils/cartHelpers';
 
 function InvoiceItemRow({ row }) {
   const name = getCartRowName(row);
   const image = getCartRowImage(row);
+  const purchaseMethod = row.purchaseMethod || 'quantity';
   const unitPrice = row.unitPrice ?? row.item?.price ?? row.item?.finalPrice ?? 0;
-  const lineTotal = row.lineTotal ?? unitPrice * row.quantity;
+  const lineTotal = row.lineTotal ?? (purchaseMethod === 'price' ? (row.requestedAmount ?? unitPrice) : unitPrice * row.quantity);
   const currency = row.item?.currency || 'ILS';
 
   return (
@@ -24,8 +26,7 @@ function InvoiceItemRow({ row }) {
       <div className="checkout-invoice-item__body">
         <p className="checkout-invoice-item__name">{name}</p>
         <div className="checkout-invoice-item__meta">
-          <span>{formatPrice(unitPrice, currency)}</span>
-          <span className="checkout-invoice-item__qty">× {row.quantity}</span>
+          <span>{formatOrderLineMeta(row, currency)}</span>
         </div>
       </div>
       <strong className="checkout-invoice-item__total">
@@ -49,10 +50,13 @@ export default function CheckoutInvoiceCard({ container }) {
   const storeName = container.storeName || container?.store?.name || 'متجر';
   const logo = getStoreLogo(container);
   const items = container.items || [];
-  const subtotal = container.total ?? items.reduce(
-    (sum, row) => sum + (row.lineTotal ?? (row.unitPrice ?? 0) * row.quantity),
-    0,
-  );
+  const subtotal = container.total ?? items.reduce((sum, row) => {
+    const method = row.purchaseMethod || 'quantity';
+    const line = row.lineTotal ?? (method === 'price'
+      ? (row.requestedAmount ?? row.unitPrice ?? 0)
+      : (row.unitPrice ?? 0) * row.quantity);
+    return sum + line;
+  }, 0);
 
   return (
     <article className="checkout-invoice">
@@ -75,7 +79,7 @@ export default function CheckoutInvoiceCard({ container }) {
       <div className="checkout-invoice__items">
         {items.map((row) => (
           <InvoiceItemRow
-            key={`${row.item?._id || row.item?.id}-${row.itemType}`}
+            key={`${row.item?._id || row.item?.id}-${row.itemType}-${row.purchaseMethod || 'quantity'}`}
             row={row}
           />
         ))}

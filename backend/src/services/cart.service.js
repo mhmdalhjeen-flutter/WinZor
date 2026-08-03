@@ -14,6 +14,11 @@ const {
   normalizeDeliveryMethod,
   normalizePaymentMethod,
 } = require("../constants/marketplaceOrder.constants");
+const {
+  normalizePurchaseMethod,
+  assertPurchaseMethodAllowed,
+  parseRequestedAmount,
+} = require("../constants/purchaseMode.constants");
 
 function parseOrderCheckoutBody(body = {}) {
   const customerNotes = cleanString(body.customerNotes, { field: "customerNotes", max: 1000 }) || "";
@@ -91,27 +96,118 @@ function parsePositiveQuantity(quantity, label = "الكمية") {
   return qty;
 }
 
+function cartLineMatches(a, itemId, itemType, purchaseMethod = "quantity") {
+  return (
+    a.item.toString() === itemId.toString() &&
+    a.itemType === itemType &&
+    (a.purchaseMethod || "quantity") === purchaseMethod
+  );
+}
+
+function toCartSnapshotItem(i) {
+  return {
+    item: i.item,
+    itemType: i.itemType,
+    quantity: i.quantity,
+    purchaseMethod: i.purchaseMethod || "quantity",
+    ...(i.purchaseMethod === "price" && i.requestedAmount != null
+      ? { requestedAmount: i.requestedAmount }
+      : {}),
+  };
+}
+
 function syncFlatItemsFromContainers(containers) {
   const flat = [];
   for (const c of containers || []) {
     if (c.locked) continue;
     for (const it of c.items || []) {
-      const idx = flat.findIndex(
-        (f) => f.item.toString() === it.item.toString() && f.itemType === it.itemType
-      );
-      if (idx >= 0) flat[idx].quantity += it.quantity;
-      else flat.push({ item: it.item, itemType: it.itemType, quantity: it.quantity });
+      const method = it.purchaseMethod || "quantity";
+      const idx = flat.findIndex((f) => cartLineMatches(f, it.item, it.itemType, method));
+      if (idx >= 0) {
+        if (method === "price") {
+          flat[idx].requestedAmount =
+            Math.round(((flat[idx].requestedAmount || 0) + (it.requestedAmount || 0)) * 100) / 100;
+        } else {
+          flat[idx].quantity += it.quantity;
+        }
+      } else {
+        flat.push(toCartSnapshotItem(it));
+      }
     }
   }
   return flat;
 }
 
-function mergeIntoContainerItems(items, itemId, itemType, qty) {
-  const idx = items.findIndex(
-    (i) => i.item.toString() === itemId.toString() && i.itemType === itemType
+function mergeIntoContainerItems(items, itemId, itemType, qtyOrOptions) {
+  let qty = 1;
+  let purchaseMethod = "quantity";
+  let requestedAmount;
+  let replace = false;
+
+  if (typeof qtyOrOptions === "number") {
+    qty = qtyOrOptions;
+  } else if (qtyOrOptions && typeof qtyOrOptions === "object") {
+    qty = qtyOrOptions.qty ?? 1;
+    purchaseMethod = qtyOrOptions.purchaseMethod || "quantity";
+    requestedAmount = qtyOrOptions.requestedAmount;
+    replace = !!qtyOrOptions.replace;
+  }
+
+  const idx = items.findIndex((i) => cartLineMatches(i, itemId, itemType, purchaseMethod));
+
+  if (purchaseMethod === "price") {
+    const amount = parseRequestedAmount(requestedAmount);
+    if (idx >= 0) {
+      items[idx].quantity = 1;
+      items[idx].requestedAmount = replace
+        ? amount
+        : Math.round(((items[idx].requestedAmount || 0) + amount) * 100) / 100;
+    } else {
+      items.push({
+        item: itemId,
+        itemType,
+        quantity: 1,
+        purchaseMethod: "price",
+        requestedAmount: amount,
+      });
+    }
+    return;
+  }
+
+  if (idx >= 0) {
+    items[idx].quantity = replace ? qty : items[idx].quantity + qty;
+  } else {
+    items.push({ item: itemId, itemType, quantity: qty, purchaseMethod: "quantity" });
+  }
+}
+
+async function resolveProductCartLine(productId, body) {
+  const product = await Product.findById(productId)
+    .select("purchaseMode price name stock")
+    .lean();
+  if (!product) {
+    const err = new Error("العنصر غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  const purchaseMethod = assertPurchaseMethodAllowed(
+    product.purchaseMode,
+    body.purchaseMethod || "quantity"
   );
-  if (idx >= 0) items[idx].quantity += qty;
-  else items.push({ item: itemId, itemType, quantity: qty });
+
+  if (purchaseMethod === "price") {
+    return {
+      purchaseMethod: "price",
+      quantity: 1,
+      requestedAmount: parseRequestedAmount(body.requestedAmount),
+    };
+  }
+
+  return {
+    purchaseMethod: "quantity",
+    quantity: parsePositiveQuantity(body.quantity ?? 1),
+  };
 }
 
 function findUnlockedContainer(cart, storeId) {
@@ -229,6 +325,7 @@ async function deductStockForOrderItems(items, session) {
   const productQty = new Map();
   for (const item of items) {
     if (item.itemType !== "Product") continue;
+    if (item.purchaseMethod === "price") continue;
     const id = item.item.toString();
     productQty.set(id, (productQty.get(id) || 0) + item.quantity);
   }
@@ -284,7 +381,7 @@ async function populateCartItems(items) {
   const [products, offers] = await Promise.all([
     productIds.length
       ? Product.find({ _id: { $in: productIds } })
-          .select("name price currency image images description isActive store stock")
+          .select("name price currency priceUnit image images description isActive store stock purchaseMode")
           .lean()
       : [],
     offerIds.length
@@ -333,15 +430,23 @@ async function populateCartItems(items) {
         cartItem.itemType === "Offer"
           ? pricingService.getOfferUnitPrice(doc)
           : doc?.price ?? 0;
-      const lineTotal =
-        cartItem.itemType === "Offer"
-          ? pricingService.computeOfferLineTotal(doc, cartItem.quantity)
-          : Math.round(unitPrice * cartItem.quantity * 100) / 100;
+
+      const purchaseMethod = cartItem.purchaseMethod || "quantity";
+      let lineTotal;
+      if (purchaseMethod === "price") {
+        lineTotal = Math.round((cartItem.requestedAmount || 0) * 100) / 100;
+      } else if (cartItem.itemType === "Offer") {
+        lineTotal = pricingService.computeOfferLineTotal(doc, cartItem.quantity);
+      } else {
+        lineTotal = Math.round(unitPrice * cartItem.quantity * 100) / 100;
+      }
 
       return {
         item: doc,
         itemType: cartItem.itemType,
         quantity: cartItem.quantity,
+        purchaseMethod,
+        requestedAmount: cartItem.requestedAmount,
         unitPrice,
         lineTotal,
       };
@@ -393,13 +498,21 @@ async function migrateLegacyItemsToContainers(cart) {
     const storeId = row.item.store._id.toString();
     const storeName = row.item.store.name || "";
     if (!byStore.has(storeId)) byStore.set(storeId, { storeId, storeName, items: [] });
-    mergeIntoContainerItems(byStore.get(storeId).items, row.item._id, row.itemType, row.quantity);
+    mergeIntoContainerItems(byStore.get(storeId).items, row.item._id, row.itemType, {
+      qty: row.quantity,
+      purchaseMethod: row.purchaseMethod || "quantity",
+      requestedAmount: row.requestedAmount,
+    });
   }
 
   for (const [, group] of byStore) {
     const container = findOrCreateUnlockedContainer(cart, group.storeId, group.storeName);
     for (const it of group.items) {
-      mergeIntoContainerItems(container.items, it.item, it.itemType, it.quantity);
+      mergeIntoContainerItems(container.items, it.item, it.itemType, {
+        qty: it.quantity,
+        purchaseMethod: it.purchaseMethod || "quantity",
+        requestedAmount: it.requestedAmount,
+      });
     }
   }
 
@@ -461,7 +574,11 @@ async function restoreCartSnapshot(userId, cartItems, session) {
       storeId,
       row.item.store?.name || ""
     );
-    mergeIntoContainerItems(container.items, row.item._id, row.itemType, row.quantity);
+    mergeIntoContainerItems(container.items, row.item._id, row.itemType, {
+      qty: row.quantity,
+      purchaseMethod: row.purchaseMethod || "quantity",
+      requestedAmount: row.requestedAmount,
+    });
   }
   cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save(opts);
@@ -477,7 +594,11 @@ async function restoreItemsToStoreContainer(userId, orderItems, storeId, session
   const container = findOrCreateUnlockedContainer(cart, storeId, store?.name || "");
 
   for (const oi of orderItems) {
-    mergeIntoContainerItems(container.items, oi.item, oi.itemType, oi.quantity);
+    mergeIntoContainerItems(container.items, oi.item, oi.itemType, {
+      qty: oi.quantity,
+      purchaseMethod: oi.purchaseMethod || "quantity",
+      requestedAmount: oi.requestedAmount,
+    });
   }
   cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save(opts);
@@ -534,16 +655,21 @@ async function buildOrdersFromCartItems(
     if (!storeId) continue;
     if (!storeMap[storeId]) storeMap[storeId] = { storeId, items: [] };
 
+    const purchaseMethod = ci.purchaseMethod || "quantity";
     const lineTotal = ci.lineTotal ?? (ci.unitPrice || 0) * ci.quantity;
     const effectiveUnit =
-      ci.quantity > 0
-        ? Math.round((lineTotal / ci.quantity) * 100) / 100
-        : ci.unitPrice ?? 0;
+      purchaseMethod === "price"
+        ? ci.requestedAmount ?? lineTotal
+        : ci.quantity > 0
+          ? Math.round((lineTotal / ci.quantity) * 100) / 100
+          : ci.unitPrice ?? 0;
 
     storeMap[storeId].items.push({
       item: ci.item._id,
       itemType: ci.itemType,
-      quantity: ci.quantity,
+      quantity: purchaseMethod === "price" ? 1 : ci.quantity,
+      purchaseMethod,
+      ...(purchaseMethod === "price" ? { requestedAmount: ci.requestedAmount } : {}),
       price: effectiveUnit,
       name: ci.item.name || ci.item.title || "",
       image: resolveItemImage(ci.item),
@@ -554,10 +680,11 @@ async function buildOrdersFromCartItems(
   const productQty = new Map();
   for (const ci of validItems) {
     if (ci.itemType !== "Product") continue;
+    if (ci.purchaseMethod === "price") continue;
     const id = ci.item._id.toString();
     productQty.set(id, (productQty.get(id) || 0) + ci.quantity);
   }
-  await assertProductsStockAvailable(productQty);
+  if (productQty.size) await assertProductsStockAvailable(productQty);
 
   const customerDoc = await User.findById(userId).select("name phone").lean();
   const storeIds = Object.keys(storeMap);
@@ -576,11 +703,13 @@ async function buildOrdersFromCartItems(
   let stockDeductions = [];
   try {
     stockDeductions = await deductStockForOrderItems(
-      validItems.map((ci) => ({
-        item: ci.item._id,
-        itemType: ci.itemType,
-        quantity: ci.quantity,
-      })),
+      validItems
+        .filter((ci) => ci.purchaseMethod !== "price")
+        .map((ci) => ({
+          item: ci.item._id,
+          itemType: ci.itemType,
+          quantity: ci.quantity,
+        })),
       session
     );
 
@@ -659,7 +788,7 @@ async function checkoutCore(userId, session, userRole = "customer") {
   await migrateLegacyItemsToContainers(cart);
   const activeContainers = (cart.containers || []).filter((c) => !c.locked && c.items?.length);
   const flatItems = activeContainers.flatMap((c) =>
-    c.items.map((i) => ({ item: i.item, itemType: i.itemType, quantity: i.quantity }))
+    (c.items || []).map(toCartSnapshotItem)
   );
 
   if (!flatItems.length && !cart.items?.length) {
@@ -670,7 +799,7 @@ async function checkoutCore(userId, session, userRole = "customer") {
 
   const snapshot = flatItems.length
     ? flatItems
-    : cart.items.map((i) => ({ item: i.item, itemType: i.itemType, quantity: i.quantity }));
+    : (cart.items || []).map(toCartSnapshotItem);
 
   cart.containers = (cart.containers || []).filter((c) => c.locked);
   cart.items = [];
@@ -747,17 +876,29 @@ async function addToCart(user, body) {
   const storeName = exists.store.name || "";
   const container = findOrCreateUnlockedContainer(cart, storeId, storeName);
 
-  const qty = parsePositiveQuantity(quantity);
-  const existing = container.items.find(
-    (i) => i.item.toString() === itemId && i.itemType === normalizedType
-  );
-  const nextQty = existing ? existing.quantity + qty : qty;
+  const line =
+    normalizedType === "Product"
+      ? await resolveProductCartLine(itemId, body)
+      : {
+          purchaseMethod: "quantity",
+          quantity: parsePositiveQuantity(quantity),
+        };
 
-  if (normalizedType === "Product") {
+  const purchaseMethod = line.purchaseMethod || "quantity";
+  const existing = container.items.find((i) =>
+    cartLineMatches(i, itemId, normalizedType, purchaseMethod)
+  );
+
+  if (normalizedType === "Product" && purchaseMethod === "quantity") {
+    const nextQty = existing ? existing.quantity + line.quantity : line.quantity;
     await assertProductStockAvailable(itemId, nextQty);
   }
 
-  mergeIntoContainerItems(container.items, itemId, normalizedType, qty);
+  mergeIntoContainerItems(container.items, itemId, normalizedType, {
+    qty: line.quantity,
+    purchaseMethod,
+    requestedAmount: line.requestedAmount,
+  });
   cart.items = syncFlatItemsFromContainers(cart.containers);
   await cart.save();
   invalidateCartCache(user.id);
@@ -769,9 +910,10 @@ async function updateCartItem(userId, body) {
   assertNoMongoOperators(body, "cart");
   const itemId = requireObjectId(body.itemId, "itemId");
   const itemType = cleanString(body.itemType, { field: "itemType", max: 20, required: true });
-  const qty = parsePositiveQuantity(body.quantity);
 
   const normalizedType = normalizeItemType(itemType);
+  const purchaseMethod = normalizePurchaseMethod(body.purchaseMethod || "quantity");
+
   const cart = await Cart.findOne({ user: userId });
   if (!cart) {
     const err = new Error("السلة غير موجودة");
@@ -784,14 +926,25 @@ async function updateCartItem(userId, body) {
   let updated = false;
   for (const container of cart.containers || []) {
     if (container.locked) continue;
-    const idx = container.items.findIndex(
-      (i) => i.item.toString() === itemId && i.itemType === normalizedType
+    const idx = container.items.findIndex((i) =>
+      cartLineMatches(i, itemId, normalizedType, purchaseMethod)
     );
     if (idx === -1) continue;
-    if (normalizedType === "Product") {
-      await assertProductStockAvailable(itemId, qty);
+
+    if (purchaseMethod === "price") {
+      const amount = parseRequestedAmount(body.requestedAmount);
+      container.items[idx].quantity = 1;
+      container.items[idx].purchaseMethod = "price";
+      container.items[idx].requestedAmount = amount;
+    } else {
+      const qty = parsePositiveQuantity(body.quantity);
+      if (normalizedType === "Product") {
+        await assertProductStockAvailable(itemId, qty);
+      }
+      container.items[idx].quantity = qty;
+      container.items[idx].purchaseMethod = "quantity";
+      container.items[idx].requestedAmount = undefined;
     }
-    container.items[idx].quantity = qty;
     updated = true;
     break;
   }
@@ -815,6 +968,10 @@ async function removeFromCart(userId, body) {
   const itemType = cleanString(body.itemType, { field: "itemType", max: 20, required: true });
 
   const normalizedType = normalizeItemType(itemType);
+  const purchaseMethod = body.purchaseMethod
+    ? normalizePurchaseMethod(body.purchaseMethod)
+    : null;
+
   const cart = await Cart.findOne({ user: userId });
   if (!cart) {
     const err = new Error("السلة غير موجودة");
@@ -826,9 +983,11 @@ async function removeFromCart(userId, body) {
 
   for (const container of cart.containers || []) {
     if (container.locked) continue;
-    container.items = container.items.filter(
-      (i) => !(i.item.toString() === itemId && i.itemType === normalizedType)
-    );
+    container.items = container.items.filter((i) => {
+      if (i.item.toString() !== itemId || i.itemType !== normalizedType) return true;
+      if (purchaseMethod) return (i.purchaseMethod || "quantity") !== purchaseMethod;
+      return false;
+    });
   }
   cart.containers = (cart.containers || []).filter(
     (c) => c.locked || (c.items && c.items.length > 0)
@@ -883,11 +1042,7 @@ async function confirmStoreContainer(userId, storeIdRaw, body = {}, userRole = "
       throw err;
     }
 
-    const snapshot = container.items.map((i) => ({
-      item: i.item,
-      itemType: i.itemType,
-      quantity: i.quantity,
-    }));
+    const snapshot = container.items.map(toCartSnapshotItem);
 
     const storeDoc = await Store.findById(storeId).select("name").lean();
     const containerName = container.storeName || storeDoc?.name || "";
@@ -970,11 +1125,7 @@ async function confirmStoreContainerFallback(userId, storeIdRaw, body, userRole)
   }
 
   const container = cart.containers[containerIdx];
-  const snapshot = container.items.map((i) => ({
-    item: i.item,
-    itemType: i.itemType,
-    quantity: i.quantity,
-  }));
+  const snapshot = container.items.map(toCartSnapshotItem);
 
   const storeDoc = await Store.findById(storeId).select("name").lean();
   const orders = await buildOrdersFromCartItems(userId, snapshot, null, userRole, {

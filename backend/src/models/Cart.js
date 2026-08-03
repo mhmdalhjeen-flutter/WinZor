@@ -17,6 +17,17 @@ const cartItemSchema = new mongoose.Schema(
       default: 1,
       min: 1,
     },
+    /** quantity | price — how the customer ordered this line */
+    purchaseMethod: {
+      type: String,
+      enum: ['quantity', 'price'],
+      default: 'quantity',
+    },
+    /** Money amount when purchaseMethod is price (e.g. 7 ₪ of seeds) */
+    requestedAmount: {
+      type: Number,
+      min: 0,
+    },
   },
   { _id: false }
 );

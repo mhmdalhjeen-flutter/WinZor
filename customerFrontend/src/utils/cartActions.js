@@ -9,51 +9,71 @@ import {
   clearGuestCart,
 } from './guestCartService';
 
-export async function addItemToCart({ item, itemType, quantity = 1, isAuth }) {
+export async function addItemToCart({
+  item, itemType, quantity = 1, purchaseMethod = 'quantity', requestedAmount, isAuth,
+}) {
+  const payload = {
+    itemId: item._id,
+    itemType: normalizeCartItemType(itemType).toLowerCase(),
+    purchaseMethod,
+    quantity: purchaseMethod === 'price' ? 1 : quantity,
+  };
+  if (purchaseMethod === 'price' && requestedAmount != null) {
+    payload.requestedAmount = requestedAmount;
+  }
+
   if (!isAuth) {
-    addToGuestCart({ item, itemType, quantity });
+    addToGuestCart({ item, itemType, quantity: payload.quantity, purchaseMethod, requestedAmount });
     await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
     return;
   }
 
-  await api.post('/cart/add', {
-    itemId: item._id,
-    itemType: normalizeCartItemType(itemType).toLowerCase(),
-    quantity,
-  });
+  await api.post('/cart/add', payload);
   await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
 }
 
-export async function updateCartItemQty({ itemId, itemType, quantity, isAuth }) {
+export async function updateCartItemQty({
+  itemId, itemType, quantity, purchaseMethod = 'quantity', requestedAmount, isAuth,
+}) {
   if (!isAuth) {
-    updateGuestCartQty({ itemId, itemType, quantity });
+    updateGuestCartQty({ itemId, itemType, quantity, purchaseMethod, requestedAmount });
     await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
     return;
   }
 
-  if (quantity <= 0) {
+  if (quantity <= 0 && purchaseMethod !== 'price') {
     await api.delete('/cart/remove', {
-      data: { itemId, itemType: normalizeCartItemType(itemType) },
+      data: { itemId, itemType: normalizeCartItemType(itemType), purchaseMethod },
+    });
+  } else if (purchaseMethod === 'price' && (quantity <= 0 || !requestedAmount)) {
+    await api.delete('/cart/remove', {
+      data: { itemId, itemType: normalizeCartItemType(itemType), purchaseMethod: 'price' },
     });
   } else {
     await api.patch('/cart/update', {
       itemId,
       itemType: normalizeCartItemType(itemType),
-      quantity,
+      quantity: purchaseMethod === 'price' ? 1 : quantity,
+      purchaseMethod,
+      requestedAmount,
     });
   }
   await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
 }
 
-export async function removeCartItem({ itemId, itemType, isAuth }) {
+export async function removeCartItem({ itemId, itemType, purchaseMethod = 'quantity', isAuth }) {
   if (!isAuth) {
-    removeFromGuestCart({ itemId, itemType });
+    removeFromGuestCart({ itemId, itemType, purchaseMethod });
     await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
     return;
   }
 
   await api.delete('/cart/remove', {
-    data: { itemId, itemType: normalizeCartItemType(itemType) },
+    data: {
+      itemId,
+      itemType: normalizeCartItemType(itemType),
+      purchaseMethod,
+    },
   });
   await queryClient.invalidateQueries({ queryKey: queryKeys.cart });
 }

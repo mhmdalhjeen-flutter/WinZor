@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronRight, ShoppingCart, MessageCircle, Check, Loader2 } from 'lucide-react';
+import { ChevronRight, MessageCircle, Loader2 } from 'lucide-react';
 import api from '../api/axios';
 import StarRating from '../components/StarRating';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -11,7 +11,10 @@ import { useVerificationGate } from '../context/VerificationGateContext';
 import { useAuth } from '../context/AuthContext';
 import { queryClient, queryKeys } from '../lib/queryClient';
 import { CART_VERIFICATION } from '../utils/verificationGateConfig';
-import { addItemToCart } from '../utils/cartActions';
+import { addItemToCart, updateCartItemQty } from '../utils/cartActions';
+import { findCartRow } from '../utils/cartHelpers';
+import useCartSummary from '../hooks/useCartSummary';
+import ItemPurchaseControls from '../components/purchase/ItemPurchaseControls';
 import { resolveProductImage } from '../utils/mediaUrl';
 import { formatPriceWithUnit } from '../utils/currency';
 import { recordRecentlyViewed } from '../utils/recentlyViewed';
@@ -22,11 +25,11 @@ const ProductDetail = () => {
   const { toast } = useToast();
   const { runWithVerification, handleApiVerificationError } = useVerificationGate();
   const { isAuth } = useAuth();
+  const { data: cartStats } = useCartSummary();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     api.get(`/products/${id}`)
@@ -52,28 +55,47 @@ const ProductDetail = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const performAdd = async () => {
+  const performAdd = async (payload) => {
     setAdding(true);
     try {
-      await addItemToCart({ item: product, itemType: 'product', quantity: 1, isAuth });
-      setAdded(true);
+      await addItemToCart({ item: product, itemType: 'product', isAuth, ...payload });
       toast('تمت إضافة العنصر إلى السلة.', 'success');
-      setTimeout(() => setAdded(false), 2000);
     } catch (err) {
-      if (handleApiVerificationError(err, performAdd, CART_VERIFICATION)) return;
+      if (handleApiVerificationError(err, () => performAdd(payload), CART_VERIFICATION)) return;
       toast(err.response?.data?.message || 'تعذّر الإضافة', 'error');
     } finally {
       setAdding(false);
     }
   };
 
-  const addToCart = () => {
-    if (adding || added) return;
+  const performUpdate = async (payload) => {
+    setAdding(true);
+    try {
+      await updateCartItemQty({ itemId: product._id, itemType: 'product', isAuth, ...payload });
+    } catch (err) {
+      if (handleApiVerificationError(err, () => performUpdate(payload), CART_VERIFICATION)) return;
+      toast(err.response?.data?.message || 'تعذّر التحديث', 'error');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handlePurchaseAdd = (payload) => {
+    if (adding || unavailable) return;
     if (!isAuth) {
-      performAdd();
+      performAdd(payload);
       return;
     }
-    runWithVerification(performAdd, CART_VERIFICATION);
+    runWithVerification(() => performAdd(payload), CART_VERIFICATION);
+  };
+
+  const handlePurchaseUpdate = (payload) => {
+    if (adding || unavailable) return;
+    if (!isAuth) {
+      performUpdate(payload);
+      return;
+    }
+    runWithVerification(() => performUpdate(payload), CART_VERIFICATION);
   };
 
   const contact = () => {
@@ -93,10 +115,13 @@ const ProductDetail = () => {
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error || !product) return <ErrorState message={error || 'المنتج غير موجود'} />;
+  if (error || !product) return <ErrorState message={error || 'العنصر غير موجود'} />;
 
   const store = product.store;
   const productImageSrc = resolveProductImage(product, { width: 600 });
+  const unavailable = product.isActive === false;
+  const qtyRow = findCartRow(cartStats, product._id, 'product', 'quantity');
+  const priceRow = findCartRow(cartStats, product._id, 'product', 'price');
 
   return (
     <div className="space-y-6 pb-24 text-right" dir="rtl">
@@ -139,13 +164,27 @@ const ProductDetail = () => {
           </button>
         )}
 
-        <div className="flex gap-3">
-          <button type="button" onClick={addToCart} disabled={adding} className="flex-[2] bg-primary text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2">
-            {adding ? <Loader2 className="animate-spin" /> : added ? <Check /> : <ShoppingCart />}
-            {added ? 'تمت الإضافة' : 'إضافة للسلة'}
-          </button>
-          <button type="button" onClick={contact} className="flex-1 border-2 border-gray-100 rounded-2xl flex items-center justify-center">
-            <MessageCircle size={22} />
+        {unavailable && (
+          <p className="text-sm font-bold text-slate-500 bg-slate-100 p-3 rounded-2xl text-center">غير متوفر حالياً</p>
+        )}
+
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 space-y-3">
+          {!unavailable && (
+            <ItemPurchaseControls
+              item={product}
+              itemType="product"
+              currency={product.currency}
+              compact={false}
+              busy={adding}
+              currentQty={qtyRow?.quantity || 0}
+              currentAmount={priceRow?.requestedAmount ?? priceRow?.lineTotal ?? 0}
+              onAdd={handlePurchaseAdd}
+              onUpdate={handlePurchaseUpdate}
+            />
+          )}
+          <button type="button" onClick={contact} className="w-full border-2 border-gray-100 rounded-2xl py-3 flex items-center justify-center gap-2 font-bold text-gray-700">
+            <MessageCircle size={20} />
+            تواصل مع المتجر
           </button>
         </div>
       </div>

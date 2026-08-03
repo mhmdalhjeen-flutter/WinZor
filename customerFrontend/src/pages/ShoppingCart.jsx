@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { queryKeys } from '../lib/queryClient';
 import { formatPrice } from '../utils/currency';
+import { formatOrderLineMeta } from '../utils/purchaseMode';
 import {
   getCartRowId, getCartRowName, getCartRowImage, getStoreIdFromContainer, normalizeCartItemType,
 } from '../utils/cartHelpers';
@@ -32,9 +33,11 @@ function getStoreInitial(name) {
 function CartItemRow({ row, busy, onUpdateQty, onRemove }) {
   const name = getCartRowName(row);
   const image = getCartRowImage(row);
+  const purchaseMethod = row.purchaseMethod || 'quantity';
   const unitPrice = row.unitPrice ?? row.item?.price ?? row.item?.finalPrice ?? 0;
-  const lineTotal = row.lineTotal ?? unitPrice * row.quantity;
+  const lineTotal = row.lineTotal ?? (purchaseMethod === 'price' ? (row.requestedAmount ?? unitPrice) : unitPrice * row.quantity);
   const currency = row.item?.currency || 'ILS';
+  const isPricePurchase = purchaseMethod === 'price';
 
   return (
     <motion.div
@@ -56,29 +59,35 @@ function CartItemRow({ row, busy, onUpdateQty, onRemove }) {
       <div className="cart-item-row__body">
         <p className="cart-item-row__name">{name}</p>
         <p className="cart-item-row__math">
-          <span>{row.quantity} × {formatPrice(unitPrice, currency)}</span>
+          <span>{formatOrderLineMeta(row, currency)}</span>
           <span className="cart-item-row__equals">= {formatPrice(lineTotal, currency)}</span>
         </p>
         <div className="cart-item-row__controls">
-          <button
-            type="button"
-            className="cart-qty-btn"
-            disabled={busy}
-            onClick={() => onUpdateQty(row, row.quantity - 1)}
-            aria-label="تقليل"
-          >
-            <Minus size={14} />
-          </button>
-          <span className="cart-qty-value">{row.quantity}</span>
-          <button
-            type="button"
-            className="cart-qty-btn"
-            disabled={busy || row.quantity >= 99}
-            onClick={() => onUpdateQty(row, row.quantity + 1)}
-            aria-label="زيادة"
-          >
-            <Plus size={14} />
-          </button>
+          {!isPricePurchase ? (
+            <>
+              <button
+                type="button"
+                className="cart-qty-btn"
+                disabled={busy}
+                onClick={() => onUpdateQty(row, row.quantity - 1)}
+                aria-label="تقليل"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="cart-qty-value">{row.quantity}</span>
+              <button
+                type="button"
+                className="cart-qty-btn"
+                disabled={busy || row.quantity >= 99}
+                onClick={() => onUpdateQty(row, row.quantity + 1)}
+                aria-label="زيادة"
+              >
+                <Plus size={14} />
+              </button>
+            </>
+          ) : (
+            <span className="cart-item-row__price-badge">بالقيمة</span>
+          )}
           <button
             type="button"
             className="cart-remove-btn"
@@ -222,15 +231,16 @@ export default function ShoppingCart() {
   const updateQty = async (row, newQty) => {
     const itemId = getCartRowId(row);
     const itemType = normalizeCartItemType(row.itemType);
+    const purchaseMethod = row.purchaseMethod || 'quantity';
 
     if (newQty <= 0) {
       await removeItem(row);
       return;
     }
 
-    setBusyItemId(itemId);
+    setBusyItemId(`${itemId}-${purchaseMethod}`);
     try {
-      await updateCartItemQty({ itemId, itemType, quantity: newQty, isAuth });
+      await updateCartItemQty({ itemId, itemType, quantity: newQty, purchaseMethod, isAuth });
       await refreshCart();
     } catch (err) {
       toast(err.response?.data?.message || 'تعذّر تحديث الكمية', 'error');
@@ -243,9 +253,10 @@ export default function ShoppingCart() {
   const removeItem = async (row) => {
     const itemId = getCartRowId(row);
     const itemType = normalizeCartItemType(row.itemType);
-    setBusyItemId(itemId);
+    const purchaseMethod = row.purchaseMethod || 'quantity';
+    setBusyItemId(`${itemId}-${purchaseMethod}`);
     try {
-      await removeCartItem({ itemId, itemType, isAuth });
+      await removeCartItem({ itemId, itemType, purchaseMethod, isAuth });
       await refreshCart();
     } catch (err) {
       toast(err.response?.data?.message || 'تعذّر الحذف', 'error');

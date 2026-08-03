@@ -25,24 +25,11 @@ import { formatPriceWithUnit } from '../utils/currency';
 import { getOfferPricing } from '../components/OfferPriceDisplay';
 import '../styles/storeDetail.css';
 
-/** Frontend-only categories — filter by product.category when available */
-const STORE_CATEGORIES = [
-  { id: 'all', label: 'الكل' },
-  { id: 'cleaners', label: 'منظفات', match: ['منظف', 'تنظيف'] },
-  { id: 'sweets', label: 'حلويات', match: ['حلو', 'سكري'] },
-  { id: 'nuts', label: 'مكسرات', match: ['مكسر', 'فستق', 'لوز'] },
-  { id: 'drinks', label: 'مشروبات', match: ['مشروب', 'عصير', 'ماء'] },
-  { id: 'dairy', label: 'ألبان', match: ['لبن', 'ألبان', 'جبن', 'زبادي'] },
-  { id: 'frozen', label: 'مجمدات', match: ['مجمد', 'frozen'] },
-  { id: 'groceries', label: 'مواد غذائية', match: ['غذائ', 'بقالة', 'مواد'] },
-];
-
-function matchesProductCategory(product, categoryId) {
+/** Match item by store-specific category id */
+function matchesItemCategory(item, categoryId) {
   if (categoryId === 'all') return true;
-  const cat = STORE_CATEGORIES.find((c) => c.id === categoryId);
-  if (!cat?.match) return true;
-  const haystack = `${product.category || ''} ${product.name || ''} ${product.description || ''}`.toLowerCase();
-  return cat.match.some((token) => haystack.includes(token.toLowerCase()));
+  const catId = item.storeItemCategory?._id || item.storeItemCategory;
+  return catId && String(catId) === String(categoryId);
 }
 
 function matchesSearch(text, query) {
@@ -182,15 +169,25 @@ const StoreDetail = () => {
 
   const filteredOffers = useMemo(() => {
     const list = data?.offers || [];
-    return list.filter((o) => matchesSearch(o.title, searchQuery));
-  }, [data?.offers, searchQuery]);
+    return list.filter(
+      (o) => matchesItemCategory(o, activeCategory) && matchesSearch(o.title, searchQuery),
+    );
+  }, [data?.offers, activeCategory, searchQuery]);
 
   const filteredProducts = useMemo(() => {
     const list = data?.products || [];
     return list.filter(
-      (p) => matchesProductCategory(p, activeCategory) && matchesSearch(p.name, searchQuery),
+      (p) => matchesItemCategory(p, activeCategory) && matchesSearch(p.name, searchQuery),
     );
   }, [data?.products, activeCategory, searchQuery]);
+
+  const categoryChips = useMemo(() => {
+    const fromApi = (data?.itemCategories || []).map((c) => ({
+      id: c._id,
+      label: c.name,
+    }));
+    return [{ id: 'all', label: 'الكل' }, ...fromApi];
+  }, [data?.itemCategories]);
 
   if (isLoading && !data) return <LightLoadingHint label="جاري تحميل المتجر..." />;
 
@@ -331,7 +328,7 @@ const StoreDetail = () => {
                 ref={searchInputRef}
                 type="search"
                 className="store-detail-search__input"
-                placeholder="ابحث في العروض والمنتجات..."
+                placeholder="ابحث في العروض والعناصر..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -357,9 +354,9 @@ const StoreDetail = () => {
         </div>
 
         {/* Category chips */}
-        <div className="store-category-chips" aria-label="تصنيفات المنتجات">
+        <div className="store-category-chips" aria-label="تصنيفات العناصر">
           <div className="store-category-chips__track">
-            {STORE_CATEGORIES.map((cat) => (
+            {categoryChips.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -398,6 +395,7 @@ const StoreDetail = () => {
                     imageSrc={imageSrc}
                     imageSrcSet={cloudinarySrcSet(offer?.image, [400, 800])}
                     detailPath={`/offer/${offer._id}`}
+                    unavailable={offer.isActive === false}
                   />
                 );
               })
@@ -413,7 +411,7 @@ const StoreDetail = () => {
             className="store-detail-jump"
             onClick={() => scrollToSection(productsSectionRef)}
           >
-            المنتجات
+            العناصر
             <ArrowDown size={16} strokeWidth={2.5} />
           </button>
         </div>
@@ -421,11 +419,11 @@ const StoreDetail = () => {
         {/* Products section */}
         <section className="store-detail-section" ref={productsSectionRef} id="store-products">
           <div className="store-detail-section__head">
-            <h2 className="store-detail-section__title">منتجات المتجر</h2>
+            <h2 className="store-detail-section__title">عناصر المتجر</h2>
           </div>
           <div className="store-detail-grid">
             {filteredProducts.length === 0 ? (
-              <p className="store-detail-empty">لا منتجات في هذا التصنيف</p>
+              <p className="store-detail-empty">لا عناصر في هذا التصنيف</p>
             ) : (
               filteredProducts.map((product) => {
                 const imageSrc = resolveProductImage(product, { width: 400 });
@@ -439,6 +437,7 @@ const StoreDetail = () => {
                     imageSrc={imageSrc}
                     imageSrcSet={cloudinarySrcSet(product?.image, [400, 800])}
                     detailPath={`/product/${product._id}`}
+                    unavailable={product.isActive === false}
                   />
                 );
               })

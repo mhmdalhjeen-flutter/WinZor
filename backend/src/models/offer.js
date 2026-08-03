@@ -126,6 +126,18 @@ const offerSchema = new mongoose.Schema({
         required: true,
     },
 
+    storeItemCategory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "StoreItemCategory",
+        default: null,
+    },
+
+    relatedProduct: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        default: null,
+    },
+
     isActive: {
         type: Boolean,
         default: true,

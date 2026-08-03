@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { formatPrice } from '../../utils/currency';
+import { formatOrderLineMeta, purchaseMethodLabel } from '../../utils/purchaseMode';
 import {
   getOrderStoreName,
   getOrderStoreImage,
@@ -126,14 +127,19 @@ export default function OrderInvoiceDetails({ order, showTimeline = true }) {
               )}
               <div className="order-details__item-body">
                 <p className="order-details__item-name">{getOrderItemName(item)}</p>
-                <p className="order-details__item-qty">الكمية: {item.quantity ?? 0}</p>
+                <p className="order-details__item-qty">
+                  {(item.purchaseMethod || 'quantity') === 'price'
+                    ? `بالقيمة: ${formatPrice(item.requestedAmount ?? item.subtotal ?? item.price ?? 0, order.currency)}`
+                    : `الكمية: ${item.quantity ?? 0}`}
+                </p>
+                <p className="order-details__item-method">{purchaseMethodLabel(item.purchaseMethod)}</p>
               </div>
               <div className="order-details__item-price">
                 <p className="order-details__item-subtotal">
                   {formatPrice(getOrderItemSubtotal(item), order.currency)}
                 </p>
                 <p className="order-details__item-unit">
-                  {formatPrice(item.price ?? 0, order.currency)} / قطعة
+                  {formatOrderLineMeta(item, order.currency)}
                 </p>
               </div>
             </div>

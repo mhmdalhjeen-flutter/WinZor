@@ -19,7 +19,7 @@ const {
 const OFFER_TYPES = ["discount", "fixed_price", "bogo", "fixed_discount", "free_item", "custom"];
 const MAX_OFFER_DAYS = 7;
 const OFFER_LIST_SELECT =
-    "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority isActive expiresAt autoDeleteAt store createdAt";
+    "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority isActive expiresAt autoDeleteAt storeItemCategory store createdAt";
 
 function stripBase64Images(offer) {
     if (!offer || typeof offer !== "object") return offer;
@@ -52,6 +52,8 @@ function buildOfferPayload(body, storeId, userId) {
         expiresAt,
         currency,
         priceUnit,
+        storeItemCategoryId,
+        relatedProductId,
     } = body;
 
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
@@ -96,6 +98,12 @@ function buildOfferPayload(body, storeId, userId) {
         autoDeleteAt: resolveAutoDeleteAt(expDate),
         store: storeId,
         createdBy: userId,
+        storeItemCategory: storeItemCategoryId
+          ? requireObjectId(storeItemCategoryId, "storeItemCategoryId")
+          : null,
+        relatedProduct: relatedProductId
+          ? requireObjectId(relatedProductId, "relatedProductId")
+          : null,
         expiryWarningSent: false,
         deletionWarningSent: false,
     };
@@ -149,7 +157,12 @@ exports.getMyOffers = async (req, res) => {
         if (req.query.all !== "true") filter.isActive = true;
 
         const limit = req.query.limit ? intInRange(req.query.limit, { field: "limit", min: 1, max: 50 }) : undefined;
-        let query = Offer.find(filter).select(OFFER_LIST_SELECT).sort({ priority: -1, createdAt: -1 }).lean();
+        let query = Offer.find(filter)
+            .select(OFFER_LIST_SELECT)
+            .populate("storeItemCategory", "name isActive")
+            .populate("relatedProduct", "name price currency priceUnit image")
+            .sort({ priority: -1, createdAt: -1 })
+            .lean();
         if (limit) query = query.limit(limit);
 
         const offers = await query;
@@ -304,8 +317,25 @@ exports.updateOffer = async (req, res) => {
         const allowed = [
             "title", "description", "offerType", "value", "originalPrice",
             "finalPrice", "image", "freeDelivery", "expiresAt", "currency", "priceUnit",
+            "storeItemCategoryId", "relatedProductId", "isActive",
         ];
         for (const field of allowed) {
+            if (field === "storeItemCategoryId") {
+                if (patch.storeItemCategoryId === null || patch.storeItemCategoryId === "") {
+                    offer.storeItemCategory = null;
+                } else if (patch.storeItemCategoryId !== undefined) {
+                    offer.storeItemCategory = requireObjectId(patch.storeItemCategoryId, "storeItemCategoryId");
+                }
+                continue;
+            }
+            if (field === "relatedProductId") {
+                if (patch.relatedProductId === null || patch.relatedProductId === "") {
+                    offer.relatedProduct = null;
+                } else if (patch.relatedProductId !== undefined) {
+                    offer.relatedProduct = requireObjectId(patch.relatedProductId, "relatedProductId");
+                }
+                continue;
+            }
             if (field === "image") {
                 const nextImage = patch.image;
                 if (typeof nextImage === "string" && nextImage.trim()) {
@@ -324,6 +354,7 @@ exports.updateOffer = async (req, res) => {
             else if (field === "originalPrice") offer.originalPrice = numberInRange(patch.originalPrice, { field: "originalPrice", min: 0, max: 10_000_000 });
             else if (field === "finalPrice") offer.finalPrice = patch.finalPrice;
             else if (field === "freeDelivery") offer.freeDelivery = !!patch.freeDelivery;
+            else if (field === "isActive") offer.isActive = !!patch.isActive;
             else if (field === "currency") offer.currency = normalizeCurrency(patch.currency);
             else if (field === "priceUnit") offer.priceUnit = cleanString(patch.priceUnit, { field: "priceUnit", max: 40 });
             else if (field === "expiresAt") {

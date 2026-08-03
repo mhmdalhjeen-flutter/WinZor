@@ -29,13 +29,14 @@ const {
 const { getDefaultBrandingForCategory } = require("../utils/defaultStoreBranding.util");
 const offerService = require("../services/offer.service");
 const paymentMethodService = require("../services/storePaymentMethod.service");
+const StoreItemCategory = require("../models/storeItemCategory");
 const { resolveMonthlyVisits, incrementStoreVisits } = require("../utils/storeVisits.util");
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const OFFER_LIST_SELECT =
-  "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt";
+  "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt isActive storeItemCategory";
 const PRODUCT_LIST_SELECT =
-  "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority store createdAt";
+  "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive storeItemCategory store createdAt";
 
 function stripBase64Images(offer) {
   if (!offer || typeof offer !== "object") return offer;
@@ -216,15 +217,29 @@ exports.getStoreById = async (req, res) => {
         await store.save();
 
         const storePlain = store.toObject();
-        const offers = await Offer.find({ store: store._id, isActive: true })
-            .select(OFFER_LIST_SELECT)
-            .lean();
-        const products = await Product.find({ store: store._id, isActive: true })
-            .select(PRODUCT_LIST_SELECT)
-            .lean();
+        const [offers, products, itemCategories] = await Promise.all([
+            Offer.find({ store: store._id })
+                .select(OFFER_LIST_SELECT)
+                .populate("storeItemCategory", "name isActive")
+                .lean(),
+            Product.find({ store: store._id, isWholesale: { $ne: true } })
+                .select(PRODUCT_LIST_SELECT)
+                .populate("storeItemCategory", "name isActive")
+                .lean(),
+            StoreItemCategory.find({ store: store._id, isActive: true })
+                .sort({ order: 1, name: 1 })
+                .select("name isActive order")
+                .lean(),
+        ]);
 
-        const offersWithStore = offers.map((offer) => ({ ...offer, store: storePlain }));
+        const activeOffers = offers.filter((o) => o.isActive !== false);
+        const inactiveOffers = offers.filter((o) => o.isActive === false);
+        const offersWithStore = activeOffers.map((offer) => ({ ...offer, store: storePlain }));
         const rankedOffers = await offerService.rankOffers(offersWithStore, req.user?.id, { forList: false });
+        const allStoreOffers = [
+            ...rankedOffers,
+            ...inactiveOffers.map((offer) => ({ ...offer, store: storePlain })),
+        ];
         const sortedProducts = applyProductDisplayPrioritySort(products);
 
         let membership = null;
@@ -244,8 +259,9 @@ exports.getStoreById = async (req, res) => {
 
         res.json({
             store: await attachStorePaymentSettings(resolveStoreMediaFields(store.toObject())),
-            offers: rankedOffers.map(stripBase64Images),
+            offers: allStoreOffers.map(stripBase64Images),
             products: sortedProducts.map(stripBase64Image),
+            itemCategories,
             isFollowing: isFollowingNetwork || membership?.status === "member" || membership?.status === "pending",
             membershipStatus: membership?.status || null,
             storeCompetitionsEnabled: competitionsEnabled,

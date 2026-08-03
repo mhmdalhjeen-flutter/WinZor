@@ -51,15 +51,13 @@ router.get("/:id", async (req, res) => {
             .populate("store", "name phone whatsapp region subRegion logo category owner");
 
         if (!product) {
-            return res.status(404).json({ message: "المنتج غير موجود" });
+            return res.status(404).json({ message: "العنصر غير موجود" });
         }
 
-        if (!product.isActive) {
-            return res.status(404).json({ message: "هذا المنتج غير متاح حالياً" });
+        if (product.isActive !== false) {
+            await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
+            product.views = (product.views || 0) + 1;
         }
-
-        await Product.findByIdAndUpdate(product._id, { $inc: { views: 1 } });
-        product.views = (product.views || 0) + 1;
 
         res.json({ product });
     } catch (err) {

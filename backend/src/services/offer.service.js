@@ -252,13 +252,8 @@ async function getOfferById(offerId, { incrementViews = false, userId, clientId 
     err.status = 404;
     throw err;
   }
-  if (!offer.isActive) {
-    const err = new Error("هذا العرض غير متاح حالياً");
-    err.status = 404;
-    throw err;
-  }
 
-  if (incrementViews) {
+  if (incrementViews && offer.isActive !== false) {
     const result = await recordMeaningfulView(offerId, { userId, clientId });
     if (result.counted) offer.views = result.views;
   }

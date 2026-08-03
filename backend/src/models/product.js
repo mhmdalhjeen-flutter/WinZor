@@ -78,6 +78,19 @@ const productSchema = new mongoose.Schema({
         required: true,
     },
 
+    storeItemCategory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "StoreItemCategory",
+        default: null,
+    },
+
+    /** quantity = by count/weight unit, price = by money amount, both = customer chooses */
+    purchaseMode: {
+        type: String,
+        enum: ["quantity", "price", "both"],
+        default: "quantity",
+    },
+
     isActive: {
         type: Boolean,
         default: true,

@@ -647,11 +647,32 @@ async function updateOrderStatus(ownerId, orderId, status, options = {}) {
     session.startTransaction();
     const result = await updateOrderStatusCore(ownerId, orderId, status, session, options);
     await session.commitTransaction();
+    if (result?.order?._id) {
+      setImmediate(() => {
+        try {
+          const deliverySessionService = require("./deliverySession.service");
+          deliverySessionService.syncOrderInSessions(result.order._id).catch(() => {});
+        } catch (_) {
+          /* non-critical */
+        }
+      });
+    }
     return result;
   } catch (err) {
     await session.abortTransaction().catch(() => {});
     if (isTransactionUnsupported(err)) {
-      return updateOrderStatusCore(ownerId, orderId, status, null, options);
+      const result = await updateOrderStatusCore(ownerId, orderId, status, null, options);
+      if (result?.order?._id) {
+        setImmediate(() => {
+          try {
+            const deliverySessionService = require("./deliverySession.service");
+            deliverySessionService.syncOrderInSessions(result.order._id).catch(() => {});
+          } catch (_) {
+            /* non-critical */
+          }
+        });
+      }
+      return result;
     }
     throw err;
   } finally {

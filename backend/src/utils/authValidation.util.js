@@ -38,7 +38,7 @@ function cleanPromoCode(value) {
 function cleanAppType(value) {
   if (value == null || value === "") return undefined;
   const appType = cleanString(value, { field: "appType", max: 20 });
-  if (!["customer", "business", "admin"].includes(appType)) {
+  if (!["customer", "business", "admin", "delivery"].includes(appType)) {
     throw Object.assign(new Error("appType غير صالح"), { status: 400 });
   }
   return appType;

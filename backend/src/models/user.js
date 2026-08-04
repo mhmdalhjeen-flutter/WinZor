@@ -114,8 +114,15 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["customer", "store", "supplier", "admin"],
+        enum: ["customer", "store", "supplier", "admin", "driver"],
         default: "customer",
+    },
+    /** شركة التوصيل — للسائقين (role: driver) */
+    deliveryCompanyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "DeliveryCompany",
+        default: null,
+        index: true,
     },
    
 

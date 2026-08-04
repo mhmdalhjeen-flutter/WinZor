@@ -75,7 +75,7 @@ const envOrigins = (process.env.CORS_ORIGINS || "")
 
 const allowedOrigins = [...new Set([
     ...envOrigins,
-    ...(isProduction ? DEFAULT_PROD_ORIGINS : DEFAULT_DEV_ORIGINS),
+    ...(isProduction ? DEFAULT_PROD_ORIGINS : DEFAULT_DEV_ORIGINS), //
 ])];
 
 if (envOrigins.length === 0) {

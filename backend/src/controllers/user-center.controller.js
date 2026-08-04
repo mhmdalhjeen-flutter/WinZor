@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const UserSuggestion = require("../models/userSuggestion");
+const Notification = require("../models/notification");
 const Competition = require("../models/competition");
 const StoreMembership = require("../models/storeMembership");
 const WheelWin = require("../models/wheelWin");
@@ -12,6 +13,7 @@ const verificationService = require("../services/verification.service");
 const { countCompletedReferrals } = require("../services/referral.service");
 const { processOptionalImage } = require("../utils/imageProcess.util");
 const { USER_SENSITIVE_SELECT, sanitizeUser } = require("../utils/userSanitize.util");
+const { mergeRecentPointSources } = require("../utils/pointSources.util");
 
 const DEFAULT_LEGAL = {
   terms: `مرحباً بك في Win GoldenStore.
@@ -362,4 +364,30 @@ exports.getPointsLeaderboard = async (req, res) => {
 
 exports.getLegal = async (_req, res) => {
   res.json(await getLegalContent());
+};
+
+exports.getPointSources = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+
+    const [notifications, wheelWins] = await Promise.all([
+      Notification.find({ user: userId })
+        .select("type title body data createdAt")
+        .sort({ createdAt: -1 })
+        .limit(40)
+        .lean(),
+      WheelWin.find({ user: userId })
+        .sort({ wonAt: -1 })
+        .limit(20)
+        .populate("prize", "name prizeType prizeValue")
+        .lean(),
+    ]);
+
+    res.json({
+      sources: mergeRecentPointSources(notifications, wheelWins, limit),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

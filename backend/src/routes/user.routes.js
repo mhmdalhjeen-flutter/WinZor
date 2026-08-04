@@ -11,6 +11,7 @@ router.use(authMiddleware);
 router.get("/points-leaderboard", userCenter.getPointsLeaderboard);
 router.get("/me", userMeCache, userController.getMe);
 router.get("/me/center", userCenter.getCenter);
+router.get("/me/point-sources", userCenter.getPointSources);
 router.get("/me/legal", userCenter.getLegal);
 router.get("/me/admin-contact", userCenter.getAdminContact);
 router.patch("/me/profile", userCenter.updateProfile);

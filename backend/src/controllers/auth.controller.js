@@ -410,6 +410,20 @@ const login = async (req, res) => {
           message: "غير مصرح بالدخول"
         });
       }
+
+      if (appType === "delivery" && user.role !== "driver") {
+        await logAttempt(false, "دور غير متطابق — تطبيق التوصيل", user);
+        return res.status(403).json({
+          message: "هذا الحساب غير مخصص لتطبيق التوصيل"
+        });
+      }
+
+      if (appType === "delivery" && !user.deliveryCompanyId) {
+        await logAttempt(false, "سائق غير مربوط بشركة", user);
+        return res.status(403).json({
+          message: "حساب السائق غير مربوط بشركة توصيل — تواصل مع الإدارة"
+        });
+      }
     }
 
     const maintenance = await platformSettings.getMaintenanceInfo();

@@ -25,6 +25,7 @@ const achievementAdmin = require("../../controllers/admin/achievement-admin.cont
 const displayPriorityAdmin = require("../../controllers/admin/display-priority-admin.controller");
 const userCenter = require("../../controllers/user-center.controller");
 const usersAdmin = require("../../controllers/admin/users-admin.controller");
+const deliveryCompanyAdmin = require("../../controllers/admin/delivery-company-admin.controller");
 const auditController = require("../../controllers/admin/audit.controller");
 const adminAuditMiddleware = require("../../middleware/adminAudit.middleware");
 const { requireObjectId } = require("../../utils/inputSecurity.util");
@@ -466,5 +467,18 @@ router.patch("/display-priority/products/reorder", displayPriorityAdmin.reorderP
 
 router.get("/suggestions", userCenter.listSuggestionsAdmin);
 router.patch("/suggestions/:id", userCenter.updateSuggestionAdmin);
+
+// ─── شركات الدلفري ───────────────────────────────────────────────────────────
+router.get("/delivery-companies", deliveryCompanyAdmin.list);
+router.post("/delivery-companies", deliveryCompanyAdmin.create);
+router.put("/delivery-companies/:id", deliveryCompanyAdmin.update);
+router.patch("/delivery-companies/:id/toggle", deliveryCompanyAdmin.toggle);
+router.delete("/delivery-companies/:id", deliveryCompanyAdmin.remove);
+router.patch("/delivery-companies/:id/areas", deliveryCompanyAdmin.updateAreas);
+router.patch("/delivery-companies/:id/payment-methods", deliveryCompanyAdmin.updatePaymentMethods);
+router.get("/delivery-companies/:id/payment-accounts", deliveryCompanyAdmin.listPaymentAccounts);
+router.post("/delivery-companies/:id/payment-accounts", deliveryCompanyAdmin.createPaymentAccount);
+router.put("/delivery-companies/:id/payment-accounts/:accountId", deliveryCompanyAdmin.updatePaymentAccount);
+router.delete("/delivery-companies/:id/payment-accounts/:accountId", deliveryCompanyAdmin.deletePaymentAccount);
 
 module.exports = router;

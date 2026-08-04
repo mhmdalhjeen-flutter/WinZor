@@ -30,6 +30,8 @@ const wheelAdminRoutes = require("./wheel-admin.routes");
 const ratingRoutes = require("./rating.routes");
 const bazaarRoutes = require("./bazaar.routes");
 const achievementRoutes = require("./achievement.routes");
+const deliveryCompanyRoutes = require("./deliveryCompany.routes");
+const deliveryRoutes = require("./delivery.routes");
 const { createPricingRouter } = require("./pricing.routes");
 
 /**
@@ -73,6 +75,8 @@ function createApiRouter() {
   router.use("/ratings", ratingRoutes);
   router.use("/bazaar", bazaarRoutes);
   router.use("/achievements", achievementRoutes);
+  router.use("/delivery-companies", deliveryCompanyRoutes);
+  router.use("/delivery", deliveryRoutes);
   router.use("/pricing", createPricingRouter());
 
   return router;

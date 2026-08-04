@@ -70,6 +70,10 @@ function enrichNotificationData(type, data = {}) {
     const id = toIdString(safe.orderId);
     if (id) safe.orderId = id;
   }
+  if (safe.deliverySessionId != null) {
+    const id = toIdString(safe.deliverySessionId);
+    if (id) safe.deliverySessionId = id;
+  }
   if (safe.competitionId != null) {
     const id = toIdString(safe.competitionId);
     if (id) safe.competitionId = id;

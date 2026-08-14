@@ -34,9 +34,9 @@ const { resolveMonthlyVisits, incrementStoreVisits } = require("../utils/storeVi
 const { applyProductDisplayPrioritySort } = require("../utils/displayPriority.util");
 
 const OFFER_LIST_SELECT =
-  "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt isActive storeItemCategory";
+  "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit purchaseMode image priority featuredPriority displayPriority views clicks ratingAvg ratingCount isFeatured isExtended store createdAt expiresAt isActive storeItemCategory";
 const PRODUCT_LIST_SELECT =
-  "name description price currency priceUnit wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive storeItemCategory store createdAt";
+  "name description price currency priceUnit purchaseMode wholesalePrice isWholesale minOrderQuantity image stock freeDelivery ratingAvg ratingCount displayPriority isActive storeItemCategory store createdAt";
 
 function stripBase64Images(offer) {
   if (!offer || typeof offer !== "object") return offer;
@@ -58,8 +58,8 @@ function stripBase64Logo(store) {
 
 async function attachStorePaymentSettings(storeObj) {
   if (!storeObj?._id) return storeObj;
-  const paymentSettings = await paymentMethodService.buildPaymentSettingsForStore(storeObj._id);
-  return { ...storeObj, paymentSettings };
+  const { paymentSettings, enabledPaymentMethods } = await paymentMethodService.buildPaymentSettingsForStore(storeObj);
+  return { ...storeObj, paymentSettings, enabledPaymentMethods };
 }
 
 // ================= إنشاء متجر جديد =================
@@ -145,31 +145,31 @@ exports.followStore = async (req, res) => {
                 (id) => id.toString() !== storeIdStr
             );
             if (!isBusiness) {
-                store.customersCount = Math.max(0, store.customersCount - 1);
-                await store.save();
+                const optedOut = (user.storeNotificationOptOut || []).some(
+                    (id) => id.toString() === storeIdStr
+                );
+                if (!optedOut) {
+                    user.storeNotificationOptOut = user.storeNotificationOptOut || [];
+                    user.storeNotificationOptOut.push(storeId);
+                }
             }
             await user.save();
             return res.status(200).json({
-                message: isBusiness ? "تم إلغاء المتابعة" : "تم إلغاء الانضمام للمتجر",
+                message: isBusiness ? "تم إلغاء المتابعة" : "تم إلغاء متابعة المتجر",
                 isFollowing: false,
             });
         }
 
         user.followedStores.push(storeId);
         if (!isBusiness) {
-            store.customersCount += 1;
-            await store.save();
-            await logActivity({
-                action: "انضمام لمتجر",
-                details: `الزبون ${user.name} انضم لقائمة زبائن متجر ${store.name}`,
-                user: userId,
-                store: storeId,
-            });
+            user.storeNotificationOptOut = (user.storeNotificationOptOut || []).filter(
+                (id) => id.toString() !== storeIdStr
+            );
         }
         await user.save();
 
         return res.status(200).json({
-            message: isBusiness ? "تمت المتابعة بنجاح" : "تم الانضمام لزبائن المتجر بنجاح",
+            message: isBusiness ? "تمت المتابعة بنجاح" : "تمت متابعة المتجر",
             isFollowing: true,
         });
     } catch (error) {
@@ -247,7 +247,7 @@ exports.getStoreById = async (req, res) => {
         if (req.user?.id) {
             membership = await membershipService.getMembership(req.user.id, store._id);
             const user = await User.findById(req.user.id).select("followedStores role");
-            if (user && ["store", "supplier"].includes(user.role)) {
+            if (user) {
                 isFollowingNetwork = user.followedStores.some(
                     (id) => id.toString() === store._id.toString()
                 );
@@ -263,6 +263,7 @@ exports.getStoreById = async (req, res) => {
             products: sortedProducts.map(stripBase64Image),
             itemCategories,
             isFollowing: isFollowingNetwork || membership?.status === "member" || membership?.status === "pending",
+            isFollowingNetwork,
             membershipStatus: membership?.status || null,
             storeCompetitionsEnabled: competitionsEnabled,
         });
@@ -488,7 +489,7 @@ exports.updateMyStore = async (req, res) => {
         const store = await Store.findOne({ owner: req.user.id });
         if (!store) return res.status(404).json({ message: "لا يوجد متجر مرتبط بحسابك" });
 
-        const { logo, coverImage, name, description, phone, whatsapp, address, brandingWelcomeSeen, currencyPreferences } = req.body;
+        const { logo, coverImage, name, description, phone, whatsapp, address, brandingWelcomeSeen, currencyPreferences, receivingMethods } = req.body;
 
         const nameText = cleanString(name, { field: "name", max: 120 });
         if (nameText) store.name = nameText;
@@ -545,6 +546,36 @@ exports.updateMyStore = async (req, res) => {
             }
             if (currencyPreferences.acceptsAllCurrencyTypes !== undefined) {
                 store.currencyPreferences.acceptsAllCurrencyTypes = !!currencyPreferences.acceptsAllCurrencyTypes;
+            }
+        }
+
+        if (receivingMethods !== undefined && typeof receivingMethods === "object") {
+            assertNoMongoOperators(receivingMethods, "receivingMethods");
+            if (!store.receivingMethods) store.receivingMethods = {};
+            if (receivingMethods.freeNearbyDelivery !== undefined) {
+                const prev = store.receivingMethods.freeNearbyDelivery || {};
+                store.receivingMethods.freeNearbyDelivery = {
+                    enabled: receivingMethods.freeNearbyDelivery.enabled !== undefined
+                        ? Boolean(receivingMethods.freeNearbyDelivery.enabled)
+                        : prev.enabled !== false,
+                    note: receivingMethods.freeNearbyDelivery.note !== undefined
+                        ? cleanString(receivingMethods.freeNearbyDelivery.note, { field: "note", max: 500 })
+                        : (prev.note || ""),
+                };
+            }
+            if (receivingMethods.storePickup !== undefined) {
+                const prev = store.receivingMethods.storePickup || {};
+                store.receivingMethods.storePickup = {
+                    enabled: receivingMethods.storePickup.enabled !== undefined
+                        ? Boolean(receivingMethods.storePickup.enabled)
+                        : prev.enabled !== false,
+                    note: receivingMethods.storePickup.note !== undefined
+                        ? cleanString(receivingMethods.storePickup.note, { field: "note", max: 500 })
+                        : (prev.note || ""),
+                };
+            }
+            if (typeof store.markModified === "function") {
+                store.markModified("receivingMethods");
             }
         }
 

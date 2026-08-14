@@ -3,8 +3,10 @@ const Store = require("../models/store");
 const User = require("../models/user");
 const logActivity = require("../utils/logger");
 const notificationService = require("../services/notification.service");
+const storeSubscriberNotification = require("../services/storeSubscriberNotification.service");
 const { computeOfferFinalPrice, attachPricingToOffer } = require("../services/pricing.service");
 const { normalizeCurrency } = require("../utils/currency.util");
+const { normalizePurchaseMode } = require("../constants/purchaseMode.constants");
 const { resolveNetworkStoreIds } = require("../utils/offerFeed.util");
 const { processDataUrlImage } = require("../utils/imageProcess.util");
 const { resolveListImageField, resolveStoreMediaFields } = require("../utils/mediaDelivery.util");
@@ -19,7 +21,7 @@ const {
 const OFFER_TYPES = ["discount", "fixed_price", "bogo", "fixed_discount", "free_item", "custom"];
 const MAX_OFFER_DAYS = 7;
 const OFFER_LIST_SELECT =
-    "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority isActive expiresAt autoDeleteAt storeItemCategory store createdAt";
+    "title description offerType value originalPrice finalPrice freeDelivery currency priceUnit image priority isActive expiresAt autoDeleteAt storeItemCategory purchaseMode store createdAt";
 
 function stripBase64Images(offer) {
     if (!offer || typeof offer !== "object") return offer;
@@ -38,6 +40,26 @@ function resolveAutoDeleteAt(expiresAt) {
     return exp < maxLife ? exp : maxLife;
 }
 
+function assertExpiresWithinMaxDays(expiresAt, anchorDate = new Date()) {
+    const expDate = new Date(expiresAt);
+    if (Number.isNaN(expDate.getTime())) {
+        throw Object.assign(new Error("تاريخ انتهاء غير صالح"), { status: 400 });
+    }
+    const now = new Date();
+    if (expDate <= now) {
+        throw Object.assign(new Error("تاريخ انتهاء العرض يجب أن يكون في المستقبل"), { status: 400 });
+    }
+    const anchor = anchorDate instanceof Date ? anchorDate : new Date(anchorDate);
+    const maxAllowed = new Date(anchor.getTime() + MAX_OFFER_DAYS * 24 * 60 * 60 * 1000);
+    if (expDate > maxAllowed) {
+        throw Object.assign(
+            new Error("تاريخ انتهاء العرض لا يمكن أن يتجاوز 7 أيام من تاريخ البداية"),
+            { status: 400 },
+        );
+    }
+    return expDate;
+}
+
 function buildOfferPayload(body, storeId, userId) {
     assertNoMongoOperators(body, "offer");
     const {
@@ -54,6 +76,7 @@ function buildOfferPayload(body, storeId, userId) {
         priceUnit,
         storeItemCategoryId,
         relatedProductId,
+        purchaseMode,
     } = body;
 
     const safeTitle = cleanString(title, { field: "title", max: 120, required: true });
@@ -62,10 +85,7 @@ function buildOfferPayload(body, storeId, userId) {
     if (!OFFER_TYPES.includes(safeOfferType)) throw Object.assign(new Error("نوع العرض غير صالح"), { status: 400 });
     if (!expiresAt) throw new Error("تاريخ انتهاء العرض مطلوب");
 
-    const expDate = new Date(expiresAt);
-    if (Number.isNaN(expDate.getTime()) || expDate <= new Date()) {
-        throw new Error("تاريخ انتهاء العرض يجب أن يكون في المستقبل");
-    }
+    const expDate = assertExpiresWithinMaxDays(expiresAt);
 
     const safeValue = value != null && value !== "" ? numberInRange(value, { field: "value", min: 0, max: 10_000_000 }) : null;
     const safeOriginalPrice = originalPrice != null && originalPrice !== ""
@@ -104,6 +124,7 @@ function buildOfferPayload(body, storeId, userId) {
         relatedProduct: relatedProductId
           ? requireObjectId(relatedProductId, "relatedProductId")
           : null,
+        purchaseMode: normalizePurchaseMode(purchaseMode),
         expiryWarningSent: false,
         deletionWarningSent: false,
     };
@@ -127,6 +148,8 @@ exports.createOffer = async (req, res) => {
             store: store._id,
         });
 
+        storeSubscriberNotification.notifyStoreNewOffer(store, offer).catch(() => {});
+
         res.json({ message: "تم إنشاء العرض بنجاح", offer: attachPricingToOffer(offer) });
     } catch (err) {
         const status = err.message.includes("مطلوب") || err.message.includes("غير") || err.message.includes("تعذّر") ? 400 : 500;
@@ -136,10 +159,15 @@ exports.createOffer = async (req, res) => {
 
 exports.getOffers = async (req, res) => {
     try {
+        const limit = req.query.limit
+            ? intInRange(req.query.limit, { field: "limit", min: 1, max: 200 })
+            : 200;
+
         const offers = await Offer.find({ isActive: true })
             .select(OFFER_LIST_SELECT)
             .populate("store", "name logo region subRegion")
             .sort({ priority: -1, createdAt: -1 })
+            .limit(limit)
             .lean();
 
         res.json({ offers: offers.map(stripBase64Images) });
@@ -231,14 +259,14 @@ exports.renewOffer = async (req, res) => {
             : MAX_OFFER_DAYS;
         const now = new Date();
         if (req.body.expiresAt) {
-            const expDate = new Date(req.body.expiresAt);
-            if (Number.isNaN(expDate.getTime())) {
-                return res.status(400).json({ message: "تاريخ انتهاء غير صالح" });
-            }
+            const expDate = assertExpiresWithinMaxDays(req.body.expiresAt, now);
             offer.expiresAt = expDate;
             offer.autoDeleteAt = resolveAutoDeleteAt(expDate);
         } else {
-            const newExpiresAt = new Date(now.getTime() + renewalDays * 24 * 60 * 60 * 1000);
+            const newExpiresAt = assertExpiresWithinMaxDays(
+                new Date(now.getTime() + renewalDays * 24 * 60 * 60 * 1000),
+                now,
+            );
             offer.expiresAt = newExpiresAt;
             offer.autoDeleteAt = resolveAutoDeleteAt(newExpiresAt);
         }
@@ -317,7 +345,7 @@ exports.updateOffer = async (req, res) => {
         const allowed = [
             "title", "description", "offerType", "value", "originalPrice",
             "finalPrice", "image", "freeDelivery", "expiresAt", "currency", "priceUnit",
-            "storeItemCategoryId", "relatedProductId", "isActive",
+            "storeItemCategoryId", "relatedProductId", "isActive", "purchaseMode",
         ];
         for (const field of allowed) {
             if (field === "storeItemCategoryId") {
@@ -357,10 +385,10 @@ exports.updateOffer = async (req, res) => {
             else if (field === "isActive") offer.isActive = !!patch.isActive;
             else if (field === "currency") offer.currency = normalizeCurrency(patch.currency);
             else if (field === "priceUnit") offer.priceUnit = cleanString(patch.priceUnit, { field: "priceUnit", max: 40 });
+            else if (field === "purchaseMode") offer.purchaseMode = normalizePurchaseMode(patch.purchaseMode);
             else if (field === "expiresAt") {
-                const expDate = new Date(patch.expiresAt);
-                if (Number.isNaN(expDate.getTime())) return res.status(400).json({ message: "تاريخ انتهاء غير صالح" });
-                offer.expiresAt = expDate;
+                const anchor = offer.createdAt || new Date();
+                offer.expiresAt = assertExpiresWithinMaxDays(patch.expiresAt, anchor);
             }
         }
         if (patch.expiresAt) {

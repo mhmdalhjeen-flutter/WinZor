@@ -21,16 +21,16 @@ npm start        # node server.js (إنتاج)
 ```
 يعمل على `http://localhost:5000`.
 
-### الواجهات (لكل واحدة)
+### الواجهات (لكل تطبيق إنتاجي)
 ```bash
-cd customerFrontend        # أو store-supplier-frontend أو admin-panelFrontend
+cd customer        # أو adminstore أو admin أو delivery
 npm install
 npm run dev                # خادم Vite للتطوير
 npm run build              # بناء للإنتاج (مجلد dist/)
 npm run preview            # معاينة البناء
 ```
 
-> ⚠️ في `admin-panelFrontend`: بسبب وجود `node_modules` داخل `src/`، نفّذ `npm install` في **جذر** `admin-panelFrontend/` وتأكّد من عدم وجود `node_modules` خاطئ داخل `src/` (راجع `15_BUGS.md`).
+> **Admin:** استخدم `admin/` فقط. لا تنشر `admin-panelFrontend/` — راجع `docs/DEPRECATED_admin-panelFrontend.md`.
 
 ---
 
@@ -44,21 +44,21 @@ npm run preview            # معاينة البناء
 
 ### backend/.env (مطلوب)
 ```
-MONGO_URI=...        # رابط MongoDB
-JWT_SECRET=...       # مفتاح قوي وطويل
+MONGO_URI=...
+JWT_SECRET=...
 PORT=5000
-VITE_GOOGLE_CLIENT_ID=...   # معرّف Google OAuth
-# (مشار إليهما في الكود لكن غير معرّفين حالياً):
-# GOOGLE_CLIENT_ID=...      # يستخدمه auth.controller فعلياً
-# MASTER_KEY=...            # يستخدمه resetAdminPassword
+CORS_ORIGINS=...     # نطاقات الإنتاج (adminwingold.pages.dev, …)
 ```
 
-### customerFrontend/.env
+See `backend/.env.example` for the full variable list.
+
+### Frontend `.env` / `.env.example`
 ```
-VITE_GOOGLE_CLIENT_ID=...
+VITE_API_URL=http://localhost:5000/api   # development
+# production: https://winzor.onrender.com (or your API host)
 ```
 
-> 🟡 عنوان الـ API مكتوب يدوياً في كل واجهة (`http://localhost:5000/api`). **قبل النشر** يجب تحويله إلى `VITE_API_URL` ليشير لنطاق الإنتاج. مسجّل في `14_TODO.md`.
+Each app (`customer/`, `adminstore/`, `admin/`, `delivery/`) ships an `.env.example`.
 
 ---
 
@@ -68,9 +68,9 @@ VITE_GOOGLE_CLIENT_ID=...
 - [ ] 🔴 إغلاق ثغرات الصلاحيات الأمنية. راجع `08_Security.md`.
 - [ ] 🔴 تعطيل/تأمين الأدمن الافتراضي.
 - [ ] تقييد CORS لنطاقات الواجهات.
-- [ ] `VITE_API_URL` في كل واجهة.
-- [ ] إزالة `node_modules` من `admin-panelFrontend/src`.
-- [ ] إضافة `.gitignore` في الجذر وكل واجهة (التحقق من عدم رفع node_modules/dist).
+- [ ] `VITE_API_URL` في كل واجهة عند build الإنتاج.
+- [ ] `.gitignore` في الجذر وكل تطبيق — `dist/` غير مُتتبّع (راجع `REPOSITORY_STRUCTURE.md` إن كان `dist` مُلتزماً في repo فرعي).
+- [ ] لا تنشر `admin-panelFrontend/` — استخدم `admin/` فقط.
 - [ ] إضافة process manager (PM2) أو حاوية (Docker) للـ Backend.
 - [ ] HTTPS + رؤوس أمان (helmet).
 - [ ] نسخ احتياطي لقاعدة البيانات (Atlas backups).
@@ -82,10 +82,11 @@ VITE_GOOGLE_CLIENT_ID=...
 
 ```
 [Backend]   → خدمة Node (Render/Railway/VPS + PM2) أو حاوية Docker
-[3 Frontends] → استضافة ثابتة (Vercel/Netlify/Nginx) كل واحدة بنطاق فرعي:
-                 app.example.com     (customer)
-                 business.example.com (store/supplier)
-                 admin.example.com    (admin)
+[4 Frontends] → استضافة ثابتة (Cloudflare Pages / Workers / Netlify) — مجلدات `customer/`, `adminstore/`, `admin/`, `delivery/`:
+                 customer.*          (customer)
+                 win-gold-supplier.* (adminstore)
+                 adminwingold.*      (admin)
+                 delivery-win-gold.* (delivery)
 [Database]  → MongoDB Atlas (مع IP allowlist + backups)
 ```
 

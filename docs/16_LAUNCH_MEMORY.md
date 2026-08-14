@@ -217,7 +217,7 @@ No new architecture or feature expansion during this cycle
 | أمان admin | `roleMiddleware(["admin"])` على `/api/admin/*` | ثغرة حرجة مفتوحة |
 | Admin Codes | Model + API منفصل (`AdminCode`) | غير موثّق |
 | Offer feed | بدون base64 في القوائم | غير موثّق |
-| React Query | الثلاث واجهات (جزئي–كامل) | customer فقط |
+| React Query | الواجهات الأربع (جزئي–كامل) | customer فقط |
 | Merchant codes | ActivationCode + PromoCode — **لم يُكسر** | — |
 
 **لا تعتمد على:** `00` §6 مخاطر، `04` "لا v1"، `10` §3 API يدوي، `14_TODO` unchecked لبنود أُنجزت.
@@ -228,9 +228,10 @@ No new architecture or feature expansion during this cycle
 
 ```bash
 cd backend && npm run dev                    # :5000
-cd customerFrontend && npm run dev           # :5173
-cd store-supplier-frontend && npm run dev
-cd admin-panelFrontend && npm run dev
+cd customer && npm run dev                   # :5173
+cd adminstore && npm run dev                 # :5175 (conflicts with delivery — run one at a time)
+cd admin && npm run dev
+cd delivery && npm run dev
 ```
 
 **Backend `.env` (حد أدنى):** `MONGO_URI`, `JWT_SECRET`, `PORT=5000`, `CORS_ORIGINS`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
@@ -243,13 +244,13 @@ cd admin-panelFrontend && npm run dev
 
 ### أمان وبيئة
 - [ ] `.env` production — لا secrets في Git
-- [ ] `CORS_ORIGINS` = نطاقات الإنتاج الثلاث
+- [ ] `CORS_ORIGINS` = نطاقات الإنتاج (customer, adminstore, admin, delivery)
 - [ ] `JWT_SECRET` قوي؛ تغيير كلمة الأدmin الافتراضية
 - [ ] Mongo Atlas: IP allowlist + backup
 - [ ] HTTPS على Backend + Frontends
 
 ### Build
-- [ ] `npm run build` ناجح: customer + store + admin
+- [ ] `npm run build` ناجح: customer + adminstore + admin + delivery
 - [ ] Backend يقلع في production
 - [ ] `VITE_API_URL` = API الإنتاج عند build
 

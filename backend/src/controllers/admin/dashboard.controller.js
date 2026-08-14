@@ -5,9 +5,9 @@ const Offer = require("../../models/offer");
 const Competition = require("../../models/competition");
 const PromoCode = require("../../models/promoCode");
 const ActivationCode = require("../../models/ActivationCode");
-const WheelPrize = require("../../models/wheelPrize");
 const DailyPrize = require("../../models/dailyPrize");
 const ActivityLog = require("../../models/ActivityLog");
+const adminDashboard = require("../../services/adminDashboard.service");
 
 const DEFAULT_DAYS = 30;
 
@@ -68,13 +68,9 @@ async function cumulativeGrowth(Model, match, days) {
 
 async function getCards() {
   const [
-    users,
-    stores,
+    summary,
     suppliers,
-    products,
-    offers,
     competitions,
-    wheelPrizes,
     dailyPrizes,
     promoCodes,
     activationCodes,
@@ -83,13 +79,9 @@ async function getCards() {
     activeStores,
     pendingStores,
   ] = await Promise.all([
-    User.countDocuments({ role: "customer" }),
-    User.countDocuments({ role: "store" }),
+    adminDashboard.getSummaryCards(),
     User.countDocuments({ role: "supplier" }),
-    Product.countDocuments(),
-    Offer.countDocuments(),
     Competition.countDocuments(),
-    WheelPrize.countDocuments(),
     DailyPrize.countDocuments(),
     PromoCode.countDocuments(),
     ActivationCode.countDocuments(),
@@ -103,14 +95,17 @@ async function getCards() {
   ]);
 
   return {
-    users,
-    stores,
+    users: summary.users,
+    stores: summary.stores,
+    deliveryCompanies: summary.deliveryCompanies,
+    products: summary.products,
+    offers: summary.offers,
+    productsAndOffers: summary.productsAndOffers,
+    orders: summary.orders,
     suppliers,
-    products,
-    offers,
     competitions,
-    prizes: wheelPrizes + dailyPrizes,
-    wheelPrizes,
+    prizes: dailyPrizes,
+    wheelPrizes: 0,
     dailyPrizes,
     codes: promoCodes + activationCodes,
     promoCodes,
@@ -131,6 +126,18 @@ async function getGrowth(days) {
 
   return { users, stores, offers, days };
 }
+
+exports.getDashboardSummary = async (_req, res) => {
+  try {
+    const cards = await adminDashboard.getSummaryCards();
+    res.status(200).json({
+      cards,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({ message: "خطأ في جلب ملخص لوحة التحكم", error: error.message });
+  }
+};
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -165,6 +172,34 @@ exports.getDashboard = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "خطأ في جلب لوحة التحكم", error: error.message });
+  }
+};
+
+exports.getUsersByRegion = async (_req, res) => {
+  try {
+    const data = await adminDashboard.getUsersByMainRegion();
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: "خطأ في جلب توزيع المستخدمين", error: error.message });
+  }
+};
+
+exports.getStoresByRegion = async (_req, res) => {
+  try {
+    const data = await adminDashboard.getStoresByRegionHierarchy();
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: "خطأ في جلب توزيع المتاجر", error: error.message });
+  }
+};
+
+exports.getOrdersDaily = async (req, res) => {
+  try {
+    const days = parseInt(req.query.days, 10) || 90;
+    const data = await adminDashboard.getOrderDailyTimeline(days);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: "خطأ في جلب إحصائيات الطلبات", error: error.message });
   }
 };
 

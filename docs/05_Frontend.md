@@ -1,10 +1,14 @@
 # 05 — الواجهات الأمامية (Frontend)
 
-> ثلاث واجهات React مستقلة، كلها تستهلك نفس الـ Backend. كل واحدة تُبنى وتُنشر منفصلة.
+> **أربع** واجهات React مستقلة + **backend** واحد. كل واجهة تُبنى وتُنشر منفصلة.
+
+**Production folders:** `customer/`, `adminstore/`, `admin/`, `delivery/`.
+
+> Legacy names (`customerFrontend`, `store-supplier-frontend`, `admin-panelFrontend`) — see `REPOSITORY_STRUCTURE.md`. Admin fork deprecated: `DEPRECATED_admin-panelFrontend.md`.
 
 ---
 
-## 1. القواسم المشتركة بين الواجهات الثلاث
+## 1. القواسم المشتركة بين الواجهات
 
 - مبنية بـ **Vite + React** (SPA).
 - تستخدم **axios** مع `baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'` (مُحدَّث v0.4.0 — قابل للتهيئة عبر `.env`).
@@ -16,7 +20,7 @@
 
 ---
 
-## 2. واجهة الزبون — customerFrontend
+## 2. واجهة الزبون — `customer/`
 
 - **التقنيات:** React 18, Vite 5, Tailwind, framer-motion, swiper, react-router 6.
 - **الدخول:** `main.jsx` يلفّ `App` بـ `AuthProvider`.
@@ -40,14 +44,14 @@ Intro, Home, Login, Register, Explore, Marketplace, StoreDetail, OfferDetail, Dr
 - ✅ **تفاصيل العرض + المحادثة** (v0.10.0): `OfferDetail.jsx` (بيانات حقيقية + للسلة + تواصل)؛ **واجهة محادثة جديدة للزبون**: `Chat.jsx` (صندوق)، `ChatConversation.jsx` (محادثة)، مسارات `/chat` و`/chat/:convId`. زر "تواصل" يفتح المحادثة ويرسل رابط العرض تلقائياً.
 - ✅ **التوصيات + النشاط + المفضّلة** (v0.12.0): `utils/activity.js` (helper موحّد لـ `/api/activity`). `Home.jsx` يعرض صف "موصى لك" (يختفي أثناء البحث) ويسجّل عبارة البحث. `OfferDetail.jsx` يسجّل `open_offer` ويحوي زر مفضّلة، و`StoreDetail.jsx` يسجّل `visit_store` بصمت. `OfferCard.jsx` يحوي زر قلب اختياري (props: `favorited`/`onToggleFavorite` — لا يظهر إن لم تُمرَّر). صفحة `/favorites` جديدة + أيقونة مفضّلة في `Header`.
 
-### تطبيق المتجر/المورّد (store-supplier-frontend) — v0.11.0
+### تطبيق المتجر/المورّد (`adminstore/`) — v0.11.0
 - ✅ **إدارة العروض** (`pages/storeOwner/OffersManager.jsx`): متصلة بـ `/offers/my?all=true` مع حالة دورة الحياة + تجديد/إيقاف (كانت وهمية وغير موجّهة).
 - ✅ **الإشعارات** (`pages/Notifications.jsx`): قائمة `/api/notifications` + تعليم كمقروء؛ جرس بشارة غير المقروء في `DashboardLayout`. مسارات `/store|supplier/offers` و`/notifications`.
 - ⏳ **OfferDetail / Draws / Explore / Marketplace** وغيرها: ما زالت تستخدم بيانات تجريبية وتُربط في مراحلها المخصّصة لاحقاً.
 
 ---
 
-## 3. واجهة المتاجر/الموردين — store-supplier-frontend
+## 3. واجهة المتاجر/الموردين — `adminstore/`
 
 - **التقنيات:** React **19**, Vite **8**, react-router **7**, ESLint. (أحدث إصدار بين الواجهات.)
 - **الراوتر (`App.jsx`):** قسمان متطابقان في الصفحات:
@@ -66,18 +70,26 @@ storeOwner/(DashboardHome, AddProductsOffers, Products, OffersManager), MyStore,
 
 ---
 
-## 4. واجهة الإدارة — admin-panelFrontend
+## 4. واجهة الإدارة — `admin/` (canonical)
 
-- **التقنيات:** React 18, Vite 5, Tailwind, axios, react-qr-code, xlsx, react-router 6.
-- **الهيكل:** `api/axios.js`, `components/(Sidebar, AdminHeader, AdminLayout, ProtectedRoute)`, وصفحات الإدارة.
-- **الصفحات:** Dashboard, Users, Stores, Categories, Draws, Prizes, PromoCodes, CodeGeneratorPage, HonorManagement, CardManagement, BoxManagement, SecurityLogs, Settings, Activity, Login.
-- **الميزات الخاصة:** توليد أكواد QR (react-qr-code) وتصدير Excel (xlsx) في صفحة توليد الأكواد.
+- **التقنيات:** React 18, Vite 5, Tailwind, axios, xlsx, react-router 6, PWA.
+- **الهيكل:** `api/axios.js`, `components/AdminLayout`, `shared/ErrorBoundary`, ~27 صفحة إدارية.
+- **الصفحات (أمثلة):** Dashboard, Users, Stores, Categories, Competitions, DeliveryCompanies, StoreSubscriptions, DeliverySubscriptions, OrderHistory, Settings, …
+- **الميزات:** تصدير Excel (xlsx)، إدارة اشتراكات المتاجر وشركات التوصيل، PWA.
 
-> 🔴 **قيد التوثيق:** بسبب وجود `node_modules` داخل `admin-panelFrontend/src` تعذّرت القراءة العميقة لمنطق صفحات الأدمن وقت كتابة هذا الملف. التفاصيل أعلاه على مستوى الهيكل والتبعيات؛ يجب التحقق من منطق الصفحات لاحقاً وتحديث هذا الملف (راجع `12_AI_MEMORY.md` و `14_TODO.md`).
+> **Deprecated:** `admin-panelFrontend/` — not production. See `DEPRECATED_admin-panelFrontend.md`.
 
 ---
 
-## 5. تدفق المصادقة في الواجهات
+## 5. واجهة التوصيل — `delivery/`
+
+- **التقنيات:** React, Vite 8, TanStack Query, PWA, offline queue for driver completions.
+- **الجمهور:** شركات التوصيل (company routes) + السائقون (`/driver/*`).
+- **الصفحات (أمثلة):** Dashboard, Requests, RequestDetails, AssignedOrders, CompanyBilling, DriverHome, DriverDeliveryDetail.
+
+---
+
+## 6. تدفق المصادقة في الواجهات
 
 ```
 Login form → POST /api/auth/login (مع appType) → { token, user }
@@ -89,7 +101,7 @@ Login form → POST /api/auth/login (مع appType) → { token, user }
 
 ---
 
-## 6. نقاط القوة ونقاط الضعف
+## 7. نقاط القوة ونقاط الضعف
 
 **القوة:**
 - فصل نظيف لكل واجهة حسب الجمهور.
@@ -98,9 +110,9 @@ Login form → POST /api/auth/login (مع appType) → { token, user }
 - تصميم الزبون حديث (Tailwind + framer-motion + RTL).
 
 **الضعف / للتطوير المستقبلي (مسجّل فقط):**
-- ✅ (v0.4.0) عنوان الـ API صار عبر `VITE_API_URL` (مع احتياطي محلي) في الواجهات الثلاث.
+- ✅ (v0.4.0) عنوان الـ API عبر `VITE_API_URL` في `src/lib/apiUrl.js` (مع fallback محلي/إنتاج).
 - تخزين JWT في `localStorage` (عرضة لـ XSS).
 - تفاوت إصدارات React/Vite/Router بين الواجهات يصعّب مشاركة الكود.
 - `ProtectedRoute` يعتمد على `user.role` المخزّن محلياً (يمكن للمستخدم العبث به في المتصفح) — الحماية الحقيقية يجب أن تبقى في الـ Backend.
 - ✅ (v0.4.0) أُضيفت معالجة 401 موحّدة في الـ interceptors (تنظيف الجلسة + توجيه إلى `/login`).
-- `customerFrontend` فيه `permissions.js` لكنه غير مستغَل بالكامل.
+- `customer/` فيه `permissions.js` لكنه غير مستغَل بالكامل.

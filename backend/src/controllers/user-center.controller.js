@@ -1,8 +1,8 @@
 const User = require("../models/user");
 const UserSuggestion = require("../models/userSuggestion");
+const Notification = require("../models/notification");
 const Competition = require("../models/competition");
 const StoreMembership = require("../models/storeMembership");
-const WheelWin = require("../models/wheelWin");
 const PromoCode = require("../models/promoCode");
 const SystemSetting = require("../models/systemSetting");
 const { getProgress } = require("../utils/level.util");
@@ -12,6 +12,7 @@ const verificationService = require("../services/verification.service");
 const { countCompletedReferrals } = require("../services/referral.service");
 const { processOptionalImage } = require("../utils/imageProcess.util");
 const { USER_SENSITIVE_SELECT, sanitizeUser } = require("../utils/userSanitize.util");
+const { mergeRecentPointSources } = require("../utils/pointSources.util");
 
 const DEFAULT_LEGAL = {
   terms: `مرحباً بك في Win GoldenStore.
@@ -106,19 +107,13 @@ exports.getCenter = async (req, res) => {
       .select(USER_SENSITIVE_SELECT);
     const achievementCount = await countActiveAchievements(refreshed.points || 0);
 
-    const [referralsCount, membershipsCount, competitionsJoined, promoCount, lastWheelWin, wheelWinCount] =
+    const [referralsCount, membershipsCount, competitionsJoined, promoCount] =
       await Promise.all([
         countCompletedReferrals(userId),
         StoreMembership.countDocuments({ user: userId, status: "member" }),
         Competition.countDocuments({ "participants.user": userId }),
         PromoCode.countDocuments({ "usedBy.user": userId }),
-        WheelWin.findOne({ user: userId }).sort({ wonAt: -1 }).populate("prize", "name icon"),
-        WheelWin.countDocuments({ user: userId, $or: [{ purgeAt: null }, { purgeAt: { $gt: new Date() } }] }),
       ]);
-
-    const lastPrize = lastWheelWin
-      ? { name: lastWheelWin.prizeName, date: lastWheelWin.wonAt, type: "wheel" }
-      : null;
 
     const level = getProgress(refreshed.points);
 
@@ -128,12 +123,12 @@ exports.getCenter = async (req, res) => {
       stats: {
         points: refreshed.points,
         competitionsJoined,
-        prizesWon: achievementCount + wheelWinCount,
+        prizesWon: achievementCount,
         referralsCount,
         membershipsCount,
         codesUsed: refreshed.codesUsed,
         promoCodesRedeemed: promoCount,
-        lastPrize,
+        lastPrize: null,
       },
       legal: await getLegalContent(),
     });
@@ -362,4 +357,23 @@ exports.getPointsLeaderboard = async (req, res) => {
 
 exports.getLegal = async (_req, res) => {
   res.json(await getLegalContent());
+};
+
+exports.getPointSources = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+
+    const notifications = await Notification.find({ user: userId })
+      .select("type title body data createdAt")
+      .sort({ createdAt: -1 })
+      .limit(40)
+      .lean();
+
+    res.json({
+      sources: mergeRecentPointSources(notifications, limit),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

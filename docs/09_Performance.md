@@ -46,8 +46,8 @@ In-memory per-user TTL cache + request deduplication on polling endpoints (`/use
 ## 3. الواجهات (Frontend)
 
 ### 3.1 أحجام الحزم (Bundles)
-- `admin-panelFrontend` يستورد `xlsx` (ثقيل) — يُفضّل lazy-load عند الحاجة فقط.
-- `customerFrontend` يستخدم `swiper` + `framer-motion` — مقبول، لكن راقب الحجم.
+- `admin/` يستورد `xlsx` (ثقيل) — يُفضّل lazy-load عند الحاجة فقط.
+- `customer/` يستخدم `swiper` + `framer-motion` — مقبول، لكن راقب الحجم.
 
 ### 3.2 node_modules داخل src (admin)
 يبطّئ أدوات الفهرسة/الـ HMR وقد يربك Vite. (انظر `15_BUGS.md`.)

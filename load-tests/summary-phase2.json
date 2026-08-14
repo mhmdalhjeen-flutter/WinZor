@@ -1,0 +1,46 @@
+{
+  "phase": 2,
+  "baseUrl": "https://winzor.onrender.com",
+  "roles": {
+    "customer": {
+      "role": "customer",
+      "active": false,
+      "requests": 0,
+      "failures": 0,
+      "failureRate": "n/a"
+    },
+    "admin": {
+      "role": "admin",
+      "active": false,
+      "requests": 0,
+      "failures": 0,
+      "failureRate": "n/a"
+    },
+    "delivery": {
+      "role": "delivery",
+      "active": false,
+      "requests": 0,
+      "failures": 0,
+      "failureRate": "n/a"
+    }
+  },
+  "endpoints": [],
+  "statusCounts": {
+      "2xx": 0,
+      "3xx": 0,
+      "4xx": 0,
+      "5xx": 0
+    },
+  "unexpectedStatuses": [],
+  "totals": {
+        "requests": 312,
+        "successful": 0,
+        "failed": 312,
+        "httpReqFailedRate": 1,
+        "avgMs": 525.3352506410256,
+        "p90Ms": 1081.860270000002,
+        "p95Ms": 1448.066095,
+        "maxMs": 3043.7646,
+        "checksRate": 0.6666666666666666
+      }
+}

@@ -1,9 +1,13 @@
 const Notification = require("../models/notification");
 const PushDevice = require("../models/pushDevice");
-const { getVapidPublicKey } = require("../config/vapid");
+const { getVapidPublicKey, getVapidStatus } = require("../config/vapid");
+const pushService = require("../services/push.service");
 const cache = require("../utils/responseCache.util");
+const { safeLog } = require("../utils/logSanitize.util");
 
-const PUSH_APPS = new Set(["customer", "store"]);
+const { VALID_PUSH_APPS } = require("../utils/pushTarget.util");
+
+const PUSH_APPS = VALID_PUSH_APPS;
 
 function normalizePushSubscription(subscription) {
   if (!subscription || typeof subscription !== "object") return null;
@@ -22,9 +26,39 @@ exports.getPushPublicKey = async (req, res) => {
   try {
     const publicKey = getVapidPublicKey();
     if (!publicKey) {
-      return res.status(503).json({ message: "Push notifications are not configured" });
+      return res.status(503).json({
+        message: "Push notifications are not configured",
+        configured: false,
+      });
     }
-    res.json({ publicKey });
+    res.json({ publicKey, configured: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getPushStatus = async (req, res) => {
+  try {
+    const vapid = getVapidStatus();
+    const deviceFilter = { userId: req.user.id, platform: "web" };
+    const [customerCount, storeCount, adminCount, deliveryCount] = await Promise.all([
+      PushDevice.countDocuments({ ...deviceFilter, app: "customer" }),
+      PushDevice.countDocuments({ ...deviceFilter, app: "store" }),
+      PushDevice.countDocuments({ ...deviceFilter, app: "admin" }),
+      PushDevice.countDocuments({ ...deviceFilter, app: "delivery" }),
+    ]);
+
+    res.json({
+      vapid,
+      subscriptions: {
+        customer: customerCount,
+        store: storeCount,
+        admin: adminCount,
+        delivery: deliveryCount,
+      },
+      browserPermissionHint:
+        "Check Notification.permission in the browser — the server cannot read it.",
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -35,7 +69,7 @@ exports.subscribePush = async (req, res) => {
     const { app, platform = "web", subscription } = req.body || {};
 
     if (!PUSH_APPS.has(app)) {
-      return res.status(400).json({ message: 'app must be "customer" or "store"' });
+      return res.status(400).json({ message: 'app must be one of: customer, store, admin, delivery' });
     }
     if (platform !== "web") {
       return res.status(400).json({ message: 'platform must be "web"' });
@@ -56,6 +90,20 @@ exports.subscribePush = async (req, res) => {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    safeLog("info", "push_subscription_saved", {
+      userId: String(req.user.id),
+      app,
+      platform: "web",
+      deviceId: String(device._id),
+      endpointHost: (() => {
+        try {
+          return new URL(normalized.endpoint).hostname;
+        } catch {
+          return "invalid";
+        }
+      })(),
+    });
 
     res.json({
       ok: true,
@@ -87,6 +135,61 @@ exports.unsubscribePush = async (req, res) => {
     });
 
     res.json({ ok: true, removed: result.deletedCount > 0 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * Send a test Web Push to the authenticated user (or admin-specified user).
+ * POST body: { app?: "customer"|"store", title?, body?, userId? (admin only) }
+ */
+exports.testPush = async (req, res) => {
+  try {
+    const requestedUserId = req.body?.userId;
+    const isAdmin = req.user.role === "admin";
+    let targetUserId = req.user.id;
+
+    if (requestedUserId && String(requestedUserId) !== String(req.user.id)) {
+      if (!isAdmin) {
+        return res.status(403).json({ message: "Only admins can send test push to other users" });
+      }
+      targetUserId = requestedUserId;
+    }
+
+    const requestedApp = typeof req.body?.app === "string" ? req.body.app.trim() : "";
+    const app = PUSH_APPS.has(requestedApp) ? requestedApp : "customer";
+    const vapid = getVapidStatus();
+    if (!vapid.configured) {
+      return res.status(503).json({
+        ok: false,
+        result: "vapid_unavailable",
+        vapid,
+      });
+    }
+
+    const result = await pushService.sendTestPush(targetUserId, {
+      app,
+      title: req.body?.title,
+      body: req.body?.body,
+    });
+
+    const subscriptionCount = await PushDevice.countDocuments({
+      userId: targetUserId,
+      app,
+      platform: "web",
+    });
+
+    res.json({
+      ok: result.sent > 0,
+      result: result.sent > 0 ? "push_sent" : result.reason || "failed",
+      sent: result.sent,
+      failed: result.failed,
+      devices: result.devices,
+      subscriptions: subscriptionCount,
+      app,
+      targetUserId: String(targetUserId),
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,8 +1,15 @@
 const Notification = require("../models/notification");
+const User = require("../models/user");
 const ReferralBatchBuffer = require("../models/referralBatchBuffer");
 const pushService = require("./push.service");
 const { safeLog } = require("../utils/logSanitize.util");
 const cache = require("../utils/responseCache.util");
+const {
+  resolvePushTargetApp,
+  resolvePushUrl,
+  isCustomerPushAllowed,
+  isDeliveryPushAllowed,
+} = require("../utils/pushTarget.util");
 
 function buildPushPayload(doc) {
   if (!doc) return null;
@@ -10,12 +17,22 @@ function buildPushPayload(doc) {
     doc.data && typeof doc.data === "object" && !Array.isArray(doc.data)
       ? doc.data
       : {};
+  const type = doc.type || "general";
+  const targetApp = resolvePushTargetApp(type, data);
+  const url = resolvePushUrl(targetApp, type, data);
+
   return {
     title: doc.title,
     body: doc.body || "",
+    icon: "/brand/logo-64.png",
+    url,
+    type,
+    notificationId: String(doc._id),
+    targetApp,
     data: {
-      type: doc.type,
+      type,
       notificationId: String(doc._id),
+      url,
       ...data,
     },
   };
@@ -25,12 +42,26 @@ function buildPushPayload(doc) {
 function dispatchPushAsync(doc) {
   if (!doc?.user) return;
   const payload = buildPushPayload(doc);
-  if (!payload) return;
+  if (!payload || !payload.targetApp) return;
+  if (payload.targetApp === "customer" && !isCustomerPushAllowed(payload.type)) return;
+
   setImmediate(() => {
-    pushService.sendPushToUser(doc.user, payload).catch((err) => {
+    (async () => {
+      if (payload.targetApp === "delivery") {
+        const user = await User.findById(doc.user).select("role").lean();
+        if (!user || !isDeliveryPushAllowed(payload.type, user.role)) return;
+      }
+
+      await pushService.sendPushToUser(doc.user, payload, {
+        app: payload.targetApp,
+        platform: "web",
+      });
+    })().catch((err) => {
       safeLog("warn", "push_dispatch_failed", {
         message: err.message,
         userId: String(doc.user),
+        type: payload.type,
+        app: payload.targetApp,
       });
     });
   });
@@ -69,6 +100,10 @@ function enrichNotificationData(type, data = {}) {
   if (safe.orderId != null) {
     const id = toIdString(safe.orderId);
     if (id) safe.orderId = id;
+  }
+  if (safe.deliverySessionId != null) {
+    const id = toIdString(safe.deliverySessionId);
+    if (id) safe.deliverySessionId = id;
   }
   if (safe.competitionId != null) {
     const id = toIdString(safe.competitionId);

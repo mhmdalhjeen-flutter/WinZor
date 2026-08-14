@@ -4,8 +4,11 @@ const Cart = require("../models/Cart");
 const Store = require("../models/store");
 const User = require("../models/user");
 const notificationService = require("./notification.service");
+const storeCardInventoryService = require("./storeCardInventory.service");
+const membershipService = require("./storeMembership.service");
 const { restoreStockForOrderItems, restoreItemsToStoreContainer } = require("./cart.service");
 const { cleanString } = require("../utils/inputSecurity.util");
+const { DELIVERY_METHODS, normalizePaymentMethod } = require("../constants/marketplaceOrder.constants");
 const {
   ALLOWED_STATUSES,
   canTransition,
@@ -13,9 +16,13 @@ const {
   isTerminalStatus,
   normalizeStatus,
 } = require("../utils/orderStatus.util");
+const deliveryCompanyHandoverService = require("./deliveryCompanyHandover.service");
+const DeliverySession = require("../models/deliverySession");
+const DeliveryCompanyDriver = require("../models/deliveryCompanyDriver");
+const { normalizeLocalPhone } = require("../utils/phone.util");
 
 const ORDER_LIST_SELECT =
-  "orderNumber verificationCode containerId containerName customer store customerName customerPhone storeName items subtotal total totalAmount currency status customerNotes storeNotes deliveryMethod deliveryAddress deliveryNotes paymentMethod paymentProof paymentProofImage transferInformation transferName transferPhone transferNumber paymentNotes rejectionReason paymentStatus pointsAwarded cardDeducted deliveryGroup confirmedAt completedAt deleteAfter statusTimeline createdAt updatedAt";
+  "orderNumber verificationCode containerId containerName customer store customerName customerPhone storeName items subtotal total totalAmount currency status customerNotes storeNotes deliveryMethod deliveryAddress deliveryNotes paymentMethod paymentProof paymentProofImage transferInformation transferName transferPhone transferNumber paymentNotes rejectionReason paymentStatus pointsAwarded rewardPointsAwarded consumedCardType cardDeducted deliveryGroup confirmedAt completedAt deleteAfter statusTimeline modificationRequest orderChangeHistory originalTotal additionalPaymentAmount additionalPayment paymentTransactions createdAt updatedAt";
 
 const HISTORY_RETENTION_DAYS = 7;
 
@@ -44,8 +51,21 @@ async function restoreOrderItemsToCart(userId, orderItems, storeId, session) {
 
 async function getStorePendingCount(ownerId) {
   const store = await Store.findOne({ owner: ownerId }).select("_id");
-  if (!store) return 0;
-  return Order.countDocuments({ store: store._id, status: "pending" });
+  if (!store) {
+    return { count: 0, pendingReview: 0, awaitingCustomerModification: 0 };
+  }
+
+  const [pendingReview, awaitingCustomerModification] = await Promise.all([
+    Order.countDocuments({ store: store._id, status: "pending" }),
+    Order.countDocuments({ store: store._id, status: "modification_requested" }),
+  ]);
+
+  return {
+    /** Orders awaiting store review (legacy field name). */
+    count: pendingReview,
+    pendingReview,
+    awaitingCustomerModification,
+  };
 }
 
 async function getStoreOrders(ownerId) {
@@ -59,7 +79,7 @@ async function getStoreOrders(ownerId) {
   const orders = await Order.find({
     store: store._id,
     status: {
-      $in: ["pending", "store_accepted", "confirmed", "preparing", "delivered_to_driver"],
+      $in: ["pending", "modification_requested", "store_accepted", "ready_for_delivery_pickup", "ready_for_driver_pickup", "delivery_handover_complete", "confirmed", "preparing", "delivered_to_driver"],
     },
   })
     .select(ORDER_LIST_SELECT)
@@ -74,12 +94,12 @@ async function getCustomerActiveOrders(customerId) {
   return Order.find({
     customer: customerId,
     status: {
-      $in: ["pending", "store_accepted", "confirmed", "preparing", "delivered_to_driver"],
+      $in: ["pending", "modification_requested", "store_accepted", "ready_for_delivery_pickup", "ready_for_driver_pickup", "delivery_handover_complete", "confirmed", "preparing", "delivered_to_driver"],
     },
   })
     .select(ORDER_LIST_SELECT)
     .sort({ createdAt: -1 })
-    .populate("store", "name phone")
+    .populate("store", "name phone owner whatsapp")
     .lean();
 }
 
@@ -104,7 +124,7 @@ async function getCustomerOrderHistory(customerId) {
   })
     .select(ORDER_LIST_SELECT)
     .sort({ createdAt: -1 })
-    .populate("store", "name phone")
+    .populate("store", "name phone owner whatsapp")
     .lean();
 }
 
@@ -142,7 +162,7 @@ function buildHistoryQuery(filters = {}) {
 
   if (filters.activeOnly) {
     q.status = {
-      $in: ["pending", "store_accepted", "confirmed", "preparing", "delivered_to_driver"],
+      $in: ["pending", "store_accepted", "ready_for_delivery_pickup", "ready_for_driver_pickup", "delivery_handover_complete", "confirmed", "preparing", "delivered_to_driver"],
     };
   } else if (filters.historyOnly !== false && !filters.status) {
     q.$or = [
@@ -156,7 +176,14 @@ function buildHistoryQuery(filters = {}) {
     const regex = new RegExp(filters.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     q.$and = q.$and || [];
     q.$and.push({
-      $or: [{ orderNumber: regex }, { containerName: regex }],
+      $or: [
+        { orderNumber: regex },
+        { verificationCode: regex },
+        { containerName: regex },
+        { customerName: regex },
+        { customerPhone: regex },
+        { storeName: regex },
+      ],
     });
   }
 
@@ -227,7 +254,7 @@ async function getStoreInvoices(ownerId, filters = {}) {
 }
 
 async function getAdminOrderHistory(filters = {}) {
-  const q = buildHistoryQuery(filters);
+  const q = buildHistoryQuery({ ...filters, historyOnly: false });
 
   const orders = await Order.find(q)
     .select(ORDER_LIST_SELECT)
@@ -238,6 +265,122 @@ async function getAdminOrderHistory(filters = {}) {
     .lean();
 
   return { orders, count: orders.length };
+}
+
+async function getAdminOrderById(orderId) {
+  const order = await Order.findById(orderId)
+    .select(ORDER_LIST_SELECT)
+    .populate("customer", "name phone email")
+    .populate("store", "name phone region whatsapp owner")
+    .lean();
+
+  if (!order) {
+    const err = new Error("الطلب غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  return order;
+}
+
+function orderAccessDenied(message = "غير مصرح") {
+  const err = new Error(message);
+  err.status = 403;
+  return err;
+}
+
+function orderCustomerId(order) {
+  return order.customer?._id?.toString?.() || order.customer?.toString?.() || "";
+}
+
+function orderStoreId(order) {
+  return order.store?._id?.toString?.() || order.store?.toString?.() || "";
+}
+
+async function resolveDriverAssignmentIdsForUser(userId) {
+  const user = await User.findById(userId).select("deliveryDriverId").lean();
+  let driver = null;
+  if (user?.deliveryDriverId) {
+    driver = await DeliveryCompanyDriver.findById(user.deliveryDriverId)
+      .select("_id deliveryCompany phone")
+      .lean();
+  }
+  if (!driver) {
+    driver = await DeliveryCompanyDriver.findOne({ userId })
+      .select("_id deliveryCompany phone")
+      .lean();
+  }
+  if (!driver) return null;
+
+  const companyDrivers = await DeliveryCompanyDriver.find({ deliveryCompany: driver.deliveryCompany })
+    .select("_id phone")
+    .lean();
+  const myPhone = normalizeLocalPhone(driver.phone);
+  const siblingIds = companyDrivers
+    .filter((row) => normalizeLocalPhone(row.phone) === myPhone)
+    .map((row) => row._id);
+  return siblingIds.length ? siblingIds : [driver._id];
+}
+
+async function assertOrderDetailAccess(requester, order) {
+  const role = requester.role;
+  const userId = requester.id?.toString?.() || String(requester._id);
+
+  if (role === "admin") {
+    return;
+  }
+
+  if (role === "customer") {
+    if (orderCustomerId(order) !== userId) {
+      throw orderAccessDenied();
+    }
+    return;
+  }
+
+  if (role === "store" || role === "supplier") {
+    const store = await Store.findOne({ owner: userId }).select("_id");
+    if (!store || orderStoreId(order) !== store._id.toString()) {
+      throw orderAccessDenied();
+    }
+    return;
+  }
+
+  if (role === "delivery_company") {
+    const user = await User.findById(userId).select("deliveryCompanyId").lean();
+    const companyId = user?.deliveryCompanyId;
+    if (!companyId) {
+      throw orderAccessDenied();
+    }
+    const session = await DeliverySession.findOne({
+      orders: order._id,
+      deliveryCompany: companyId,
+    })
+      .select("_id")
+      .lean();
+    if (!session) {
+      throw orderAccessDenied();
+    }
+    return;
+  }
+
+  if (role === "delivery_driver") {
+    const driverIds = await resolveDriverAssignmentIdsForUser(userId);
+    if (!driverIds?.length) {
+      throw orderAccessDenied();
+    }
+    const session = await DeliverySession.findOne({
+      orders: order._id,
+      "assignedDriver.driverId": { $in: driverIds },
+    })
+      .select("_id")
+      .lean();
+    if (!session) {
+      throw orderAccessDenied();
+    }
+    return;
+  }
+
+  throw orderAccessDenied();
 }
 
 async function getOrderDetail(requester, orderId) {
@@ -253,23 +396,7 @@ async function getOrderDetail(requester, orderId) {
     throw err;
   }
 
-  const role = requester.role;
-  const userId = requester.id?.toString?.() || String(requester._id);
-
-  if (role === "customer" && order.customer?._id?.toString() !== userId) {
-    const err = new Error("غير مصرح");
-    err.status = 403;
-    throw err;
-  }
-
-  if (role === "store" || role === "supplier") {
-    const store = await Store.findOne({ owner: userId }).select("_id");
-    if (!store || order.store?._id?.toString() !== store._id.toString()) {
-      const err = new Error("غير مصرح");
-      err.status = 403;
-      throw err;
-    }
-  }
+  await assertOrderDetailAccess(requester, order);
 
   return order;
 }
@@ -277,54 +404,55 @@ async function getOrderDetail(requester, orderId) {
 async function applyConfirmFinancialEffects(order, store, session) {
   const opts = session ? { session } : {};
   let cardDeducted = false;
+  let rewardPointsAwarded = 0;
+  let consumedCardType = null;
 
   if (!store.bypassCards) {
-    const updatedStore = await Store.findOneAndUpdate(
-      { _id: store._id, cards: { $gt: 0 } },
-      { $inc: { cards: -1 } },
-      { new: true, ...opts }
-    );
-    if (!updatedStore) {
-      const err = new Error(
-        "لا يوجد كروت كافية لتأكيد الطلب. يرجى شراء كروت أو التواصل مع الإدارة."
-      );
-      err.status = 403;
-      err.noCards = true;
-      throw err;
-    }
-    store.cards = updatedStore.cards;
+    const consumed = await storeCardInventoryService.consumeStoreCard(store._id, session);
     cardDeducted = true;
+    rewardPointsAwarded = consumed.pointsValue;
+    consumedCardType = consumed.cardType;
+    store.cards = consumed.remainingCards;
   }
 
-  await User.findByIdAndUpdate(order.customer, { $inc: { points: 1 } }, opts);
-  return { cardDeducted };
+  if (rewardPointsAwarded > 0) {
+    await User.findByIdAndUpdate(order.customer, { $inc: { points: rewardPointsAwarded } }, opts);
+  }
+
+  return { cardDeducted, rewardPointsAwarded, consumedCardType };
 }
 
-async function revertConfirmFinancialEffects(order, store, session, cardDeducted) {
+async function revertConfirmFinancialEffects(order, store, session, cardDeducted, rewardPointsAwarded, consumedCardType) {
   const opts = session ? { session } : {};
-  await User.findByIdAndUpdate(order.customer, { $inc: { points: -1 } }, opts);
+  const points = Number(rewardPointsAwarded) || 0;
+  if (points > 0) {
+    await User.findByIdAndUpdate(order.customer, { $inc: { points: -points } }, opts);
+  }
   if (cardDeducted) {
-    const updatedStore = await Store.findByIdAndUpdate(
+    const updatedStore = await storeCardInventoryService.restoreStoreCard(
       store._id,
-      { $inc: { cards: 1 } },
-      { new: true, ...opts }
+      { cardType: consumedCardType, pointsValue: points || 1 },
+      session
     );
     if (updatedStore) store.cards = updatedStore.cards;
   }
 }
 
-async function notifyOrderPointGift(order, store) {
+async function notifyOrderPointGift(order, store, pointsAwarded) {
+  const points = Number(pointsAwarded) || 0;
+  if (points <= 0) return;
+
   try {
     await notificationService.create({
       user: order.customer,
       type: "order_point_gift",
-      title: "نقطة جديدة!",
-      body: `تمت إضافة نقطة لك من قبل ${store.name}`,
+      title: points === 1 ? "نقطة جديدة!" : "نقاط جديدة!",
+      body: `تمت إضافة ${points} ${points === 1 ? "نقطة" : "نقاط"} لك من قبل ${store.name}`,
       data: {
         orderId: order._id,
         storeId: store._id,
         storeName: store.name,
-        points: 1,
+        points: pointsAwarded,
       },
     });
   } catch (_) {
@@ -333,16 +461,16 @@ async function notifyOrderPointGift(order, store) {
 }
 
 async function applyRevertConfirmSideEffects(order, store, session) {
-  const opts = session ? { session } : {};
-
-  if (order.pointsAwarded) {
-    await User.findByIdAndUpdate(order.customer, { $inc: { points: -1 } }, opts);
+  const points = Number(order.rewardPointsAwarded) || (order.pointsAwarded ? 1 : 0);
+  if (points > 0) {
+    const opts = session ? { session } : {};
+    await User.findByIdAndUpdate(order.customer, { $inc: { points: -points } }, opts);
   }
   if (order.cardDeducted) {
-    const updatedStore = await Store.findByIdAndUpdate(
+    const updatedStore = await storeCardInventoryService.restoreStoreCard(
       store._id,
-      { $inc: { cards: 1 } },
-      { new: true, ...opts }
+      { cardType: order.consumedCardType || null, pointsValue: points || 1 },
+      session
     );
     if (updatedStore) store.cards = updatedStore.cards;
   }
@@ -391,52 +519,112 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
 
   const acceptStatuses = new Set(["store_accepted", "confirmed"]);
   if (acceptStatuses.has(status) && previousStatus === "pending") {
-    const { cardDeducted } = await applyConfirmFinancialEffects(orderPreview, store, session);
+    const { cardDeducted, rewardPointsAwarded, consumedCardType } = await applyConfirmFinancialEffects(
+      orderPreview,
+      store,
+      session
+    );
     const now = new Date();
+    const isDeliveryOrder = orderPreview.deliveryMethod === DELIVERY_METHODS.DELIVERY;
+    const acceptedStatus = isDeliveryOrder ? "ready_for_delivery_pickup" : "store_accepted";
 
     const order = await Order.findOneAndUpdate(
       { _id: orderId, store: store._id, status: "pending" },
       {
         $set: {
-          status: "store_accepted",
+          status: acceptedStatus,
           cardDeducted,
-          pointsAwarded: true,
+          pointsAwarded: rewardPointsAwarded > 0,
+          rewardPointsAwarded,
+          consumedCardType: consumedCardType || null,
           confirmedAt: now,
-          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "store_accepted"),
+          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, acceptedStatus),
         },
       },
       updateOpts
     );
     if (!order) {
-      await revertConfirmFinancialEffects(orderPreview, store, session, cardDeducted);
+      await revertConfirmFinancialEffects(
+        orderPreview,
+        store,
+        session,
+        cardDeducted,
+        rewardPointsAwarded,
+        consumedCardType
+      );
       const err = new Error("تم تحديث الطلب بالفعل أو لم يعد في حالة انتظار");
       err.status = 409;
       throw err;
     }
 
-    await notifyOrderPointGift(order, store);
+    if (rewardPointsAwarded > 0) {
+      await notifyOrderPointGift(order, store, rewardPointsAwarded);
+      try {
+        await membershipService.upgradeToMember(order.customer, store._id);
+      } catch (_) {
+        /* non-critical — membership upgrade should not block order confirm */
+      }
+    }
+
+    const confirmTitle = isDeliveryOrder ? "تم قبول طلبك" : "تم تأكيد طلبك من المتجر";
+    const confirmBody = isDeliveryOrder
+      ? `قام ${store.name || "المتجر"} بقبول طلبك — بانتظار شركة التوصيل`
+      : `قام ${store.name || "المتجر"} بتأكيد طلبك رقم ${order.orderNumber || ""}`.trim();
+
     try {
       await notificationService.create({
         user: order.customer,
         type: "order_confirmed",
-        title: "تم تأكيد طلبك من المتجر",
-        body: `قام ${store.name || "المتجر"} بتأكيد طلبك رقم ${order.orderNumber || ""}`.trim(),
-        data: { orderId: order._id.toString(), storeId: store._id.toString() },
+        title: confirmTitle,
+        body: confirmBody,
+        data: {
+          orderId: order._id.toString(),
+          storeId: store._id.toString(),
+          deliveryMethod: order.deliveryMethod || "",
+        },
       });
     } catch (_) {
       /* non-critical */
     }
     const refreshedStore = await Store.findById(store._id).select("cards bypassCards");
 
+    const pointsMessage = rewardPointsAwarded > 0
+      ? ` وإهداء ${rewardPointsAwarded} ${rewardPointsAwarded === 1 ? "نقطة" : "نقاط"} للزبون`
+      : "";
+
     return {
-      message: "تم قبول الطلب وإهداء نقطة للزبون",
+      message: `تم قبول الطلب${pointsMessage}`,
       order,
       cards: refreshedStore?.cards ?? store.cards,
       bypassCards: refreshedStore?.bypassCards ?? store.bypassCards,
     };
   }
 
-  if (targetStatus === "preparing" && ["store_accepted", "confirmed"].includes(previousStatus)) {
+  if (targetStatus === "ready_for_delivery_pickup" && ["store_accepted", "confirmed"].includes(previousStatus)) {
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, store: store._id, status: previousStatus },
+      {
+        $set: {
+          status: "ready_for_delivery_pickup",
+          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "ready_for_delivery_pickup"),
+        },
+      },
+      updateOpts
+    );
+    if (!order) {
+      const err = new Error("تم تحديث الطلب بالفعل");
+      err.status = 409;
+      throw err;
+    }
+    return {
+      message: "الطلب جاهز للتسليم لشركة التوصيل",
+      order,
+      cards: store.cards,
+      bypassCards: store.bypassCards,
+    };
+  }
+
+  if (targetStatus === "preparing" && ["store_accepted", "ready_for_delivery_pickup", "confirmed"].includes(previousStatus)) {
     const order = await Order.findOneAndUpdate(
       { _id: orderId, store: store._id, status: previousStatus },
       {
@@ -455,9 +643,70 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
     return { message: "الطلب قيد التحضير", order, cards: store.cards, bypassCards: store.bypassCards };
   }
 
-  if (targetStatus === "delivered_to_driver" && previousStatus === "preparing") {
+  // Company-delivery path: older clients may send delivered_to_driver when the
+  // store hands the parcel over — treat it as delivery_handover_complete.
+  if (
+    (targetStatus === "delivered_to_driver" || targetStatus === "delivery_handover_complete")
+    && previousStatus === "ready_for_driver_pickup"
+  ) {
+    if (!orderPreview.deliveryGroup) {
+      const err = new Error("لا يوجد طلب توصيل مرتبط بهذا الطلب");
+      err.status = 400;
+      throw err;
+    }
+
+    const DeliverySession = require("../models/deliverySession");
+    const sessionDoc = await DeliverySession.findById(orderPreview.deliveryGroup).select("assignedDriver status");
+    if (!sessionDoc?.assignedDriver?.driverId) {
+      const err = new Error("لم يُعيَّن سائق بعد — انتظر تعيين السائق من شركة التوصيل");
+      err.status = 400;
+      throw err;
+    }
+
     const order = await Order.findOneAndUpdate(
-      { _id: orderId, store: store._id, status: "preparing" },
+      { _id: orderId, store: store._id, status: "ready_for_driver_pickup" },
+      {
+        $set: {
+          status: "delivery_handover_complete",
+          statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "delivery_handover_complete"),
+        },
+      },
+      updateOpts
+    );
+    if (!order) {
+      const err = new Error("تم تحديث الطلب بالفعل");
+      err.status = 409;
+      throw err;
+    }
+
+    await deliveryCompanyHandoverService.recordStoreHandoverToDeliveryCompany(order._id, {
+      previousStatus: "ready_for_driver_pickup",
+      storeId: store._id,
+      confirmedBy: ownerId,
+    }).catch((err) => {
+      const { safeLog } = require("../utils/logSanitize.util");
+      safeLog("warn", "delivery_company_handover_count_failed", {
+        orderId: String(order._id),
+        message: err?.message,
+      });
+    });
+
+    // Session advance + notifications: updateOrderStatus → syncDeliverySessionAfterOrderUpdate
+    // (syncAfterStoreHandover). Do not also fire syncOrderInSessions — it races and can
+    // overwrite out_for_delivery back to driver_assigned.
+
+    return {
+      message: "تم تسليم الطلب للسائق — اكتملت مسؤولية المتجر",
+      order,
+      cards: store.cards,
+      bypassCards: store.bypassCards,
+    };
+  }
+
+  const handToDriverFrom = new Set(["preparing", "store_accepted", "confirmed"]);
+  if (targetStatus === "delivered_to_driver" && handToDriverFrom.has(previousStatus)) {
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, store: store._id, status: previousStatus },
       {
         $set: {
           status: "delivered_to_driver",
@@ -471,12 +720,20 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
       err.status = 409;
       throw err;
     }
+
     return { message: "تم تسليم الطلب للسائق", order, cards: store.cards, bypassCards: store.bypassCards };
   }
 
   if (
     (targetStatus === "delivered_to_customer" || status === "delivered") &&
-    ["delivered_to_driver", "preparing", "store_accepted", "confirmed"].includes(previousStatus)
+    [
+      "delivered_to_driver",
+      "delivery_handover_complete",
+      "preparing",
+      "store_accepted",
+      "ready_for_delivery_pickup",
+      "confirmed",
+    ].includes(previousStatus)
   ) {
     const now = new Date();
     const deleteAfter = new Date(now.getTime() + HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
@@ -498,6 +755,23 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
       err.status = 400;
       throw err;
     }
+
+    try {
+      await notificationService.create({
+        user: order.customer,
+        type: "order_delivered",
+        title: "تم استلام طلبك",
+        body: `قام ${store.name || "المتجر"} بتسليم طلبك رقم ${order.orderNumber || ""}`.trim(),
+        data: {
+          orderId: order._id.toString(),
+          storeId: store._id.toString(),
+          deliveryMethod: order.deliveryMethod || "",
+        },
+      });
+    } catch (_) {
+      /* non-critical */
+    }
+
     return {
       message: "تم تسليم الطلب للزبون",
       order,
@@ -549,7 +823,7 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
     };
   }
 
-  if (["rejected", "cancelled"].includes(status) && ["store_accepted", "confirmed", "preparing"].includes(previousStatus)) {
+  if (["rejected", "cancelled"].includes(status) && ["store_accepted", "ready_for_delivery_pickup", "ready_for_driver_pickup", "confirmed", "preparing"].includes(previousStatus)) {
     const orderBefore = await Order.findOneAndUpdate(
       { _id: orderId, store: store._id, status: previousStatus },
       {
@@ -557,6 +831,8 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
           status,
           cardDeducted: false,
           pointsAwarded: false,
+          rewardPointsAwarded: 0,
+          consumedCardType: null,
           statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, status),
         },
       },
@@ -607,7 +883,7 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
     };
   }
 
-  if (status === "completed_off_platform" && ["store_accepted", "confirmed"].includes(previousStatus)) {
+  if (status === "completed_off_platform" && ["store_accepted", "ready_for_delivery_pickup", "confirmed"].includes(previousStatus)) {
     const now = new Date();
     const deleteAfter = new Date(now.getTime() + HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const order = await Order.findOneAndUpdate(
@@ -641,17 +917,48 @@ async function updateOrderStatusCore(ownerId, orderId, status, session, options 
   throw err;
 }
 
+/** Sync delivery session after order status commit — routes handoff vs generic sync. */
+async function syncDeliverySessionAfterOrderUpdate(order) {
+  if (!order?._id) return;
+  const deliverySessionService = require("./deliverySession.service");
+  const status = order.status;
+  const isHandover =
+    status === "delivery_handover_complete" || status === "delivered_to_driver";
+
+  try {
+    if (isHandover) {
+      await deliverySessionService.syncAfterStoreHandover(order._id);
+    } else {
+      await deliverySessionService.syncOrderInSessions(order._id);
+    }
+  } catch (err) {
+    const { safeLog } = require("../utils/logSanitize.util");
+    safeLog("error", isHandover ? "delivery_handover_sync_failed" : "delivery_session_sync_failed", {
+      orderId: String(order._id),
+      status,
+      message: err?.message,
+    });
+  }
+}
+
 async function updateOrderStatus(ownerId, orderId, status, options = {}) {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
     const result = await updateOrderStatusCore(ownerId, orderId, status, session, options);
     await session.commitTransaction();
+    if (result?.order?._id) {
+      await syncDeliverySessionAfterOrderUpdate(result.order);
+    }
     return result;
   } catch (err) {
     await session.abortTransaction().catch(() => {});
     if (isTransactionUnsupported(err)) {
-      return updateOrderStatusCore(ownerId, orderId, status, null, options);
+      const result = await updateOrderStatusCore(ownerId, orderId, status, null, options);
+      if (result?.order?._id) {
+        await syncDeliverySessionAfterOrderUpdate(result.order);
+      }
+      return result;
     }
     throw err;
   } finally {
@@ -711,12 +1018,26 @@ async function setStoreBypassCards(adminId, storeId, bypass) {
 }
 
 async function cancelOrderByCustomer(customerId, orderId) {
+  const preview = await Order.findOne({ _id: orderId, customer: customerId }).select("status paymentMethod");
+  if (!preview) {
+    const err = new Error("الطلب غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  const digitalMethods = new Set(["bank", "palpay", "jawwal_pay"]);
+  if (digitalMethods.has(normalizePaymentMethod(preview.paymentMethod))) {
+    const err = new Error("لا يمكن إلغاء الطلب بعد الدفع الإلكتروني");
+    err.status = 400;
+    throw err;
+  }
+
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
 
     const order = await Order.findOneAndUpdate(
-      { _id: orderId, customer: customerId, status: "pending" },
+      { _id: orderId, customer: customerId, status: { $in: ["pending", "modification_requested"] } },
       {
         $set: {
           status: "cancelled",
@@ -755,7 +1076,7 @@ async function cancelOrderByCustomer(customerId, orderId) {
 
 async function cancelOrderByCustomerFallback(customerId, orderId) {
   const order = await Order.findOneAndUpdate(
-    { _id: orderId, customer: customerId, status: "pending" },
+    { _id: orderId, customer: customerId, status: { $in: ["pending", "modification_requested"] } },
     { $set: { status: "cancelled" } },
     { new: true }
   );
@@ -776,6 +1097,79 @@ async function cancelOrderByCustomerFallback(customerId, orderId) {
   return order;
 }
 
+async function handOrderToDriver(ownerId, orderId) {
+  const store = await Store.findOne({ owner: ownerId }).select("_id name");
+  if (!store) {
+    const err = new Error("غير مصرح");
+    err.status = 403;
+    throw err;
+  }
+
+  const orderPreview = await Order.findOne({ _id: orderId, store: store._id });
+  if (!orderPreview) {
+    const err = new Error("الطلب غير موجود");
+    err.status = 404;
+    throw err;
+  }
+
+  if (orderPreview.status !== "ready_for_driver_pickup") {
+    const err = new Error("لا يمكن تسليم الطلب للسائق في حالته الحالية");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!orderPreview.deliveryGroup) {
+    const err = new Error("لا يوجد طلب توصيل مرتبط بهذا الطلب");
+    err.status = 400;
+    throw err;
+  }
+
+  const DeliverySession = require("../models/deliverySession");
+  const session = await DeliverySession.findById(orderPreview.deliveryGroup).select("assignedDriver status");
+  if (!session?.assignedDriver?.driverId) {
+    const err = new Error("لم يُعيَّن سائق بعد — انتظر تعيين السائق من شركة التوصيل");
+    err.status = 400;
+    throw err;
+  }
+
+  const order = await Order.findOneAndUpdate(
+    { _id: orderId, store: store._id, status: "ready_for_driver_pickup" },
+    {
+      $set: {
+        status: "delivery_handover_complete",
+        statusTimeline: pushTimelineUpdate(orderPreview.statusTimeline, "delivery_handover_complete"),
+      },
+    },
+    { new: true }
+  );
+
+  if (!order) {
+    const err = new Error("تم تحديث الطلب بالفعل");
+    err.status = 409;
+    throw err;
+  }
+
+  await deliveryCompanyHandoverService.recordStoreHandoverToDeliveryCompany(order._id, {
+    previousStatus: "ready_for_driver_pickup",
+    storeId: store._id,
+    confirmedBy: ownerId,
+  }).catch((err) => {
+    const { safeLog } = require("../utils/logSanitize.util");
+    safeLog("warn", "delivery_company_handover_count_failed", {
+      orderId: String(order._id),
+      message: err?.message,
+    });
+  });
+
+  await syncDeliverySessionAfterOrderUpdate(order);
+
+  return {
+    message: "تم تسليم الطلب للسائق — اكتملت مسؤولية المتجر",
+    order,
+    storeName: store.name,
+  };
+}
+
 module.exports = {
   restoreOrderItemsToCart,
   getStorePendingCount,
@@ -786,10 +1180,12 @@ module.exports = {
   getStoreOrderHistory,
   getStoreInvoices,
   getAdminOrderHistory,
+  getAdminOrderById,
   getOrderDetail,
   updateOrderStatus,
   updateOrderStoreNotes,
   setStoreBypassCards,
   cancelOrderByCustomer,
+  handOrderToDriver,
   HISTORY_RETENTION_DAYS,
 };

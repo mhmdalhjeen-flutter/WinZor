@@ -8,7 +8,9 @@
 
 1. اقرأ `00_Project_Overview.md` ثم `07_Business_Logic.md` ثم `12_AI_MEMORY.md`.
 2. شغّل المشروع محلياً (راجع `10_Deployment.md`).
-3. لا تبدأ تعديلاً قبل فهم أثره على **الواجهات الثلاث** (Backend مشترك).
+3. لا تبدأ تعديلاً قبل فهم أثره على **كل الواجهات** (Backend مشترك).
+
+> **Production apps:** `backend/`, `customer/`, `adminstore/`, `admin/`, `delivery/`. See `REPOSITORY_STRUCTURE.md`.
 
 ---
 
@@ -53,19 +55,24 @@
 
 ## 5. كيف تضيف صفحة؟ (Frontend)
 
-### الزبون (customerFrontend)
+### الزبون (`customer/`)
 1. أنشئ `src/pages/MyPage.jsx`.
 2. أضف `<Route>` في `src/App.jsx` (لفّها بـ `ProtectedRoute` إن كانت تتطلب تسجيلاً).
 3. نادِ الـ API عبر `src/api/axios.js` (التوكن يُرفق تلقائياً).
 
-### المتاجر (store-supplier-frontend)
+### المتاجر (`adminstore/`)
 1. أنشئ الصفحة في `src/pages/`.
-2. أضف `<Route>` داخل قسمي `/store/*` و`/supplier/*` في `App.jsx` (غالباً تحتاج إضافتها في الموضعين).
-3. استخدم خدمات `src/services/`.
+2. أضف `<Route>` داخل قسمي `/store/*` و`/supplier/*` في `App.jsx`.
+3. استخدم `src/services/api.js`.
 
-### الأدمن (admin-panelFrontend)
-1. أنشئ الصفحة في `src/pages/` وأضفها للراوتر و`Sidebar`.
+### الأدمن (`admin/` — canonical)
+1. أنشئ الصفحة في `src/pages/` وأضفها للراوتر والـ sidebar.
 2. استخدم `src/api/axios.js`.
+
+### التوصيل (`delivery/`)
+1. أنشئ الصفحة في `src/pages/` (أو `pages/driver/`).
+2. أضف `<Route>` في `App.jsx`.
+3. استخدم `src/api/axios.js`.
 
 ---
 

@@ -28,6 +28,7 @@ const {
 } = require("../controllers/store.controller");
 const {
   listMyPaymentMethods,
+  updateMyPaymentMethodToggles,
   createMyPaymentMethod,
   updateMyPaymentMethod,
   activateMyPaymentMethod,
@@ -41,8 +42,14 @@ const {
   updateItemCategory,
   deleteItemCategory,
 } = require("../controllers/storeItemCategory.controller");
+const {
+  getMySubscriptionStatus,
+  getSubscriptionPaymentMethods,
+  submitSubscriptionPayment,
+  exportMySubscriptionPaperCodes,
+} = require("../controllers/storeSubscription.controller");
 const { requireStoreOwnerPage } = require("../middleware/storeOwnerPage.middleware");
-const { requireStoreSubscription } = require("../middleware/storeSubscription.middleware");
+const { requireStoreSubscription, requireStoreOwnerAccount } = require("../middleware/storeSubscription.middleware");
 
 router.post("/", authMiddleware, roleMiddleware.store, createStore);
 router.get("/", getAllStores);
@@ -72,6 +79,7 @@ router.post("/my/item-categories", authMiddleware, roleMiddleware.business, requ
 router.patch("/my/item-categories/:id", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateItemCategory);
 router.delete("/my/item-categories/:id", authMiddleware, roleMiddleware.business, requireStoreSubscription, deleteItemCategory);
 router.get("/my/payment-methods", authMiddleware, roleMiddleware.business, requireStoreSubscription, listMyPaymentMethods);
+router.patch("/my/payment-methods/toggles", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateMyPaymentMethodToggles);
 router.post("/my/payment-methods", authMiddleware, roleMiddleware.business, requireStoreSubscription, createMyPaymentMethod);
 router.patch("/my/payment-methods/:id", authMiddleware, roleMiddleware.business, requireStoreSubscription, updateMyPaymentMethod);
 router.patch("/my/payment-methods/:id/activate", authMiddleware, roleMiddleware.business, requireStoreSubscription, activateMyPaymentMethod);
@@ -82,6 +90,11 @@ router.post("/my/apply-default-branding", authMiddleware, roleMiddleware.busines
 router.post("/my/dismiss-branding-welcome", authMiddleware, roleMiddleware.business, requireStoreSubscription, dismissBrandingWelcome);
 router.get("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreSubscription, requireStoreOwnerPage("memberPrizes"), listMyMemberPrizes);
 router.post("/my/member-prizes", authMiddleware, roleMiddleware.store, requireStoreSubscription, requireStoreOwnerPage("memberPrizes"), createMemberPrize);
+
+router.get("/my/subscription", authMiddleware, roleMiddleware.business, requireStoreOwnerAccount, getMySubscriptionStatus);
+router.get("/my/subscription/payment-methods", authMiddleware, roleMiddleware.business, requireStoreOwnerAccount, getSubscriptionPaymentMethods);
+router.post("/my/subscription/payment", authMiddleware, roleMiddleware.business, requireStoreOwnerAccount, submitSubscriptionPayment);
+router.get("/my/subscription/export-paper-codes", authMiddleware, roleMiddleware.business, requireStoreOwnerAccount, exportMySubscriptionPaperCodes);
 
 router.get("/warehouses", authMiddleware, roleMiddleware.business, requireStoreOwnerPage("warehouses"), async (req, res) => {
   try {

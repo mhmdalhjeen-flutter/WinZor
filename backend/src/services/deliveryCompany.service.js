@@ -1,9 +1,15 @@
 const DeliveryCompany = require("../models/deliveryCompany");
 const DeliveryCompanyPaymentAccount = require("../models/deliveryCompanyPaymentAccount");
-const { SETTINGS_KEY_BY_TYPE } = require("../utils/paymentMethodTypes.util");
+const {
+  DEFAULT_DELIVERY_PAYMENT_TOGGLES,
+  resolvePaymentToggles,
+  buildCustomerPaymentPayload,
+  normalizeAccountKind,
+} = require("../utils/paymentMethodTypes.util");
 
 const CUSTOMER_METHOD_IDS = {
   cashOnDelivery: "cash_on_delivery",
+  agreementWithStore: "seller_agreement",
   bankPalestine: "bank_palestine",
   palPay: "palpay",
   jawwalPay: "jawwal_pay",
@@ -47,34 +53,18 @@ async function listPaymentAccounts(companyId) {
 }
 
 function buildPaymentSettingsFromAccounts(paymentMethods = {}, accounts = []) {
-  const settings = {
-    cashOnDelivery: {
-      enabled: paymentMethods.cashOnDelivery?.enabled !== false,
-    },
-    bankPalestine: { enabled: Boolean(paymentMethods.bankPalestine?.enabled) },
-    palPay: { enabled: Boolean(paymentMethods.palPay?.enabled) },
-    jawwalPay: { enabled: Boolean(paymentMethods.jawwalPay?.enabled) },
-  };
-
-  for (const account of accounts.filter((a) => a.isActive)) {
-    const key = SETTINGS_KEY_BY_TYPE[account.type];
-    if (!key || key === "cashOnDelivery") continue;
-    settings[key] = {
-      enabled: settings[key]?.enabled !== false,
-      qrCodeUrl: account.qrCodeUrl || "",
-      accountOwnerName: account.accountName || "",
-      accountNumber: account.accountNumber || "",
-      iban: account.iban || "",
-    };
-  }
-
-  return settings;
+  const toggles = resolvePaymentToggles(paymentMethods, DEFAULT_DELIVERY_PAYMENT_TOGGLES);
+  const activeAccounts = (accounts || []).filter((a) => a.isActive);
+  return buildCustomerPaymentPayload(toggles, activeAccounts, "qrCodeUrl").paymentSettings;
 }
 
 function buildEnabledPaymentMethods(paymentSettings) {
   const enabled = [];
-  if (paymentSettings.cashOnDelivery?.enabled !== false) {
+  if (paymentSettings.cashOnDelivery?.enabled) {
     enabled.push(CUSTOMER_METHOD_IDS.cashOnDelivery);
+  }
+  if (paymentSettings.agreementWithStore?.enabled) {
+    enabled.push(CUSTOMER_METHOD_IDS.agreementWithStore);
   }
 
   const digitalKeys = [
@@ -85,7 +75,7 @@ function buildEnabledPaymentMethods(paymentSettings) {
 
   digitalKeys.forEach(([settingsKey, methodId]) => {
     const entry = paymentSettings[settingsKey];
-    if (entry?.enabled === false) return;
+    if (!entry?.enabled) return;
     const configured = Boolean(
       entry?.qrCodeUrl || entry?.accountOwnerName || entry?.accountNumber,
     );
@@ -95,18 +85,25 @@ function buildEnabledPaymentMethods(paymentSettings) {
   return enabled;
 }
 
-function toAdminCompany(company, accounts = []) {
+function toAdminCompany(company, accounts = [], overrides = {}) {
   const plain = company.toObject ? company.toObject() : { ...company };
   const servedRegionIds = (plain.servedRegionIds || []).map(String);
+  const paymentMethods = resolvePaymentToggles(plain.paymentMethods, DEFAULT_DELIVERY_PAYMENT_TOGGLES);
+  const handedOverOrderCount = overrides.handedOverOrderCount != null
+    ? Math.max(0, Number(overrides.handedOverOrderCount) || 0)
+    : Math.max(0, Number(plain.handedOverOrderCount) || 0);
   return {
     ...plain,
+    paymentMethods,
     servedRegionIds,
     coverageCount: plain.servesAllRegions ? 0 : servedRegionIds.length,
+    handedOverOrderCount,
     paymentAccounts: accounts.map((a) => ({
       _id: a._id,
       type: a.type,
       accountName: a.accountName,
       accountNumber: a.accountNumber,
+      accountType: normalizeAccountKind(a.accountType),
       iban: a.iban || "",
       qrCodeUrl: a.qrCodeUrl || "",
       isActive: Boolean(a.isActive),
@@ -114,10 +111,22 @@ function toAdminCompany(company, accounts = []) {
   };
 }
 
-function toCustomerCompany(company, accounts = []) {
+function toCustomerCompany(company, accounts = [], options = {}) {
   const plain = company.toObject ? company.toObject() : { ...company };
-  const paymentSettings = buildPaymentSettingsFromAccounts(plain.paymentMethods, accounts);
-  const enabledPaymentMethods = buildEnabledPaymentMethods(paymentSettings);
+  const toggles = resolvePaymentToggles(plain.paymentMethods, DEFAULT_DELIVERY_PAYMENT_TOGGLES);
+  const activeAccounts = (accounts || []).filter((a) => a.isActive);
+  const { paymentSettings, enabledPaymentMethods } = buildCustomerPaymentPayload(
+    toggles,
+    activeAccounts,
+    "qrCodeUrl",
+  );
+  const servedRegionIds = (plain.servedRegionIds || []).map(String);
+  const regionNames = options.regionNames || {};
+  const servedRegionNames = plain.servesAllRegions
+    ? []
+    : servedRegionIds
+      .map((id) => regionNames[String(id)] || "")
+      .filter(Boolean);
 
   return {
     id: plain.slug || String(plain._id),
@@ -131,11 +140,45 @@ function toCustomerCompany(company, accounts = []) {
     basePrice: plain.basePrice,
     extraOrderPrice: plain.extraOrderPrice,
     currency: plain.currency || "ILS",
-    servedRegionIds: (plain.servedRegionIds || []).map(String),
+    servedRegionIds,
+    servedRegionNames,
     servesAllRegions: Boolean(plain.servesAllRegions),
     enabledPaymentMethods,
     paymentSettings,
+    isRecommended: Boolean(options.isRecommended),
+    recommendedForRegion: Boolean(options.recommendedForRegion),
   };
+}
+
+function isCompanyRecommendedForRegion(company, regionId) {
+  if (!regionId) return false;
+  if (company.servesAllRegions) return true;
+  const ids = (company.servedRegionIds || []).map(String);
+  return ids.includes(String(regionId));
+}
+
+/** Sort companies: recommended for region first, then by name. Never filters. */
+function sortCompaniesByRegionRecommendation(companies, regionId, options = {}) {
+  const { regionNames = {} } = options;
+  if (!regionId) {
+    return companies.map((c) => toCustomerCompany(c.company || c, c.accounts || [], { isRecommended: false, regionNames }));
+  }
+
+  const rid = String(regionId);
+  const ranked = companies.map((entry) => {
+    const company = entry.company || entry;
+    const accounts = entry.accounts || [];
+    const recommended = isCompanyRecommendedForRegion(company, rid);
+    return { company, accounts, recommended, sortName: (company.nameAr || company.name || "").toLowerCase() };
+  });
+
+  ranked.sort((a, b) => {
+    if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+    return a.sortName.localeCompare(b.sortName, "ar");
+  });
+
+  return ranked.map(({ company, accounts, recommended }) =>
+    toCustomerCompany(company, accounts, { isRecommended: recommended, recommendedForRegion: recommended, regionNames }));
 }
 
 async function loadCompanyWithAccounts(companyId) {
@@ -155,5 +198,7 @@ module.exports = {
   toAdminCompany,
   toCustomerCompany,
   loadCompanyWithAccounts,
+  isCompanyRecommendedForRegion,
+  sortCompaniesByRegionRecommendation,
   CUSTOMER_METHOD_IDS,
 };

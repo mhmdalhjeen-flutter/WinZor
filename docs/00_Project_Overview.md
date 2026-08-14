@@ -26,10 +26,11 @@
 
 | الدور | الوصف | الواجهة المخصصة له |
 |-------|-------|--------------------|
-| `customer` | الزبون النهائي: يتصفح، يتابع المتاجر، يجمع نقاطاً، يشارك في السحوبات والصناديق، يطلب منتجات | `customerFrontend` |
-| `store` | صاحب متجر: يضيف منتجات/عروضاً، يستقبل طلبات، يشتري كروت | `store-supplier-frontend` |
-| `supplier` | مورد/مستودع (بيع بالجملة): مشابه للمتجر مع توجّه للجملة | `store-supplier-frontend` |
-| `admin` | الإدارة: يتحكم في كل شيء (مستخدمون، متاجر، أكواد، سحوبات، إعدادات) | `admin-panelFrontend` |
+| `customer` | الزبون النهائي: يتصفح، يتابع المتاجر، يجمع نقاطاً، يشارك في السحوبات والصناديق، يطلب منتجات | `customer/` |
+| `store` | صاحب متجر: يضيف منتجات/عروضاً، يستقبل طلبات، يشتري كروت | `adminstore/` |
+| `supplier` | مورد/مستودع (بيع بالجملة): مشابه للمتجر مع توجّه للجملة | `adminstore/` |
+| `admin` | الإدارة: يتحكم في كل شيء (مستخدمون، متاجر، أكواد، سحوبات، إعدادات) | `admin/` |
+| *(ops)* | شركات التوصيل والسائقون | `delivery/` |
 
 ---
 
@@ -38,14 +39,17 @@
 ```
 offers-tech/
 ├── backend/                 ← خادم واحد (Express 5 + MongoDB)  ← قلب النظام
-├── customerFrontend/        ← موقع الزبائن (React 18 + Vite)
-├── store-supplier-frontend/ ← لوحة المتاجر والموردين (React 19 + Vite)
-├── admin-panelFrontend/     ← لوحة الإدارة (React 18 + Vite)
+├── customer/                ← موقع الزبائن (React + Vite PWA)
+├── adminstore/              ← لوحة المتاجر والموردين (React + Vite PWA)
+├── admin/                   ← لوحة الإدارة الإنتاجية (React + Vite PWA)
+├── delivery/                ← تطبيق شركات التوصيل والسائقين (React + Vite PWA)
 └── docs/                    ← هذا التوثيق
 ```
 
-**القاعدة الذهبية:** يوجد **Backend واحد** و **قاعدة بيانات واحدة (MongoDB)** تخدم **الواجهات الثلاث**.
-أي تعديل في الـ Backend أو قاعدة البيانات قد يؤثر على المواقع الثلاثة معاً.
+> **Legacy:** older docs referred to `customerFrontend`, `store-supplier-frontend`, and `admin-panelFrontend`. The production folders are listed above. The fork `admin-panelFrontend/` is **deprecated** — see `docs/DEPRECATED_admin-panelFrontend.md` and `docs/REPOSITORY_STRUCTURE.md`.
+
+**القاعدة الذهبية:** يوجد **Backend واحد** و **قاعدة بيانات واحدة (MongoDB)** تخدم **الواجهات الأمامية الأربع** (`customer`, `adminstore`, `admin`, `delivery`).
+أي تعديل في الـ Backend أو قاعدة البيانات قد يؤثر على كل الواجهات.
 
 ---
 
@@ -56,7 +60,7 @@ offers-tech/
 | Backend | Node.js, Express **5**, Mongoose **9** |
 | Database | MongoDB (Atlas — سحابي) |
 | Auth | JWT (jsonwebtoken)، bcryptjs، Google OAuth (google-auth-library) |
-| Frontend (×3) | React (18/19)، Vite (5/8)، React Router (6/7)، Axios |
+| Frontend (×4) | React (18/19)، Vite (5/8)، React Router (6/7)، Axios |
 | Styling | TailwindCSS (customer + admin)، framer-motion، lucide-react |
 | ميزات إضافية | exceljs + qrcode (تصدير أكواد QR)، swiper (سلايدر)، xlsx (admin) |
 
@@ -81,7 +85,7 @@ offers-tech/
 - 🔴 **ثغرة صلاحيات حرجة:** عدد من مسارات الأدمن (`/api/admin/...`) محمية بتسجيل الدخول فقط دون التحقق من دور الأدمن — أي زبون مسجّل قد يستدعيها (تعديل نقاط، توليد أكواد، تعديل إعدادات).
 - 🔴 **عدم تطابق Model/Controller:** نموذج `DrawBatch` لا يطابق منطق `draw.controller` (حقول مفقودة)، ونموذج `User` ينقصه `storesEnergyClaimed` المستخدم في `promo-code.controller`.
 - 🔴 **مشكلة حساسية حالة الأحرف في المسارات:** بعض `require` تستخدم أحرفاً لا تطابق أسماء الملفات (`activityLog` بدل `ActivityLog`، `product.Controller` …) — يعمل على Windows ويتعطّل على Linux (الإنتاج).
-- 🟡 **بنية:** `node_modules` موضوعة بالخطأ داخل `admin-panelFrontend/src`.
+- 🟡 **بنية:** مستودعات git متداخلة داخل `admin/`, `customer/`, `adminstore/`, `delivery/`, `backend/` — راجع `docs/REPOSITORY_STRUCTURE.md`.
 - 🟡 **لا يوجد طبقة Validation موحّدة، ولا معالجة أخطاء مركزية، ولا rate limiting.**
 
 > هذه ملاحظات **مسجّلة فقط** — لا يتم تنفيذ أي إصلاح إلا بعد اكتمال التوثيق والموافقة.
@@ -95,7 +99,7 @@ offers-tech/
 2. `02_Project_Structure.md` — شجرة المجلدات بالتفصيل.
 3. `03_Database.md` — النماذج والعلاقات.
 4. `04_Backend.md` — الخادم والتحكم.
-5. `05_Frontend.md` — الواجهات الثلاث.
+5. `05_Frontend.md` — الواجهات الأربع.
 6. `06_APIs.md` — مرجع كل نقاط النهاية.
 7. `07_Business_Logic.md` — قواعد العمل (النقاط، الكروت، الطلبات...).
 8. ثم: الأمان، الأداء، النشر، دليل الفريق.

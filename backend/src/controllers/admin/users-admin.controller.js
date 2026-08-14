@@ -7,7 +7,6 @@ const BazaarListing = require("../../models/bazaarListing");
 const UserActivity = require("../../models/userActivity");
 const Competition = require("../../models/competition");
 const DrawBatch = require("../../models/drawBatch");
-const WheelWin = require("../../models/wheelWin");
 const HonorBoard = require("../../models/honorBoard");
 const { buildUserPrizeStatsMap } = require("../../services/adminAnalytics.service");
 const { cleanString, numberInRange, requireObjectId, safeRegex } = require("../../utils/inputSecurity.util");
@@ -72,13 +71,12 @@ async function buildParticipationMap() {
 }
 
 async function buildPrizeWinnerSet() {
-  const [drawUsers, wheelUsers, honorUsers] = await Promise.all([
+  const [drawUsers, honorUsers] = await Promise.all([
     DrawBatch.distinct("winners.user"),
-    WheelWin.distinct("user"),
     HonorBoard.distinct("user"),
   ]);
   return new Set(
-    [...drawUsers, ...wheelUsers, ...honorUsers].filter(Boolean).map(String)
+    [...drawUsers, ...honorUsers].filter(Boolean).map(String)
   );
 }
 
@@ -89,6 +87,229 @@ async function buildStoreMemberSet(storeId) {
   }
   const ids = await StoreMembership.distinct("user", filter);
   return new Set(ids.filter(Boolean).map(String));
+}
+
+function intersectObjectIdSets(...sets) {
+  const normalized = sets
+    .map((set) => [...set].map(String))
+    .filter((set) => set.length);
+  if (!normalized.length) return [];
+  let result = new Set(normalized[0]);
+  for (let i = 1; i < normalized.length; i += 1) {
+    const next = new Set(normalized[i]);
+    result = new Set([...result].filter((id) => next.has(id)));
+  }
+  return [...result].map((id) => new mongoose.Types.ObjectId(id));
+}
+
+function applyIdConstraint(match, { includeIds = [], excludeIds = [] } = {}) {
+  const next = { ...match };
+  if (includeIds.length) {
+    next._id = next._id || {};
+    if (next._id.$in) {
+      const allowed = new Set(includeIds.map(String));
+      next._id.$in = next._id.$in.filter((id) => allowed.has(String(id)));
+    } else {
+      next._id.$in = includeIds;
+    }
+    if (!next._id.$in.length) {
+      next._id.$in = [new mongoose.Types.ObjectId("000000000000000000000000")];
+    }
+  }
+  if (excludeIds.length) {
+    next._id = next._id || {};
+    const existing = (next._id.$nin || []).map(String);
+    next._id.$nin = [...new Set([...existing, ...excludeIds.map(String)])].map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+  }
+  return next;
+}
+
+async function getUserIdsForActivityLevel(level) {
+  const safeLevel = cleanString(level, { field: "activityLevel", max: 20 });
+  if (!["none", "low", "medium", "high"].includes(safeLevel)) {
+    return { includeIds: [] };
+  }
+
+  if (safeLevel === "none") {
+    const activeUserIds = await UserActivity.distinct("user");
+    return { excludeIds: activeUserIds.filter(Boolean) };
+  }
+
+  const ranges = {
+    low: { min: 1, max: 10 },
+    medium: { min: 11, max: 50 },
+    high: { min: 51 },
+  };
+  const { min, max } = ranges[safeLevel];
+  const countMatch = { count: { $gte: min } };
+  if (max != null) countMatch.count.$lte = max;
+
+  const rows = await UserActivity.aggregate([
+    { $group: { _id: "$user", count: { $sum: 1 } } },
+    { $match: countMatch },
+  ]);
+  return { includeIds: rows.map((row) => row._id).filter(Boolean) };
+}
+
+async function buildExtendedUserMatch(query, filterQuery, flags) {
+  let match = buildUserMatch(query);
+  const includeSets = [];
+  const excludeIds = [];
+
+  if (flags.needsPrizeFilter) {
+    const prizeWinners = await buildPrizeWinnerSet();
+    if (filterQuery.wonPrize === "yes") {
+      includeSets.push(prizeWinners);
+    } else if (filterQuery.wonPrize === "no") {
+      excludeIds.push(...prizeWinners);
+    }
+  }
+
+  if (flags.needsStoreFilter) {
+    const storeMembers = await buildStoreMemberSet(query.storeId);
+    if (filterQuery.joinedStore === "yes" || query.storeId) {
+      includeSets.push(storeMembers);
+    } else if (filterQuery.joinedStore === "no") {
+      excludeIds.push(...storeMembers);
+    }
+  }
+
+  if (flags.needsMarketplaceFilter) {
+    const marketplaceUsers = await buildMarketplaceSet();
+    if (filterQuery.usesMarketplace === "yes") {
+      includeSets.push(marketplaceUsers);
+    } else if (filterQuery.usesMarketplace === "no") {
+      excludeIds.push(...marketplaceUsers);
+    }
+  }
+
+  if (flags.needsActivity && filterQuery.activityLevel) {
+    const activityConstraint = await getUserIdsForActivityLevel(filterQuery.activityLevel);
+    if (activityConstraint.includeIds?.length) {
+      includeSets.push(new Set(activityConstraint.includeIds.map(String)));
+    }
+    if (activityConstraint.excludeIds?.length) {
+      excludeIds.push(...activityConstraint.excludeIds);
+    }
+  }
+
+  if (flags.needsParticipations) {
+    const participationMap = await buildParticipationMap();
+    const min =
+      query.participationsMin != null && query.participationsMin !== ""
+        ? numberInRange(query.participationsMin, {
+            field: "participationsMin",
+            min: 0,
+            max: 1_000_000,
+          })
+        : null;
+    const max =
+      query.participationsMax != null && query.participationsMax !== ""
+        ? numberInRange(query.participationsMax, {
+            field: "participationsMax",
+            min: 0,
+            max: 1_000_000,
+          })
+        : null;
+
+    if (min != null && min > 0) {
+      const matchingIds = Object.entries(participationMap)
+        .filter(([, total]) => {
+          if (total < min) return false;
+          if (max != null && total > max) return false;
+          return true;
+        })
+        .map(([id]) => id);
+      includeSets.push(new Set(matchingIds));
+    } else if (max != null) {
+      excludeIds.push(
+        ...Object.entries(participationMap)
+          .filter(([, total]) => total > max)
+          .map(([id]) => id)
+      );
+    }
+  }
+
+  const includeIds = includeSets.length ? intersectObjectIdSets(...includeSets) : [];
+  return applyIdConstraint(match, {
+    includeIds,
+    excludeIds: [...new Set(excludeIds.map(String))],
+  });
+}
+
+async function fetchUsersPaged({ match, sort, page, limit }) {
+  const skip = (page - 1) * limit;
+
+  if (sort === "most_active" || sort === "least_active") {
+    const activitySort = sort === "most_active" ? -1 : 1;
+    const [pageRows, total] = await Promise.all([
+      User.aggregate([
+        { $match: match },
+        {
+          $lookup: {
+            from: "useractivities",
+            localField: "_id",
+            foreignField: "user",
+            as: "_activityDocs",
+          },
+        },
+        {
+          $addFields: {
+            activityCount: { $size: "$_activityDocs" },
+          },
+        },
+        { $project: { _activityDocs: 0 } },
+        { $sort: { activityCount: activitySort, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $project: { _id: 1, activityCount: 1 } },
+      ]),
+      User.countDocuments(match),
+    ]);
+
+    if (!pageRows.length) {
+      return { users: [], total };
+    }
+
+    const order = pageRows.map((row) => String(row._id));
+    const activityById = Object.fromEntries(
+      pageRows.map((row) => [String(row._id), row.activityCount || 0])
+    );
+    const docs = await User.find({ _id: { $in: pageRows.map((row) => row._id) } })
+      .select(USER_SENSITIVE_SELECT)
+      .populate("preferences.regionId", "name")
+      .lean();
+    const docMap = Object.fromEntries(docs.map((doc) => [String(doc._id), doc]));
+    const users = order
+      .map((id) => docMap[id])
+      .filter(Boolean)
+      .map((user) => ({
+        ...user,
+        activityCount: activityById[String(user._id)] || 0,
+        activityLevel: activityLevelFromCount(activityById[String(user._id)] || 0),
+      }));
+
+    return { users, total };
+  }
+
+  const sortSpec = SORT_OPTIONS[sort] && typeof SORT_OPTIONS[sort] === "object"
+    ? SORT_OPTIONS[sort]
+    : { createdAt: -1 };
+
+  const [users, total] = await Promise.all([
+    User.find(match)
+      .select(USER_SENSITIVE_SELECT)
+      .populate("preferences.regionId", "name")
+      .sort(sortSpec)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    User.countDocuments(match),
+  ]);
+
+  return { users, total };
 }
 
 async function buildMarketplaceSet() {
@@ -142,8 +363,8 @@ function buildUserMatch(query) {
 
 function enrichUser(user, ctx) {
   const id = String(user._id);
-  const activityCount = ctx.activityMap[id] || 0;
-  const participationsCount = ctx.participationMap[id] || 0;
+  const activityCount = user.activityCount ?? ctx.activityMap[id] ?? 0;
+  const participationsCount = user.participationsCount ?? ctx.participationMap[id] ?? 0;
   const prizeStats = ctx.prizeStatsMap?.[id] || {};
 
   return {
@@ -155,8 +376,6 @@ function enrichUser(user, ctx) {
     hasWonPrize: ctx.prizeWinners ? ctx.prizeWinners.has(id) : false,
     hasStoreMembership: ctx.storeMembers ? ctx.storeMembers.has(id) : false,
     usesMarketplace: ctx.marketplaceUsers ? ctx.marketplaceUsers.has(id) : false,
-    hasPhysicalWheelPrize: prizeStats.hasPhysicalWheelPrize || false,
-    physicalWheelPrizes: prizeStats.physicalWheelPrizes || 0,
     competitionsJoined: prizeStats.competitionsJoined || participationsCount,
     hasCompetitionHistory: prizeStats.hasCompetitionHistory || participationsCount > 0,
     totalPrizesCount: prizeStats.totalPrizesCount || 0,
@@ -292,36 +511,40 @@ exports.listUsers = async (req, res) => {
         usesMarketplace === true ? "yes" : usesMarketplace === false ? "no" : undefined,
     };
 
-    const [activityMap, participationMap, prizeWinners, storeMembers, marketplaceUsers] =
-      await Promise.all([
-        needsActivity ? buildActivityMap() : {},
-        needsParticipations ? buildParticipationMap() : {},
-        needsPrizeFilter ? buildPrizeWinnerSet() : null,
-        needsStoreFilter ? buildStoreMemberSet(req.query.storeId) : null,
-        needsMarketplaceFilter ? buildMarketplaceSet() : null,
-      ]);
+    const match = await buildExtendedUserMatch(req.query, filterQuery, {
+      needsActivity,
+      needsParticipations,
+      needsPrizeFilter,
+      needsStoreFilter,
+      needsMarketplaceFilter,
+    });
 
-    const ctx = {
-      activityMap,
-      participationMap,
-      prizeWinners,
-      storeMembers,
-      marketplaceUsers,
-    };
-
-    let users = await User.find(buildUserMatch(req.query))
-      .select(USER_SENSITIVE_SELECT)
-      .populate("preferences.regionId", "name")
-      .lean();
-
-    users = users.filter((u) => passesFilters(u, filterQuery, ctx));
-    users = users.map((u) => enrichUser(u, ctx));
-    sortUsers(users, sort);
-
-    const total = users.length;
+    let { users: pagedRaw, total } = await fetchUsersPaged({
+      match,
+      sort,
+      page,
+      limit,
+    });
     const pages = Math.max(1, Math.ceil(total / limit));
     const safePage = Math.min(page, pages);
-    const paged = users.slice((safePage - 1) * limit, safePage * limit);
+    if (safePage !== page && total > 0) {
+      ({ users: pagedRaw } = await fetchUsersPaged({
+        match,
+        sort,
+        page: safePage,
+        limit,
+      }));
+    }
+
+    const ctx = {
+      activityMap: {},
+      participationMap: {},
+      prizeWinners: needsPrizeFilter ? await buildPrizeWinnerSet() : null,
+      storeMembers: needsStoreFilter ? await buildStoreMemberSet(req.query.storeId) : null,
+      marketplaceUsers: needsMarketplaceFilter ? await buildMarketplaceSet() : null,
+    };
+
+    const paged = pagedRaw.map((user) => enrichUser(user, ctx));
 
     const pageIds = paged.map((u) => u._id);
     const prizeStatsMap = pageIds.length ? await buildUserPrizeStatsMap(pageIds) : {};
@@ -439,8 +662,6 @@ exports.listUsers = async (req, res) => {
 
     paged.forEach((u) => {
       const stats = prizeStatsMap[String(u._id)] || {};
-      u.hasPhysicalWheelPrize = stats.hasPhysicalWheelPrize || false;
-      u.physicalWheelPrizes = stats.physicalWheelPrizes || 0;
       u.competitionsJoined = stats.competitionsJoined ?? u.participationsCount ?? 0;
       u.hasCompetitionHistory = stats.hasCompetitionHistory || u.competitionsJoined > 0;
       u.totalPrizesCount = stats.totalPrizesCount || 0;
@@ -483,7 +704,6 @@ exports.getUserDetail = async (req, res) => {
       memberships,
       bazaarCount,
       recentActivity,
-      wheelWins,
       honorEntries,
       drawWins,
     ] = await Promise.all([
@@ -495,7 +715,6 @@ exports.getUserDetail = async (req, res) => {
         .lean(),
       BazaarListing.countDocuments({ seller: id }),
       UserActivity.find({ user: id }).sort({ createdAt: -1 }).limit(15).lean(),
-      WheelWin.find({ user: id }).sort({ wonAt: -1 }).limit(5).select("prizeName wonAt deliveryStatus").lean(),
       HonorBoard.find({ user: id }).sort({ createdAt: -1 }).limit(5).select("title prizeName receivedAt").lean(),
       DrawBatch.find({ "winners.user": id })
         .select("name winners eventDate")
@@ -528,8 +747,6 @@ exports.getUserDetail = async (req, res) => {
         hasWonPrize: prizeWinners.has(String(id)),
         bazaarListingsCount: bazaarCount,
         usesMarketplace: bazaarCount > 0,
-        hasPhysicalWheelPrize: prizeStats.hasPhysicalWheelPrize || false,
-        physicalWheelPrizes: prizeStats.physicalWheelPrizes || 0,
         competitionsJoined: prizeStats.competitionsJoined || participationsMap[String(id)] || 0,
         hasCompetitionHistory: prizeStats.hasCompetitionHistory || false,
         totalPrizesCount: prizeStats.totalPrizesCount || 0,
@@ -537,7 +754,6 @@ exports.getUserDetail = async (req, res) => {
       storeMemberships: memberships,
       recentActivity,
       prizes: {
-        wheel: wheelWins,
         honor: honorEntries,
         draws: drawPrizes,
       },

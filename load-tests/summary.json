@@ -1,0 +1,325 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "01_health_and_meta": {
+                "groups": {},
+                "checks": {
+                        "health status": {
+                            "path": "::01_health_and_meta::health status",
+                            "id": "0c56977d7ee703390eee5a1ac587f8dd",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "health status"
+                        },
+                        "health body size reasonable": {
+                            "name": "health body size reasonable",
+                            "path": "::01_health_and_meta::health body size reasonable",
+                            "id": "0602de5c5440f980e07a9a7ab230b096",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "health not server error": {
+                            "path": "::01_health_and_meta::health not server error",
+                            "id": "c695e4083af565a58e8ac895f4f3faf9",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "health not server error"
+                        },
+                        "v1_meta status": {
+                            "id": "c913ca72ffd584cd66c772422e87df9e",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "v1_meta status",
+                            "path": "::01_health_and_meta::v1_meta status"
+                        },
+                        "v1_meta body size reasonable": {
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "v1_meta body size reasonable",
+                            "path": "::01_health_and_meta::v1_meta body size reasonable",
+                            "id": "fab74d86c7728746c43a74711c41819e"
+                        },
+                        "v1_meta not server error": {
+                            "id": "8c8c2dbc38bbdd1a83b5b6df463c4ba7",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "v1_meta not server error",
+                            "path": "::01_health_and_meta::v1_meta not server error"
+                        }
+                    },
+                "name": "01_health_and_meta",
+                "path": "::01_health_and_meta",
+                "id": "fe66f1ee867dfc050d8129a1680b5e24"
+            },
+            "02_public_readonly": {
+                "name": "02_public_readonly",
+                "path": "::02_public_readonly",
+                "id": "29aa1de32f174b39ed0d29ad60231bda",
+                "groups": {},
+                "checks": {
+                        "settings_public status": {
+                            "name": "settings_public status",
+                            "path": "::02_public_readonly::settings_public status",
+                            "id": "0d850d626bee79f72841fbcc92b230af",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "settings_public body size reasonable": {
+                            "name": "settings_public body size reasonable",
+                            "path": "::02_public_readonly::settings_public body size reasonable",
+                            "id": "01f8931d782284e0607f6395ee484728",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "settings_public not server error": {
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "settings_public not server error",
+                            "path": "::02_public_readonly::settings_public not server error",
+                            "id": "a33d9a8ca30837f7d92febd08ebfde89"
+                        },
+                        "regions status": {
+                            "name": "regions status",
+                            "path": "::02_public_readonly::regions status",
+                            "id": "2252bdd49adb198505afdee0bb86eed4",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "regions body size reasonable": {
+                            "name": "regions body size reasonable",
+                            "path": "::02_public_readonly::regions body size reasonable",
+                            "id": "be71046e879609e3fa2bbe2849ee01a5",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "regions not server error": {
+                            "name": "regions not server error",
+                            "path": "::02_public_readonly::regions not server error",
+                            "id": "ab291b85eb3730f825b5cb9e3acc0d24",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "delivery_companies_public status": {
+                            "path": "::02_public_readonly::delivery_companies_public status",
+                            "id": "32fc0d2f7f3ca8f2325ebc9498c9f4b2",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "delivery_companies_public status"
+                        },
+                        "delivery_companies_public body size reasonable": {
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "delivery_companies_public body size reasonable",
+                            "path": "::02_public_readonly::delivery_companies_public body size reasonable",
+                            "id": "eb4716bef23bec3da287f991b1101eec"
+                        },
+                        "delivery_companies_public not server error": {
+                            "id": "5aa55d3303b6c1434f2fbbf603fab66b",
+                            "passes": 43,
+                            "fails": 0,
+                            "name": "delivery_companies_public not server error",
+                            "path": "::02_public_readonly::delivery_companies_public not server error"
+                        }
+                    }
+            },
+            "03_customer_readonly": {
+                "name": "03_customer_readonly",
+                "path": "::03_customer_readonly",
+                "id": "01d21d48c9ba3ef1b4650ff3e35a806b",
+                "groups": {},
+                "checks": {
+                        "categories_public status": {
+                            "name": "categories_public status",
+                            "path": "::03_customer_readonly::categories_public status",
+                            "id": "3999a5d5fc1fdff4e951ac1c6ebb74ef",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "categories_public body size reasonable": {
+                            "name": "categories_public body size reasonable",
+                            "path": "::03_customer_readonly::categories_public body size reasonable",
+                            "id": "5e218969386cbf83090d670fbc3141c2",
+                            "passes": 43,
+                            "fails": 0
+                        },
+                        "categories_public not server error": {
+                            "name": "categories_public not server error",
+                            "path": "::03_customer_readonly::categories_public not server error",
+                            "id": "a69509647336def5f9a998ced4f680c8",
+                            "passes": 43,
+                            "fails": 0
+                        }
+                    }
+            },
+            "04_admin_readonly": {
+                "name": "04_admin_readonly",
+                "path": "::04_admin_readonly",
+                "id": "ca34c6dd64f7cdb0308cca1ea8b9b086",
+                "groups": {},
+                "checks": {}
+            },
+            "05_delivery_readonly": {
+                "path": "::05_delivery_readonly",
+                "id": "b87a297f0c4fb39b5a427d05725937d1",
+                "groups": {},
+                "checks": {},
+                "name": "05_delivery_readonly"
+            }
+        },
+        "checks": {}
+    },
+    "metrics": {
+        "http_req_waiting": {
+            "avg": 404.63083875968994,
+            "min": 208.2631,
+            "med": 376.48490000000004,
+            "max": 2116.8916,
+            "p(90)": 680.65368,
+            "p(95)": 715.2194699999999
+        },
+        "http_req_receiving": {
+            "min": 0,
+            "med": 0.8219000000000001,
+            "max": 233.6401,
+            "p(90)": 6.830270000000008,
+            "p(95)": 12.495504999999984,
+            "avg": 4.213700387596899
+        },
+        "group_duration": {
+            "avg": 999.0231823255822,
+            "min": 500.1378,
+            "med": 909.6579,
+            "max": 2617.8632,
+            "p(90)": 1881.5566,
+            "p(95)": 2015.838799999999
+        },
+        "data_received": {
+            "count": 729200,
+            "rate": 5199.785121375642
+        },
+        "endpoint_checks_passed": {
+            "passes": 258,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.95": false
+            },
+            "value": 1
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 150.075,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 1.6273027131782944
+        },
+        "iteration_duration": {
+            "med": 5899.1474,
+            "max": 7906.5607,
+            "p(90)": 6352.9051,
+            "p(95)": 6469.66781,
+            "avg": 5995.739430232558,
+            "min": 5632.3635
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 774,
+            "thresholds": {
+                "rate>0.95": false
+            },
+            "value": 1
+        },
+        "iterations": {
+            "rate": 0.3066247397410211,
+            "count": 43
+        },
+        "http_req_blocked": {
+            "min": 0,
+            "med": 0,
+            "max": 743.9907,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 5.832003875968992
+        },
+        "http_req_duration": {
+            "min": 210.3509,
+            "med": 379.60215,
+            "max": 2117.5144,
+            "p(90)": 690.60102,
+            "p(95)": 719.7376,
+            "avg": 409.1733453488372,
+            "thresholds": {
+                "p(95)<5000": false,
+                "avg<3000": false
+            }
+        },
+        "http_req_sending": {
+            "med": 0.4379,
+            "max": 1.5271,
+            "p(90)": 0.63014,
+            "p(95)": 0.7370049999999998,
+            "avg": 0.32880620155038737,
+            "min": 0
+        },
+        "endpoint_duration_ms": {
+            "avg": 415.13178294573646,
+            "min": 210,
+            "med": 380,
+            "max": 2118,
+            "p(90)": 692.9000000000001,
+            "p(95)": 721.1999999999998
+        },
+        "vus_max": {
+            "max": 5,
+            "value": 5,
+            "min": 5
+        },
+        "http_reqs": {
+            "count": 258,
+            "rate": 1.8397484384461267
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 258,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "data_sent": {
+            "count": 22942,
+            "rate": 163.5949948636862
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 690.60102,
+            "p(95)": 719.7376,
+            "avg": 409.1733453488372,
+            "min": 210.3509,
+            "med": 379.60215,
+            "max": 2117.5144
+        },
+        "http_req_connecting": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 1.8207201550387597,
+            "min": 0,
+            "med": 0,
+            "max": 250.8183
+        },
+        "vus": {
+            "max": 5,
+            "value": 1,
+            "min": 0
+        },
+        "skipped_optional_endpoints": {
+            "count": 129,
+            "rate": 0.9198742192230633
+        }
+    },
+    "setup_data": {
+        "baseUrl": "https://winzor.onrender.com"
+    }
+}

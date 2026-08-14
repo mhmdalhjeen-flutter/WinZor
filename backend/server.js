@@ -5,11 +5,14 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+const { isExcelExportRequest } = require("./src/utils/excelDownload.util");
 const dotenv = require("dotenv");
 const bcrypt = require("bcryptjs");
 
 const connectDB = require("./src/config/db");
+const { validateStartupEnv } = require("./src/config/validateEnv");
 const { connectRedis } = require("./src/config/redis");
+const { ensureSchemaIndexes } = require("./src/config/syncIndexes");
 const User = require("./src/models/user");
 const { backfillStorePrefixes } = require("./src/utils/storePrefix");
 const { backfillReferralRewardFlags } = require("./src/services/referral.service");
@@ -34,17 +37,21 @@ const isPrimaryWorker = () => {
 const monitorOffers = require("./src/utils/offerMonitor");
 const monitorCompetitions = require("./src/utils/competitionMonitor");
 const monitorBazaar = require("./src/utils/bazaarMonitor");
-const { monitorWheelWins } = require("./src/utils/wheelWinMonitor");
+const { monitorStoreSubscriptions } = require("./src/utils/storeSubscriptionMonitor");
+const { monitorDeliveryBilling } = require("./src/utils/deliveryBillingMonitor");
+const { monitorDriverConfirmations } = require("./src/utils/deliveryDriverConfirmationMonitor");
+const { logVapidStartupStatus } = require("./src/config/vapid");
 
 dotenv.config();
 
-if (!process.env.JWT_SECRET) {
-    safeLog("error", "startup_config_error", { message: "JWT_SECRET is required" });
-    process.exit(1);
-}
+validateStartupEnv();
 
 const app = express();
-const isProduction = process.env.NODE_ENV === "production";
+const nodeEnv = process.env.NODE_ENV || "development";
+const isProduction = nodeEnv === "production";
+const isStaging = nodeEnv === "staging";
+const isDevelopment = !isProduction && !isStaging;
+const isStrictCors = isProduction || isStaging;
 
 app.disable("x-powered-by");
 
@@ -63,9 +70,14 @@ const DEFAULT_DEV_ORIGINS = [5173, 5174, 5175].flatMap((port) => [
     `http://127.0.0.1:${port}`,
 ]);
 const DEFAULT_PROD_ORIGINS = [
+    "https://wingolgmoll.com",
     "https://winzor.netlify.app",
     "https://win-gold-moll.pages.dev",
+    "https://win-gold-shopping.mhmdalhjeen.workers.dev",
+    "https://winzor-customer.mhmdalhjeen.workers.dev",
     "https://win-gold-supplier.pages.dev",
+    "https://adminwingold.pages.dev",
+    "https://delivery-win-gold.pages.dev",
 ];
 
 const envOrigins = (process.env.CORS_ORIGINS || "")
@@ -80,8 +92,8 @@ const allowedOrigins = [...new Set([
 
 if (envOrigins.length === 0) {
     const message = "CORS_ORIGINS غير مضبوط";
-    if (isProduction) {
-        safeLog("warn", "startup_config_warning", { message, mode: "production", behavior: "production frontend origins rejected unless listed in CORS_ORIGINS" });
+    if (isStrictCors) {
+        safeLog("warn", "startup_config_warning", { message, mode: nodeEnv, behavior: "only DEFAULT_PROD_ORIGINS and localhost are not auto-allowed for unknown origins" });
     } else {
         safeLog("warn", "startup_config_warning", { message, mode: "development", behavior: "localhost origins allowed" });
     }
@@ -105,10 +117,10 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return cb(null, true);
         }
-        if (!isProduction && LOCALHOST_ORIGIN_RE.test(origin)) {
+        if (isDevelopment && LOCALHOST_ORIGIN_RE.test(origin)) {
             return cb(null, true);
         }
-        if (!isProduction && envOrigins.length === 0) {
+        if (isDevelopment && envOrigins.length === 0) {
             return cb(null, true);
         }
         return cb(new Error("Origin not allowed by CORS"));
@@ -120,7 +132,16 @@ app.use(cors({
     maxAge: 600,
     optionsSuccessStatus: 204,
 }));
-app.use(compression({ threshold: 1024, level: 6 }));
+app.use(compression({
+    threshold: 1024,
+    level: 6,
+    filter: (req, res) => {
+        if (isExcelExportRequest(req) || res.getHeader("X-No-Compression") === "1") {
+            return false;
+        }
+        return compression.filter(req, res);
+    },
+}));
 app.use(express.json({ limit: "3mb" }));
 app.use(requestLogMiddleware);
 
@@ -154,7 +175,6 @@ app.use("/api/admin", adminLimiter);
     "/api/users",
     "/api/honor",
     "/api/admin/achievements",
-    "/api/admin/wheel/prizes",
     "/api/v1/products",
     "/api/v1/offers",
     "/api/v1/stores",
@@ -163,7 +183,6 @@ app.use("/api/admin", adminLimiter);
     "/api/v1/users",
     "/api/v1/honor",
     "/api/v1/admin/achievements",
-    "/api/v1/admin/wheel/prizes",
     "/api/upload",
 ].forEach((path) => app.use(path, uploadWriteLimiter));
 app.use("/api", apiLimiter);
@@ -264,8 +283,10 @@ const startServer = async () => {
     try {
         await connectDB();
         await connectRedis();
+        logVapidStartupStatus();
 
         if (isPrimaryWorker()) {
+            await ensureSchemaIndexes();
             await backfillStorePrefixes();
             await backfillReferralRewardFlags();
             await seedAdmin();
@@ -276,14 +297,21 @@ const startServer = async () => {
         if (isPrimaryWorker()) {
             monitorOffers();
             monitorBazaar();
-            monitorWheelWins();
             monitorCompetitions();
+            monitorStoreSubscriptions();
+            monitorDeliveryBilling();
+            monitorDriverConfirmations();
 
             setInterval(() => {
                 monitorOffers();
                 monitorBazaar();
-                monitorWheelWins();
+                monitorStoreSubscriptions();
+                monitorDeliveryBilling();
             }, 24 * 60 * 60 * 1000);
+
+            setInterval(() => {
+                monitorDriverConfirmations();
+            }, 60 * 60 * 1000);
 
             setInterval(() => {
                 monitorCompetitions();

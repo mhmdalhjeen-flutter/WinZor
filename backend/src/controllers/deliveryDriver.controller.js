@@ -1,88 +1,97 @@
-const deliverySessionService = require("../services/deliverySession.service");
-const { requireObjectId } = require("../utils/inputSecurity.util");
+const deliveryDriverService = require("../services/deliveryDriver.service");
+const { assertNoMongoOperators } = require("../utils/inputSecurity.util");
 
-exports.getDashboardStats = async (req, res) => {
+/** Prefer attachUserDoc payload — auth middleware's req.user omits deliveryDriverId. */
+function driverAuthUser(req) {
+  return req.userDoc || req._authUserDoc || req.user;
+}
+
+exports.listAssignments = async (req, res) => {
   try {
-    const stats = await deliverySessionService.getDashboardStats(req.userDoc || req.user);
-    res.json(stats);
+    const assignments = await deliveryDriverService.listActiveAssignments(driverAuthUser(req));
+    res.json({ assignments });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
   }
 };
 
-exports.listTrips = async (req, res) => {
+exports.listHistory = async (req, res) => {
   try {
-    const history = req.query.history === "true" || req.query.history === "1";
-    const trips = await deliverySessionService.listSessionsForDriver(
-      req.userDoc || req.user,
-      { status: req.query.status, history },
-    );
-    res.json({ trips, sessions: trips });
+    const assignments = await deliveryDriverService.listDeliveryHistory(driverAuthUser(req), {
+      limit: req.query.limit,
+    });
+    res.json({ assignments, history: assignments });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
   }
 };
 
-exports.getTrip = async (req, res) => {
+exports.getAssignment = async (req, res) => {
   try {
-    const trip = await deliverySessionService.getSessionForDriver(
-      req.userDoc || req.user,
-      req.params.tripId,
+    const assignment = await deliveryDriverService.getAssignmentDetail(
+      driverAuthUser(req),
+      req.params.assignmentId,
     );
-    res.json({ trip, session: trip });
+    res.json({ assignment });
+  } catch (err) {
+    res.status(err.status || 404).json({ message: err.message });
+  }
+};
+
+exports.completeDelivery = async (req, res) => {
+  try {
+    assertNoMongoOperators(req.body, "delivery");
+    const assignment = await deliveryDriverService.completeDelivery(
+      driverAuthUser(req),
+      req.params.assignmentId,
+      {
+        deliveryProof: req.body.deliveryProof,
+        deliveryNote: req.body.deliveryNote,
+        clientSyncId: req.body.clientSyncId,
+      },
+    );
+    res.json({ assignment, message: "تم استلام الطلب بنجاح" });
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message });
+  }
+};
+
+exports.syncOffline = async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const results = await deliveryDriverService.syncOfflineCompletions(driverAuthUser(req), items);
+    res.json({ results, synced: results.filter((r) => r.success).length });
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message });
+  }
+};
+
+exports.listPendingConfirmations = async (req, res) => {
+  try {
+    const pending = await deliveryDriverService.listPendingConfirmations(driverAuthUser(req));
+    res.json({ pending });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
   }
 };
 
-exports.acceptTrip = async (req, res) => {
+exports.getRegistrationPasswordStatus = async (req, res) => {
   try {
-    const trip = await deliverySessionService.acceptSession(req.userDoc || req.user, req.params.tripId);
-    res.json({ trip, session: trip, message: "تم قبول الرحلة" });
+    const data = await deliveryDriverService.getDriverRegistrationPasswordStatus(req.userDoc || req.user);
+    res.json(data);
   } catch (err) {
-    res.status(err.status || 400).json({ message: err.message });
+    res.status(err.status || 500).json({ message: err.message });
   }
 };
 
-exports.collectStop = async (req, res) => {
+exports.setRegistrationPassword = async (req, res) => {
   try {
-    requireObjectId(req.params.orderId, "orderId");
-    const trip = await deliverySessionService.collectStoreStop(
+    assertNoMongoOperators(req.body, "driverPassword");
+    const data = await deliveryDriverService.setDriverRegistrationPassword(
       req.userDoc || req.user,
-      req.params.tripId,
-      req.params.orderId,
+      req.body,
     );
-    res.json({ trip, session: trip, message: "تم استلام الطلب من المتجر" });
-  } catch (err) {
-    res.status(err.status || 400).json({ message: err.message });
-  }
-};
-
-exports.verifyPayment = async (req, res) => {
-  try {
-    const trip = await deliverySessionService.verifySessionPayment(
-      req.userDoc || req.user,
-      req.params.tripId,
-    );
-    res.json({ trip, session: trip, message: "تم التحقق من الدفع" });
-  } catch (err) {
-    res.status(err.status || 400).json({ message: err.message });
-  }
-};
-
-exports.startDelivery = async (req, res) => {
-  try {
-    const trip = await deliverySessionService.startDelivery(req.userDoc || req.user, req.params.tripId);
-    res.json({ trip, session: trip, message: "تم بدء التوصيل" });
-  } catch (err) {
-    res.status(err.status || 400).json({ message: err.message });
-  }
-};
-
-exports.completeTrip = async (req, res) => {
-  try {
-    const trip = await deliverySessionService.completeSession(req.userDoc || req.user, req.params.tripId);
-    res.json({ trip, session: trip, message: "تم إكمال الرحلة" });
+    res.json({ ...data, message: "تم حفظ كلمة مرور تسجيل السائقين" });
   } catch (err) {
     res.status(err.status || 400).json({ message: err.message });
   }

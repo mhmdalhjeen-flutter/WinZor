@@ -6,7 +6,9 @@ const { deliveryPaymentSchema, transferInfoSchema } = require("./schemas/deliver
 const STORED_STATUS_ENUM = [
   ...SESSION_STATUS_VALUES,
   "waiting_for_acceptance",
-  "accepted",
+  "driver_assigned",
+  "collecting_orders",
+  "on_delivery",
   "on_the_way",
   "delivered",
 ];
@@ -44,12 +46,23 @@ const feeBreakdownSchema = new mongoose.Schema({
   totalFee: { type: Number, default: 0, min: 0 },
 }, { _id: false });
 
+const assignedDriverSchema = new mongoose.Schema({
+  driverId: { type: mongoose.Schema.Types.ObjectId, ref: "DeliveryCompanyDriver", default: null },
+  name: { type: String, default: "" },
+  phone: { type: String, default: "" },
+  whatsapp: { type: String, default: "" },
+  note: { type: String, default: "" },
+  assignedAt: { type: Date, default: null },
+}, { _id: false });
+
 const deliverySessionSchema = new mongoose.Schema(
   {
     sessionId: { type: String, default: "", index: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     deliveryCompany: { type: mongoose.Schema.Types.ObjectId, ref: "DeliveryCompany", required: true, index: true },
+    /** @deprecated legacy User driver ref — use assignedDriver */
     driver: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    assignedDriver: { type: assignedDriverSchema, default: null },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
     storeStops: [storeStopSchema],
     status: {
@@ -83,6 +96,28 @@ const deliverySessionSchema = new mongoose.Schema(
     transferInformation: { type: transferInfoSchema, default: () => ({}) },
     submittedAt: { type: Date, default: null },
     notes: { type: String, default: "" },
+    rejectionReason: { type: String, default: "" },
+    driverDeliveryProof: { type: String, default: "" },
+    driverDeliveryNote: { type: String, default: "", maxlength: 1000 },
+    driverDeliveredAt: { type: Date, default: null },
+    driverCompletionSyncId: { type: String, default: "", index: true, sparse: true },
+    /** Immutable snapshot captured at delivery confirmation */
+    deliveryProofSnapshot: {
+      photo: { type: String, default: "" },
+      note: { type: String, default: "", maxlength: 1000 },
+      deliveredAt: { type: Date, default: null },
+      driverId: { type: mongoose.Schema.Types.ObjectId, ref: "DeliveryCompanyDriver", default: null },
+      driverName: { type: String, default: "" },
+      driverPhone: { type: String, default: "" },
+      companyId: { type: mongoose.Schema.Types.ObjectId, ref: "DeliveryCompany", default: null },
+      companyName: { type: String, default: "" },
+      verificationCode: { type: String, default: "" },
+      verificationCodes: { type: [String], default: [] },
+      orderIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
+      orderNumbers: { type: [String], default: [] },
+      customerName: { type: String, default: "" },
+      customerPhone: { type: String, default: "" },
+    },
   },
   { timestamps: true },
 );
@@ -91,6 +126,9 @@ deliverySessionSchema.index({ deliveryCompany: 1, status: 1, createdAt: -1 });
 deliverySessionSchema.index({ driver: 1, status: 1, createdAt: -1 });
 deliverySessionSchema.index({ customer: 1, status: 1, createdAt: -1 });
 deliverySessionSchema.index({ customer: 1, sessionId: 1 }, { unique: true, sparse: true });
+deliverySessionSchema.index({ "deliveryProofSnapshot.deliveredAt": -1 });
+deliverySessionSchema.index({ "deliveryProofSnapshot.verificationCode": 1 });
+deliverySessionSchema.index({ "deliveryProofSnapshot.driverId": 1, "deliveryProofSnapshot.deliveredAt": -1 });
 
 const COLLECTION = "deliverygroups";
 

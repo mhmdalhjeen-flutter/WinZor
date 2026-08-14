@@ -136,6 +136,35 @@ const storeSchema = new mongoose.Schema({
     default: 0,          // عدد الكروت المتاحة
     },
 
+    /** مخزون الكروت الرقمية حسب النوع — كل نوع له pointsValue مستقل */
+    cardInventory: [{
+        cardType: { type: mongoose.Schema.Types.ObjectId, ref: "CardType", default: null },
+        pointsValue: { type: Number, required: true, min: 1 },
+        count: { type: Number, default: 0, min: 0 },
+        source: {
+            type: String,
+            enum: ["subscription", "independent"],
+            default: "independent",
+        },
+        subscriptionPeriodId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "StoreSubscriptionPeriod",
+            default: null,
+        },
+    }],
+
+    /** إعدادات كروت الاشتراك الشهري الافتراضية للمتجر */
+    subscriptionCardConfig: {
+        digital: {
+            quantity: { type: Number, default: 50, min: 0 },
+            pointsPerCard: { type: Number, default: 2, min: 1 },
+        },
+        paper: {
+            quantity: { type: Number, default: 150, min: 0 },
+            pointsPerCard: { type: Number, default: 1, min: 1 },
+        },
+    },
+
     bypassCards: {
         type: Boolean,
         default: false,      // الأدمن يفعّلها ليتخطى شرط الكروت
@@ -170,12 +199,32 @@ const storeSchema = new mongoose.Schema({
         acceptsOldCurrency: { type: Boolean, default: false },
         acceptsAllCurrencyTypes: { type: Boolean, default: false },
     },
+
+    /** Enable/disable payment methods shown to customers */
+    paymentMethods: {
+        cashOnDelivery: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+        agreementWithStore: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+        bankPalestine: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+        palPay: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+        jawwalPay: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+    },
+
+    /**
+     * Store-controlled receiving methods (not delivery-company selection).
+     * freeNearbyDelivery → customer sees "توصيل مجاني | أنا قريب من المتجر"
+     * storePickup → customer sees "استلام الطلب من المتجر"
+     */
+    receivingMethods: {
+        freeNearbyDelivery: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+        storePickup: { enabled: { type: Boolean, default: true }, note: { type: String, default: "" } },
+    },
 }, {
     timestamps: true,
 });
 
 storeSchema.index({ owner: 1 });
 storeSchema.index({ isActive: 1, createdAt: -1 });
+storeSchema.index({ isActive: 1, displayPriority: -1, createdAt: -1 });
 storeSchema.index({ isActive: 1, regionId: 1 });
 storeSchema.index({ isActive: 1, subRegionId: 1 });
 storeSchema.index({ isActive: 1, categoryId: 1 });

@@ -9,12 +9,15 @@
 ```
 offers-tech/
 ├── backend/                  ← الخادم وقاعدة البيانات
-├── customerFrontend/         ← واجهة الزبون
-├── store-supplier-frontend/  ← واجهة المتاجر/الموردين
-├── admin-panelFrontend/      ← واجهة الإدارة
+├── customer/                 ← واجهة الزبون (PWA)
+├── adminstore/               ← واجهة المتاجر/الموردين (PWA)
+├── admin/                    ← واجهة الإدارة الإنتاجية (PWA)
+├── delivery/                 ← واجهة شركات التوصيل والسائقين (PWA)
 ├── docs/                     ← التوثيق (هذا المجلد)
-└── package.json              ← يحوي exceljs + qrcode فقط (أدوات مساعدة، ليس workspace رسمي)
+└── package.json              ← أدوات مساعدة في الجذر (exceljs + qrcode)
 ```
+
+> **Legacy folder names:** `customerFrontend`, `store-supplier-frontend`, `admin-panelFrontend` — see `REPOSITORY_STRUCTURE.md` and `DEPRECATED_admin-panelFrontend.md`.
 
 > ملاحظة: لا يوجد إعداد Monorepo رسمي (لا workspaces). كل مشروع مستقل بـ `package.json` و `node_modules` خاصين.
 
@@ -54,91 +57,88 @@ backend/
 
 ---
 
-## 3. واجهة الزبون — customerFrontend
+## 3. واجهة الزبون — `customer/`
 
 ```
-customerFrontend/
-├── .env                      ← VITE_GOOGLE_CLIENT_ID
-├── package.json              ← React18, Vite5, Tailwind, framer-motion, swiper
+customer/
+├── .env.example              ← VITE_API_URL, OAuth keys
+├── package.json
 ├── vite.config.js
 └── src/
-    ├── main.jsx              ← يلفّ App بـ AuthProvider
-    ├── App.jsx               ← كل المسارات (BrowserRouter + Routes)
-    ├── api/axios.js          ← axios instance (baseURL localhost:5000/api + token interceptor)
-    ├── context/AuthContext.jsx  ← حالة المصادقة (user, token, login, logout, isAuth, role)
-    ├── services/authService.js  ← logout helper
-    ├── auth/permissions.js   ← خريطة صلاحيات (PERMISSIONS) — معرّفة لكن استخدامها محدود
-    ├── routes/ProtectedRoute.jsx ← حماية المسارات حسب token + allowedRoles
-    ├── components/           ← Header, BottomNav, FloatingCodeButton, GiftModal
-    └── pages/                ← Intro, Home, Login, Register, Explore, Marketplace,
-                                StoreDetail, OfferDetail, Draws, LuckyWheel, Wallet,
-                                TreasureChests, HonorBoard, Inventory, Profile, Personalization
+    ├── main.jsx              ← ErrorBoundary + PersistQueryClientProvider
+    ├── App.jsx               ← المسارات
+    ├── api/axios.js
+    ├── context/              ← Auth, Checkout, DeliverySession, …
+    ├── shared/ErrorBoundary.jsx
+    ├── components/
+    └── pages/                ← Marketplace, StoreDetail, Orders, Chats, …
 ```
 
 ---
 
-## 4. واجهة المتاجر/الموردين — store-supplier-frontend
+## 4. واجهة المتاجر/الموردين — `adminstore/`
 
 ```
-store-supplier-frontend/
-├── package.json              ← React19, Vite8, react-router 7, eslint  (أحدث إصدارات من البقية)
+adminstore/
+├── package.json
 ├── vite.config.js
-├── README.md                 ← قالب Vite الافتراضي (غير مخصّص)
 └── src/
     ├── main.jsx
-    ├── App.jsx               ← مسارات /store/* و /supplier/* (نفس الصفحات لكلا الدورين)
-    ├── services/
-    │   ├── api.js            ← axios instance
-    │   ├── auth.service.js
-    │   ├── cart.service.js
-    │   ├── offers.service.js
-    │   └── products.service.js
-    ├── context/StoreContext.jsx  ← حالة محلية للمنتجات (بسيطة، in-memory)
-    ├── utils/auth.js         ← setAuth/getUser/getRole/logout (localStorage)
-    ├── routes/ProtectedRoute.jsx
-    ├── layouts/              ← DashboardLayout, AuthLayout
-    ├── components/           ← Sidebar, Topbar
-    ├── auth/                 ← Login.jsx, Register.jsx
-    └── pages/
-        ├── storeOwner/       ← DashboardHome, AddProductsOffers, Products, OffersManager
-        └── *.jsx             ← MyStore, Orders, Chats, Cart, Competitions, BuyCodes,
-                                Warehouses, WarehouseDetail, ItemDetails, Support, Profile,
-                                not-authorized
+    ├── App.jsx               ← مسارات /store/* و /supplier/*
+    ├── services/api.js       ← axios instance
+    ├── shared/ErrorBoundary.jsx
+    ├── pages/                ← Orders, OrderDetails, DashboardHome, …
+    └── components/
 ```
-
-> ملاحظة: واجهة المتاجر تستخدم **React 19 / Vite 8 / react-router 7**، بينما الواجهتان الأخريان على **React 18 / Vite 5 / react-router 6**. هذا تفاوت في الإصدارات يجب الانتباه له عند نقل المكوّنات بين الواجهات.
 
 ---
 
-## 5. واجهة الإدارة — admin-panelFrontend
+## 5. واجهة الإدارة — `admin/` (canonical)
 
 ```
-admin-panelFrontend/
-├── package.json              ← React18, Vite5, Tailwind, axios, react-qr-code, xlsx, react-router 6
+admin/
+├── package.json              ← React 18, Vite 5, Tailwind, xlsx, PWA
 ├── vite.config.js
 └── src/
-    ├── (main.jsx / App.jsx)  ← نقطة الدخول والراوتر
-    ├── api/axios.js          ← axios instance (نفس النمط)
-    ├── components/           ← Sidebar, AdminHeader, AdminLayout, ProtectedRoute
-    └── pages/                ← Dashboard, Users, Stores, Categories, Draws, Prizes,
-                                PromoCodes, CodeGeneratorPage, HonorManagement,
-                                CardManagement, BoxManagement, SecurityLogs, Settings, Activity, Login
+    ├── main.jsx
+    ├── App.jsx
+    ├── api/axios.js
+    ├── shared/ErrorBoundary.jsx
+    ├── components/           ← AdminLayout, delivery modals, …
+    └── pages/                ← Dashboard, Users, Stores, DeliveryCompanies,
+                                StoreSubscriptions, DeliverySubscriptions, …
 ```
 
-> 🔴 **مشكلة هيكلية:** يوجد مجلد `node_modules` **بداخل** `admin-panelFrontend/src/` (في غير مكانه الصحيح — يجب أن يكون في جذر `admin-panelFrontend/`). هذا يضخّم البحث ويعطّل أدوات الفهرسة وقد يربك أدوات البناء. مسجّل في `15_BUGS.md` و `14_TODO.md`.
->
-> بسبب هذه المشكلة تعذّرت القراءة العميقة لمنطق صفحات الأدمن وقت إنشاء هذا التوثيق؛ المعلومات هنا على مستوى الهيكل، ويجب التحقق من تفاصيل الصفحات لاحقاً (راجع `12_AI_MEMORY.md`).
+> **Deprecated fork:** `admin-panelFrontend/` is not production. Do not deploy it. See `DEPRECATED_admin-panelFrontend.md`.
 
 ---
 
-## 6. أين أجد كل شيء؟ (مرجع سريع)
+## 6. واجهة التوصيل — `delivery/`
+
+```
+delivery/
+├── package.json
+├── vite.config.js
+└── src/
+    ├── main.jsx
+    ├── App.jsx               ← company routes + /driver/*
+    ├── api/axios.js
+    ├── shared/ErrorBoundary.jsx
+    ├── pages/                ← Dashboard, Requests, RequestDetails, CompanyBilling, …
+    └── pages/driver/         ← DriverHome, DriverDeliveryDetail, …
+```
+
+---
+
+## 7. أين أجد كل شيء؟ (مرجع سريع)
 
 | أريد أن... | اذهب إلى |
 |-----------|----------|
 | أضيف نقطة نهاية API | `backend/src/routes/` + `backend/src/controllers/` |
 | أعدّل بنية بيانات | `backend/src/models/` |
 | أغيّر صلاحيات الوصول | `backend/src/middleware/` + ترتيب الـ middleware في الـ route |
-| أضيف صفحة للزبون | `customerFrontend/src/pages/` + `App.jsx` |
-| أضيف صفحة للمتجر | `store-supplier-frontend/src/pages/` + `App.jsx` |
-| أضيف صفحة للأدمن | `admin-panelFrontend/src/pages/` + الراوتر |
-| أغيّر عنوان الـ API | `*/src/api/axios.js` أو `*/src/services/api.js` |
+| أضيف صفحة للزبون | `customer/src/pages/` + `App.jsx` |
+| أضيف صفحة للمتجر | `adminstore/src/pages/` + `App.jsx` |
+| أضيف صفحة للأدمن | `admin/src/pages/` + الراوتر |
+| أضيف صفحة للتوصيل | `delivery/src/pages/` + `App.jsx` |
+| أغيّر عنوان الـ API | `*/src/lib/apiUrl.js` أو `*/src/api/axios.js` / `adminstore/src/services/api.js` |

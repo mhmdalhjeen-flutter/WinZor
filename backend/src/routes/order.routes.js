@@ -35,8 +35,8 @@ function parseHistoryFilters(query) {
 
 router.get("/store/pending-count", roleMiddleware.business, async (req, res) => {
   try {
-    const count = await orderService.getStorePendingCount(req.user.id);
-    res.json({ count });
+    const stats = await orderService.getStorePendingCount(req.user.id);
+    res.json(stats);
   } catch (err) {
     handleServiceError(res, err);
   }
@@ -75,11 +75,31 @@ router.get("/admin/history", roleMiddleware.admin, async (req, res) => {
   }
 });
 
+router.get("/admin/:id", roleMiddleware.admin, async (req, res) => {
+  try {
+    const orderId = requireObjectId(req.params.id, "id");
+    const order = await orderService.getAdminOrderById(orderId);
+    const { enrichSingleOrder } = require("../utils/orderPresentation.util");
+    const enriched = await enrichSingleOrder(order);
+    res.json({ order: enriched });
+  } catch (err) {
+    handleServiceError(res, err);
+  }
+});
+
 router.get("/:id", marketplaceOrderController.getOrderDetail);
 
 router.patch("/:id/confirm", roleMiddleware.business, marketplaceOrderController.confirmOrder);
 
 router.patch("/:id/reject", roleMiddleware.business, marketplaceOrderController.rejectOrder);
+
+router.patch("/:id/hand-to-driver", roleMiddleware.business, marketplaceOrderController.handOrderToDriver);
+
+router.post("/:id/request-modification", roleMiddleware.business, marketplaceOrderController.requestModification);
+
+router.post("/:id/resolve-modification", roleMiddleware.customer, marketplaceOrderController.resolveModification);
+
+router.post("/:id/preview-replacement", roleMiddleware.customer, marketplaceOrderController.previewReplacement);
 
 router.patch("/:id/status", roleMiddleware.business, async (req, res) => {
   try {
@@ -91,7 +111,7 @@ router.patch("/:id/status", roleMiddleware.business, async (req, res) => {
       req.body.status,
       { rejectionReason: req.body.rejectionReason }
     );
-    if (["store_accepted", "confirmed", "rejected", "cancelled", "preparing", "delivered_to_driver", "delivered_to_customer", "delivered"].includes(req.body.status)) {
+    if (["store_accepted", "ready_for_delivery_pickup", "ready_for_driver_pickup", "delivery_handover_complete", "confirmed", "rejected", "cancelled", "preparing", "delivered_to_driver", "delivered_to_customer", "delivered"].includes(req.body.status)) {
       await auditService.logSensitiveOperation(req, {
         action: `تحديث حالة طلب — ${req.body.status}`,
         details: `طلب ${orderId}`,
